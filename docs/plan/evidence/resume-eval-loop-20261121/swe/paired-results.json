@@ -1,0 +1,589 @@
+{
+  "baseline": "sol-rev18",
+  "candidate": "t18-rev19",
+  "run_summary": {
+    "sol-rev18": {
+      "report_sha256": "df0ea32072aa0825ab56e28a9ac32025821b3d0ceb88f25435756dcae13d4fe0",
+      "selected": 50,
+      "resolved": 30,
+      "grader_outcomes": {
+        "ambiguous_failure": 1,
+        "empty_patch": 1,
+        "regression_only": 3,
+        "resolved": 30,
+        "target_and_regression": 1,
+        "target_only": 14
+      },
+      "agent_done": 47,
+      "official_resolved_among_done": 30,
+      "model_label": "agent-runtime-gpt-6.1-sol",
+      "limits": {
+        "budget_usd": 38.0,
+        "task_usd_limit": 3.0,
+        "concurrency": 6,
+        "task_timeout_s": 3600.0
+      },
+      "reported_usd": 34.048239
+    },
+    "t18-rev19": {
+      "report_sha256": "777c918be0df6e97fe9f6671ed27767a688cf5deca5bea2b04c3298fac78beb2",
+      "selected": 50,
+      "resolved": 38,
+      "grader_outcomes": {
+        "ambiguous_failure": 1,
+        "regression_only": 2,
+        "resolved": 38,
+        "run_error": 1,
+        "target_and_regression": 1,
+        "target_only": 7
+      },
+      "agent_done": 49,
+      "official_resolved_among_done": 38,
+      "model_label": "agent-runtime-rev19",
+      "limits": {
+        "budget_usd": 80.0,
+        "task_usd_limit": 3.0,
+        "concurrency": 2,
+        "task_timeout_s": 3600.0
+      },
+      "reported_usd": 29.769688
+    }
+  },
+  "pairing": {
+    "both_solved": 28,
+    "became_solved": 10,
+    "lost_including_run_error": 2,
+    "neither_solved": 10
+  },
+  "flips": [
+    {
+      "id": "django__django-11490",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 7,
+        "cost_usd": 0.718805,
+        "stop_reason": null,
+        "patch_files": [
+          "django/db/models/sql/compiler.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 0,
+            "failed": 1
+          },
+          "PASS_TO_PASS": {
+            "passed": 23,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 2,
+        "cost_usd": 0.366412,
+        "stop_reason": null,
+        "patch_files": [
+          "django/db/models/sql/compiler.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 23,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "django__django-12262",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 0.403328,
+        "stop_reason": null,
+        "patch_files": [
+          "django/template/library.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 2,
+            "failed": 2
+          },
+          "PASS_TO_PASS": {
+            "passed": 18,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 2,
+        "cost_usd": 0.230312,
+        "stop_reason": null,
+        "patch_files": [
+          "django/template/library.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 4,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 18,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "django__django-16145",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 6,
+        "cost_usd": 1.066917,
+        "stop_reason": null,
+        "patch_files": [
+          "django/core/management/commands/runserver.py",
+          "tests/admin_scripts/tests.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 0,
+            "failed": 1
+          },
+          "PASS_TO_PASS": {
+            "passed": 174,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 0.401357,
+        "stop_reason": null,
+        "patch_files": [
+          "django/core/management/commands/runserver.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 174,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "django__django-16877",
+      "baseline": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 0.263555,
+        "stop_reason": null,
+        "patch_files": [
+          "django/template/defaultfilters.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 4,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 0,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 6,
+        "cost_usd": 0.561049,
+        "stop_reason": null,
+        "patch_files": [
+          "django/template/defaultfilters.py",
+          "docs/ref/templates/builtins.txt"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 2,
+            "failed": 2
+          },
+          "PASS_TO_PASS": {
+            "passed": 0,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "matplotlib__matplotlib-13989",
+      "baseline": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 0.428589,
+        "stop_reason": null,
+        "patch_files": [
+          "lib/matplotlib/axes/_axes.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 411,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "run_error",
+        "state": "error",
+        "final_verdict": null,
+        "rounds": null,
+        "cost_usd": null,
+        "stop_reason": null,
+        "patch_files": [],
+        "official_tests": {}
+      }
+    },
+    {
+      "id": "scikit-learn__scikit-learn-14629",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 0.343506,
+        "stop_reason": null,
+        "patch_files": [
+          "sklearn/model_selection/_validation.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 0,
+            "failed": 1
+          },
+          "PASS_TO_PASS": {
+            "passed": 26,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 2,
+        "cost_usd": 0.541736,
+        "stop_reason": null,
+        "patch_files": [
+          "sklearn/multioutput.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 26,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "sphinx-doc__sphinx-10673",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 4,
+        "cost_usd": 1.410374,
+        "stop_reason": null,
+        "patch_files": [
+          "sphinx/builders/__init__.py",
+          "sphinx/builders/html/__init__.py",
+          "sphinx/directives/other.py",
+          "sphinx/environment/adapters/toctree.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 0,
+            "failed": 1
+          },
+          "PASS_TO_PASS": {
+            "passed": 9,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 1.25558,
+        "stop_reason": null,
+        "patch_files": [
+          "CHANGES",
+          "doc/usage/restructuredtext/directives.rst",
+          "sphinx/directives/other.py",
+          "sphinx/environment/adapters/toctree.py",
+          "tests/test_toctree_generated_pages.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 9,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "sphinx-doc__sphinx-8056",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 4,
+        "cost_usd": 1.58685,
+        "stop_reason": null,
+        "patch_files": [
+          "sphinx/ext/napoleon/docstring.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 0,
+            "failed": 1
+          },
+          "PASS_TO_PASS": {
+            "passed": 40,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 0.714583,
+        "stop_reason": null,
+        "patch_files": [
+          "sphinx/ext/napoleon/docstring.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 40,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "sphinx-doc__sphinx-9711",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 8,
+        "cost_usd": 1.436882,
+        "stop_reason": null,
+        "patch_files": [
+          "sphinx/extension.py",
+          "tests/test_extension.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 0,
+            "failed": 1
+          },
+          "PASS_TO_PASS": {
+            "passed": 0,
+            "failed": 0
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 4,
+        "cost_usd": 0.509103,
+        "stop_reason": null,
+        "patch_files": [
+          "sphinx/extension.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 0,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "sympy__sympy-13615",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 7,
+        "cost_usd": 0.763836,
+        "stop_reason": null,
+        "patch_files": [
+          "sympy/sets/sets.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 0,
+            "failed": 1
+          },
+          "PASS_TO_PASS": {
+            "passed": 69,
+            "failed": 1
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 3,
+        "cost_usd": 0.311509,
+        "stop_reason": null,
+        "patch_files": [
+          "sympy/sets/sets.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 70,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "sympy__sympy-14531",
+      "baseline": {
+        "grading": "unresolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 1,
+        "cost_usd": 1.006755,
+        "stop_reason": null,
+        "patch_files": [
+          "sympy/printing/python.py",
+          "sympy/printing/str.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 2,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 82,
+            "failed": 2
+          }
+        }
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 6,
+        "cost_usd": 0.981373,
+        "stop_reason": null,
+        "patch_files": [
+          "sympy/printing/str.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 2,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 84,
+            "failed": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "sympy__sympy-23413",
+      "baseline": {
+        "grading": "empty_patch",
+        "state": "finished",
+        "final_verdict": "abort",
+        "rounds": 6,
+        "cost_usd": 1.357117,
+        "stop_reason": null,
+        "patch_files": [],
+        "official_tests": {}
+      },
+      "candidate": {
+        "grading": "resolved",
+        "state": "finished",
+        "final_verdict": "done",
+        "rounds": 4,
+        "cost_usd": 0.615375,
+        "stop_reason": null,
+        "patch_files": [
+          "sympy/polys/matrices/normalforms.py"
+        ],
+        "official_tests": {
+          "FAIL_TO_PASS": {
+            "passed": 1,
+            "failed": 0
+          },
+          "PASS_TO_PASS": {
+            "passed": 2,
+            "failed": 0
+          }
+        }
+      }
+    }
+  ]
+}

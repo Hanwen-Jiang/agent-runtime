@@ -28,6 +28,17 @@ class ConfigError(ValueError):
     """环境变量的组合不对，服务不能这样启动。"""
 
 
+def knowledge_rerank_top8_depth(env: Mapping[str, str]) -> int:
+    value = env.get("AR_KNOWLEDGE_RERANK_TOP8_DEPTH", "40")
+    try:
+        depth = int(value)
+    except ValueError as exc:
+        raise ConfigError("AR_KNOWLEDGE_RERANK_TOP8_DEPTH must be an integer between 1 and 40") from exc
+    if not 1 <= depth <= 40:
+        raise ConfigError("AR_KNOWLEDGE_RERANK_TOP8_DEPTH must be an integer between 1 and 40")
+    return depth
+
+
 def rerank_mode(env: Mapping[str, str]) -> str:
     mode = env.get("AR_MEMORY_RERANK_MODE", "legacy")
     if mode not in ("legacy", "bm25", "bm25_pool50"):

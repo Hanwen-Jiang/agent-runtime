@@ -1,0 +1,16 @@
+{
+  "input_sha256": "8681d68b6c610e309e79790e0c16726006cc427875276367d347a81cfe29053a",
+  "queries": 40,
+  "scope": "historical development topics only",
+  "hybrid": {
+    "hit_count": 32,
+    "recall_at_8": 0.28583333333333333,
+    "p95_ms": 215.32252011820674
+  },
+  "reranked": {
+    "hit_count": 39,
+    "recall_at_8": 0.49,
+    "p95_ms": 6092.543757054955
+  },
+  "conclusion": "Hybrid missed 8/40. Broad rerank recovered quality but exceeds the existing 2000ms CPU search target. Reduce the number scored per channel."
+}

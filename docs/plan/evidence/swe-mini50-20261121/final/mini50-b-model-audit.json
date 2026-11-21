@@ -1,0 +1,1500 @@
+{
+  "audit_complete": false,
+  "evidence": {
+    "Temporal": "ar-mini50-20261121-b",
+    "database": "tenant-bound read-only model_usage",
+    "gateway": "dedicated per-call metering",
+    "scope": "observed gateway-resolved profile and tier, not an upstream model-weights hash"
+  },
+  "items": {
+    "django__django-11790": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 25
+      },
+      "actual_tiers": {
+        "strong@medium": 25
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 656674,
+      "issues": [],
+      "model_calls": 25,
+      "official_environment_verified": true,
+      "output_tokens": 8167,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 18,
+        "deliver": 1,
+        "judge": 2,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 1.395018,
+      "task_id": "tsk_01M7ZDF9YH4K6WTG0F45VVRATA"
+    },
+    "django__django-11815": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 75
+      },
+      "actual_tiers": {
+        "strong@medium": 23
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 308509,
+      "issues": [
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 75,
+      "official_environment_verified": true,
+      "output_tokens": 8094,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 17,
+        "judge": 2,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 0.661478,
+      "task_id": "tsk_01M7ZV5C41YSE59FHQH1XK85EJ"
+    },
+    "django__django-11848": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 23
+      },
+      "actual_tiers": {
+        "strong@medium": 23
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 264863,
+      "issues": [],
+      "model_calls": 23,
+      "official_environment_verified": true,
+      "output_tokens": 8977,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 13,
+        "deliver": 2,
+        "judge": 3,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 0.576936,
+      "task_id": "tsk_01M7ZG164PA67M9R8F8HFZGRJF"
+    },
+    "django__django-11880": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 18
+      },
+      "actual_tiers": {
+        "strong@medium": 18
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 206327,
+      "issues": [],
+      "model_calls": 18,
+      "official_environment_verified": true,
+      "output_tokens": 5440,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 9,
+        "deliver": 2,
+        "judge": 4,
+        "plan": 2,
+        "route": 1
+      },
+      "settled_cost_usd": 0.430574,
+      "task_id": "tsk_01M7ZJV398A4MVSNNDQ51R9Q2D"
+    },
+    "django__django-11885": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 93
+      },
+      "actual_tiers": {
+        "strong@medium": 18
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 247994,
+      "issues": [
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 93,
+      "official_environment_verified": true,
+      "output_tokens": 7254,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 13,
+        "judge": 1,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 0.532048,
+      "task_id": "tsk_01M7ZV88E2NV7WA7DTV1VEZ769"
+    },
+    "django__django-11951": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 23
+      },
+      "actual_tiers": {
+        "strong@medium": 23
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 267142,
+      "issues": [],
+      "model_calls": 23,
+      "official_environment_verified": true,
+      "output_tokens": 9356,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 13,
+        "deliver": 2,
+        "judge": 3,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 0.585284,
+      "task_id": "tsk_01M7ZMW853B5Q1TKASKFX0J3WM"
+    },
+    "django__django-11964": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZWZ8E2DF0PTVD2W0WS6J10"
+    },
+    "django__django-11999": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 32
+      },
+      "actual_tiers": {
+        "strong@medium": 32
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 374252,
+      "issues": [],
+      "model_calls": 32,
+      "official_environment_verified": true,
+      "output_tokens": 11333,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 19,
+        "deliver": 2,
+        "judge": 4,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 0.837514,
+      "task_id": "tsk_01M7ZPWEF50PN4FT4476J10CA2"
+    },
+    "django__django-12039": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 23
+      },
+      "actual_tiers": {
+        "strong@medium": 23
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 313793,
+      "issues": [],
+      "model_calls": 23,
+      "official_environment_verified": true,
+      "output_tokens": 8570,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 13,
+        "deliver": 2,
+        "judge": 3,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 0.670726,
+      "task_id": "tsk_01M7ZQ95T4MS9AGNBFPMRF0KSW"
+    },
+    "django__django-12050": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 12
+      },
+      "actual_tiers": {
+        "strong@medium": 12
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 304143,
+      "issues": [],
+      "model_calls": 12,
+      "official_environment_verified": true,
+      "output_tokens": 4056,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 8,
+        "deliver": 1,
+        "judge": 1,
+        "plan": 1,
+        "route": 1
+      },
+      "settled_cost_usd": 0.648846,
+      "task_id": "tsk_01M7ZDFBKT1S1V8XXV6CPYDXVE"
+    },
+    "django__django-12143": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 29
+      },
+      "actual_tiers": {
+        "strong@medium": 29
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 303923,
+      "issues": [],
+      "model_calls": 29,
+      "official_environment_verified": true,
+      "output_tokens": 8981,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 18,
+        "deliver": 2,
+        "judge": 4,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 0.655096,
+      "task_id": "tsk_01M7ZKBPT4CFPP0DTWMHRR4QFC"
+    },
+    "django__django-12155": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 35
+      },
+      "actual_tiers": {
+        "strong@medium": 35
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 408267,
+      "issues": [],
+      "model_calls": 35,
+      "official_environment_verified": true,
+      "output_tokens": 12219,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 22,
+        "deliver": 2,
+        "judge": 5,
+        "plan": 3,
+        "route": 2,
+        "transform": 1
+      },
+      "settled_cost_usd": 0.902244,
+      "task_id": "tsk_01M7ZKG3XQDVDQGD6AQ4MVXTGQ"
+    },
+    "django__django-12193": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 25
+      },
+      "actual_tiers": {
+        "strong@medium": 25
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 349568,
+      "issues": [],
+      "model_calls": 25,
+      "official_environment_verified": true,
+      "output_tokens": 10645,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 18,
+        "deliver": 2,
+        "judge": 2,
+        "plan": 2,
+        "route": 1
+      },
+      "settled_cost_usd": 0.769106,
+      "task_id": "tsk_01M7ZMYABYYZJ1MBKFC5W4B3D8"
+    },
+    "django__django-12209": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 67
+      },
+      "actual_tiers": {
+        "strong@medium": 67
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 1215005,
+      "issues": [],
+      "model_calls": 67,
+      "official_environment_verified": false,
+      "output_tokens": 35790,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 53,
+        "deliver": 2,
+        "judge": 6,
+        "plan": 4,
+        "route": 2
+      },
+      "settled_cost_usd": 2.75143,
+      "task_id": "tsk_01M7ZMW84P607SQBT5KSCXVTT6"
+    },
+    "django__django-12262": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 30
+      },
+      "actual_tiers": {
+        "strong@medium": 30
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 701592,
+      "issues": [],
+      "model_calls": 30,
+      "official_environment_verified": true,
+      "output_tokens": 11918,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 15,
+        "deliver": 2,
+        "judge": 6,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 1.522364,
+      "task_id": "tsk_01M7ZDFBNASNBCWEBXBG1G9ZEM"
+    },
+    "django__django-12273": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 37
+      },
+      "actual_tiers": {
+        "strong@medium": 37
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 658670,
+      "issues": [],
+      "model_calls": 37,
+      "official_environment_verified": true,
+      "output_tokens": 17660,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 25,
+        "deliver": 1,
+        "judge": 4,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 1.45138,
+      "task_id": "tsk_01M7ZQJ7744925SAMTWSFFTEKH"
+    },
+    "django__django-12276": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 21
+      },
+      "actual_tiers": {
+        "strong@medium": 21
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 245952,
+      "issues": [],
+      "model_calls": 21,
+      "official_environment_verified": true,
+      "output_tokens": 7435,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 11,
+        "deliver": 2,
+        "judge": 3,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 0.511534,
+      "task_id": "tsk_01M7ZNTTWBP1W70AA3P9DXREM7"
+    },
+    "django__django-12304": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 33
+      },
+      "actual_tiers": {
+        "strong@medium": 33
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 363146,
+      "issues": [],
+      "model_calls": 33,
+      "official_environment_verified": true,
+      "output_tokens": 10975,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 17,
+        "deliver": 4,
+        "judge": 7,
+        "plan": 3,
+        "route": 1,
+        "transform": 1
+      },
+      "settled_cost_usd": 0.811722,
+      "task_id": "tsk_01M7ZNYXCF3WVJKTJJ76MWRR5E"
+    },
+    "django__django-12308": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZWZ8E0XED9KPERYPC51QE8"
+    },
+    "django__django-12325": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 31
+      },
+      "actual_tiers": {
+        "strong@medium": 31
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 366136,
+      "issues": [],
+      "model_calls": 31,
+      "official_environment_verified": true,
+      "output_tokens": 12604,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 18,
+        "deliver": 2,
+        "judge": 4,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 0.785352,
+      "task_id": "tsk_01M7ZQX67BDKC35A9ETQHAE1JC"
+    },
+    "django__django-12406": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 29
+      },
+      "actual_tiers": {
+        "strong@medium": 29
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 425637,
+      "issues": [],
+      "model_calls": 29,
+      "official_environment_verified": true,
+      "output_tokens": 9362,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 21,
+        "deliver": 1,
+        "judge": 3,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 0.920574,
+      "task_id": "tsk_01M7ZR4DD3PXMP43ESEZR9ERD1"
+    },
+    "django__django-12708": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 89
+      },
+      "actual_tiers": {
+        "strong@medium": 16
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 241227,
+      "issues": [
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 89,
+      "official_environment_verified": true,
+      "output_tokens": 5380,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 11,
+        "judge": 1,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 0.518014,
+      "task_id": "tsk_01M7ZV7GZBHHNN2DAKEVYHS6VF"
+    },
+    "django__django-12713": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 21
+      },
+      "actual_tiers": {
+        "strong@medium": 21
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 245525,
+      "issues": [],
+      "model_calls": 21,
+      "official_environment_verified": true,
+      "output_tokens": 7342,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 14,
+        "deliver": 2,
+        "judge": 2,
+        "plan": 2,
+        "route": 1
+      },
+      "settled_cost_usd": 0.56447,
+      "task_id": "tsk_01M7ZEMPHHAX1AG7A6R262745G"
+    },
+    "django__django-12774": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 52
+      },
+      "actual_tiers": {
+        "strong@medium": 45
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 530769,
+      "issues": [
+        "unsettled_ledger",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 52,
+      "official_environment_verified": true,
+      "output_tokens": 18678,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 24,
+        "deliver": 3,
+        "judge": 9,
+        "plan": 6,
+        "route": 3
+      },
+      "settled_cost_usd": 1.140592,
+      "task_id": "tsk_01M7ZGF7A70K1PTVW348B6077Q"
+    },
+    "django__django-9296": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 25
+      },
+      "actual_tiers": {
+        "strong@medium": 25
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 293083,
+      "issues": [],
+      "model_calls": 25,
+      "official_environment_verified": true,
+      "output_tokens": 7573,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 15,
+        "deliver": 2,
+        "judge": 3,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 0.607176,
+      "task_id": "tsk_01M7ZPEDXAZ3RZQ255QDWJ5PGW"
+    },
+    "sphinx-doc__sphinx-10323": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZX3B4DKJHN69GW7B99F4T1"
+    },
+    "sphinx-doc__sphinx-10435": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZXPCY21XH6ZB2D5TAAYRQ1"
+    },
+    "sphinx-doc__sphinx-10466": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 37
+      },
+      "actual_tiers": {
+        "strong@medium": 37
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 523162,
+      "issues": [],
+      "model_calls": 37,
+      "official_environment_verified": true,
+      "output_tokens": 14918,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 22,
+        "deliver": 2,
+        "judge": 6,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 1.110384,
+      "task_id": "tsk_01M7ZPJYFSGNYY7VF0F108F1KZ"
+    },
+    "sphinx-doc__sphinx-10673": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 47
+      },
+      "actual_tiers": {
+        "strong@medium": 47
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 1304661,
+      "issues": [],
+      "model_calls": 47,
+      "official_environment_verified": true,
+      "output_tokens": 24544,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 35,
+        "deliver": 1,
+        "judge": 4,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 2.793962,
+      "task_id": "tsk_01M7ZRSEFM7NCWAXKQZ4862PWV"
+    },
+    "sphinx-doc__sphinx-11510": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 36
+      },
+      "actual_tiers": {
+        "strong@medium": 36
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 792262,
+      "issues": [],
+      "model_calls": 36,
+      "official_environment_verified": true,
+      "output_tokens": 13599,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 26,
+        "deliver": 1,
+        "judge": 3,
+        "plan": 3,
+        "route": 3
+      },
+      "settled_cost_usd": 1.659714,
+      "task_id": "tsk_01M7ZRYRSP2883VX82PB54MR2A"
+    },
+    "sphinx-doc__sphinx-7590": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZW7DCMS7Y5BRGX194E4HXR"
+    },
+    "sphinx-doc__sphinx-7748": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 54
+      },
+      "actual_tiers": {
+        "strong@medium": 50
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 1004223,
+      "issues": [
+        "unsettled_ledger",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 54,
+      "official_environment_verified": true,
+      "output_tokens": 21266,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 32,
+        "deliver": 4,
+        "judge": 8,
+        "plan": 4,
+        "route": 2
+      },
+      "settled_cost_usd": 2.193381,
+      "task_id": "tsk_01M7ZGMTXW167HQDZS4YVK3PA5"
+    },
+    "sphinx-doc__sphinx-7757": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 31
+      },
+      "actual_tiers": {
+        "strong@medium": 31
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 384452,
+      "issues": [],
+      "model_calls": 31,
+      "official_environment_verified": true,
+      "output_tokens": 12255,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 18,
+        "deliver": 2,
+        "judge": 4,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 0.854974,
+      "task_id": "tsk_01M7ZRZJEPZ2T23JZBGEJAK0SA"
+    },
+    "sphinx-doc__sphinx-7985": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZW7DW9WHZDT9YP38R31ZRW"
+    },
+    "sphinx-doc__sphinx-8035": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 36
+      },
+      "actual_tiers": {
+        "strong@medium": 29
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 534763,
+      "issues": [
+        "unsettled_ledger",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 36,
+      "official_environment_verified": true,
+      "output_tokens": 9471,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 23,
+        "deliver": 1,
+        "judge": 2,
+        "plan": 1,
+        "route": 2
+      },
+      "settled_cost_usd": 1.145996,
+      "task_id": "tsk_01M7ZGYSRN344CCSR3922DV9FT"
+    },
+    "sphinx-doc__sphinx-8056": {
+      "actual_profiles": {},
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 0,
+      "input_tokens": 0,
+      "issues": [
+        "no_submitted_task",
+        "unexpected_workflow_attempt_count",
+        "no_generation_ledger",
+        "no_gateway_meter"
+      ],
+      "model_calls": 0,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": null
+    },
+    "sphinx-doc__sphinx-8265": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 32
+      },
+      "actual_tiers": {
+        "strong@medium": 32
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 619095,
+      "issues": [],
+      "model_calls": 32,
+      "official_environment_verified": true,
+      "output_tokens": 11563,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 25,
+        "deliver": 1,
+        "judge": 2,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 1.33558,
+      "task_id": "tsk_01M7ZSXZACR1J54DNNHN652DT2"
+    },
+    "sphinx-doc__sphinx-8269": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 59
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 59,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZXNZ0TJGNJVJDSEHKTFSHK"
+    },
+    "sphinx-doc__sphinx-8475": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 23
+      },
+      "actual_tiers": {
+        "strong@medium": 23
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 294265,
+      "issues": [],
+      "model_calls": 23,
+      "official_environment_verified": true,
+      "output_tokens": 9075,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 12,
+        "deliver": 2,
+        "judge": 4,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 0.65496,
+      "task_id": "tsk_01M7ZEHKXJ8AD8HD1N5E95GF2S"
+    },
+    "sphinx-doc__sphinx-8548": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 43
+      },
+      "actual_tiers": {
+        "strong@medium": 41
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 910786,
+      "issues": [
+        "unsettled_ledger",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 43,
+      "official_environment_verified": true,
+      "output_tokens": 19362,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 29,
+        "deliver": 1,
+        "judge": 4,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 1.936152,
+      "task_id": "tsk_01M7ZJ8GWETGS0JGT9HJ68EW1R"
+    },
+    "sphinx-doc__sphinx-8551": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 41
+      },
+      "actual_tiers": {
+        "strong@medium": 41
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 635633,
+      "issues": [],
+      "model_calls": 41,
+      "official_environment_verified": true,
+      "output_tokens": 15427,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 31,
+        "deliver": 2,
+        "judge": 3,
+        "plan": 3,
+        "route": 2
+      },
+      "settled_cost_usd": 1.382976,
+      "task_id": "tsk_01M7ZT1EPFX527FZ89W4ZE8ZQH"
+    },
+    "sphinx-doc__sphinx-8638": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 25
+      },
+      "actual_tiers": {
+        "strong@medium": 25
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 442270,
+      "issues": [],
+      "model_calls": 25,
+      "official_environment_verified": true,
+      "output_tokens": 7654,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 18,
+        "deliver": 1,
+        "judge": 2,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 0.93676,
+      "task_id": "tsk_01M7ZT8FZNKNDQGD27P1JNABRE"
+    },
+    "sphinx-doc__sphinx-8721": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 22
+      },
+      "actual_tiers": {
+        "strong@medium": 22
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 295023,
+      "issues": [],
+      "model_calls": 22,
+      "official_environment_verified": true,
+      "output_tokens": 7630,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 15,
+        "deliver": 1,
+        "judge": 2,
+        "plan": 2,
+        "route": 2
+      },
+      "settled_cost_usd": 0.660266,
+      "task_id": "tsk_01M7ZEKNMQS4A0EZJ588MMC75K"
+    },
+    "sphinx-doc__sphinx-9229": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 49
+      },
+      "actual_tiers": {
+        "strong@medium": 48
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 1235924,
+      "issues": [
+        "unsettled_ledger",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 49,
+      "official_environment_verified": true,
+      "output_tokens": 18686,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 38,
+        "deliver": 1,
+        "judge": 3,
+        "plan": 3,
+        "route": 3
+      },
+      "settled_cost_usd": 2.591828,
+      "task_id": "tsk_01M7ZJ8SPK1HJPSV5H1WZ29BP8"
+    },
+    "sphinx-doc__sphinx-9230": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZXRX3FJ8YXRTM2XSEGC4CB"
+    },
+    "sphinx-doc__sphinx-9281": {
+      "actual_profiles": {},
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 0,
+      "input_tokens": 0,
+      "issues": [
+        "no_submitted_task",
+        "unexpected_workflow_attempt_count",
+        "no_generation_ledger",
+        "no_gateway_meter"
+      ],
+      "model_calls": 0,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": null
+    },
+    "sphinx-doc__sphinx-9320": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 24
+      },
+      "actual_tiers": {
+        "strong@medium": 23
+      },
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 256395,
+      "issues": [
+        "unsettled_ledger",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 24,
+      "official_environment_verified": true,
+      "output_tokens": 6411,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 13,
+        "deliver": 1,
+        "judge": 3,
+        "plan": 3,
+        "route": 3
+      },
+      "settled_cost_usd": 0.55866,
+      "task_id": "tsk_01M7ZFBE0PPXR27ZXCZZGGP3SG"
+    },
+    "sphinx-doc__sphinx-9367": {
+      "actual_profiles": {},
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 0,
+      "input_tokens": 0,
+      "issues": [
+        "no_submitted_task",
+        "unexpected_workflow_attempt_count",
+        "no_generation_ledger",
+        "no_gateway_meter"
+      ],
+      "model_calls": 0,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": null
+    },
+    "sphinx-doc__sphinx-9461": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 60
+      },
+      "actual_tiers": {},
+      "audit_complete": false,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [],
+      "generation_attempts": 1,
+      "input_tokens": 0,
+      "issues": [
+        "no_gateway_meter",
+        "unmatched_ledger_meter"
+      ],
+      "model_calls": 60,
+      "official_environment_verified": false,
+      "output_tokens": 0,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {},
+      "settled_cost_usd": 0.0,
+      "task_id": "tsk_01M7ZWBH7MDJMZQ0M65G495GGT"
+    },
+    "sphinx-doc__sphinx-9698": {
+      "actual_profiles": {
+        "a6api/gpt-6.2-sol@2026-11": 37
+      },
+      "actual_tiers": {
+        "strong@medium": 37
+      },
+      "audit_complete": true,
+      "embedding_calls": 0,
+      "gateway_pod_uids": [
+        "268219eb-916b-4e20-902c-a832a0af5053"
+      ],
+      "generation_attempts": 1,
+      "input_tokens": 478987,
+      "issues": [],
+      "model_calls": 37,
+      "official_environment_verified": true,
+      "output_tokens": 13173,
+      "registry_digests": [
+        "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a"
+      ],
+      "roles": {
+        "act": 24,
+        "deliver": 2,
+        "judge": 4,
+        "plan": 4,
+        "route": 3
+      },
+      "settled_cost_usd": 1.053224,
+      "task_id": "tsk_01M7ZFBX41JRE8MJB8YY686B54"
+    }
+  },
+  "model_profile": "a6api/gpt-6.2-sol@2026-11",
+  "run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+  "runtime_revision": "git-tree:014d63df7e525c09f03e52fc226f3ea88bacf198",
+  "schema": "swe-isolated-model-audit-v1",
+  "settings_digest": "cdc38ae8fc275d6d1c61169b6ca7993c67e312b78787aa60fa9b59934284ca47",
+  "tier": "strong@medium"
+}

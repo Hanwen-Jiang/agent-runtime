@@ -1,0 +1,15 @@
+--- a/internal/web/static/app.js
++++ b/internal/web/static/app.js
+@@ -3823,7 +3823,11 @@
+   resnapshotting = true;
+   try {
+     closeStreams();
+-    if (!(await paintFromSnapshot(base))) for (const t of state.tasks.slice(-REPLAY_LIMIT)) loadRun(t, true);
++    if (await paintFromSnapshot(base) || sbase() !== base) return;
++    const recent = state.tasks.slice(-REPLAY_LIMIT);
++    const remaining = await paintFromEvents(base, recent);
++    if (sbase() !== base) return;
++    for (const task of remaining ?? recent) loadRun(task, true);
+   } finally {
+     resnapshotting = false;
+   }

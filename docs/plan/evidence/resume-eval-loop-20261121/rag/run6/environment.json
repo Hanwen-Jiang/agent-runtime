@@ -1,0 +1,16 @@
+{
+  "e5": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "reranker": "1427fd652930e4ba29e8149678df786c240d8825",
+  "index_seconds": 29.653347343206406,
+  "index_document_count": 110,
+  "search_pairs_total_including_warmup": 972,
+  "paid_api_requests": 0,
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+    "engine_source": "repository",
+    "peak_rss_bytes": 1486147584,
+    "user_cpu_seconds": 545.659913,
+    "system_cpu_seconds": 10.529928
+  }
+}

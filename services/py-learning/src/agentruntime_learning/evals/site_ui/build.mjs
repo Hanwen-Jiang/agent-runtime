@@ -26,6 +26,7 @@ await build({
   legalComments: "eof",
 });
 const source = (await readFile(resolve(root, "src/style.css"), "utf8"))
+  .replace(/"@heroui-pro\/react\/css\/components\/([^\"]+)"/g, (_, component) => JSON.stringify(resolve(modules, "@heroui-pro/react/dist/css/components", component)))
   .replace(
     '"tailwindcss"',
     JSON.stringify(resolve(buildModules, "tailwindcss/index.css")),

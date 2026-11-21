@@ -1,0 +1,46 @@
+[
+  {
+    "arm": "a",
+    "endpoint": "http://10.43.166.57:8080",
+    "tenant": "swebench",
+    "workspace_id": "mini50-1121-a-verify-114813",
+    "temporal_namespace": "ar-mini50-20261121-a",
+    "gateway": "mini50-1121-gw:8091",
+    "files": {
+      "reviewer/rules.py": "c3f69d7c8cf4ab82656fd0890a9f04b18644a11b24491f33496733f5f04bbf5d",
+      "workflows/verification.py": "36caaf82b4c24cb0cf824f73229c5534f2f31c0a28c115cbd1968026c15c6beb"
+    },
+    "create_operation": {
+      "operation_id": "wso-ec3866ee89b9c1c83c7ec20169005518e4b5979c51a02c22f13529cc14997f1f",
+      "transport": "async"
+    },
+    "ready": true,
+    "head": "c67d6b3b88fe2ae0899ddd086dd40465b7f623d3",
+    "initial_snapshot": null,
+    "snapshot": "wss-4e760c50acd0c0043082",
+    "snapshot_mode": "explicit_archive",
+    "delete_completed": true
+  },
+  {
+    "arm": "b",
+    "endpoint": "http://10.43.96.206:8080",
+    "tenant": "swebench",
+    "workspace_id": "mini50-1121-b-verify-114812",
+    "temporal_namespace": "ar-mini50-20261121-b",
+    "gateway": "mini50-1121-gw:8091",
+    "files": {
+      "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+      "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2"
+    },
+    "create_operation": {
+      "operation_id": "wso-f8c3c9002111ebf031e780fc012a97206253c94ee2de163eda27351a37a7e42f",
+      "transport": "async"
+    },
+    "ready": true,
+    "head": "c67d6b3b88fe2ae0899ddd086dd40465b7f623d3",
+    "initial_snapshot": null,
+    "snapshot": "wss-a1b26117afaccf2865b5",
+    "snapshot_mode": "explicit_archive",
+    "delete_completed": true
+  }
+]

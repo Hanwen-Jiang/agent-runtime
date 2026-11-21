@@ -13,6 +13,8 @@ import re
 from datetime import datetime
 from typing import Any
 
+from agentruntime_learning.evals.public_cohorts import longbench_selection
+
 SCHEMA = "longbench-context-ablation-v1"
 IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 REVISION = re.compile(r"^[0-9a-f]{7,40}$")
@@ -225,6 +227,7 @@ def project_longbench_summary(raw: bytes) -> dict[str, Any] | None:
         "title_zh": "LongBench v2 · 上下文超限补跑合并" if repair else "LongBench v2 · Runtime 上下文策略消融",
         "title_en": "LongBench v2 · Context-limit repair merge" if repair else "LongBench v2 · Runtime context ablation",
         "comparison_id": identity, "runtime_revision": revision, **hashes, **metadata,
+        "selection_info": longbench_selection(report),
         "dataset_name": "LongBench v2", "baseline_run_id": run_ids["mask_only"], "candidate_run_id": run_ids["full"],
         "baseline_variant": "mask_only", "candidate_variant": "full", "completed_at": timestamp if complete else None,
         "updated_at": timestamp, "status": status, "blocked_reason": blocked_reason,

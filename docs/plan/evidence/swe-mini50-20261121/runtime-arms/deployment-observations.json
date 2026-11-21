@@ -1,0 +1,182 @@
+{
+  "deployments": {
+    "mini50-1121-a-api": [
+      1,
+      1
+    ],
+    "mini50-1121-a-decision": [
+      1,
+      1
+    ],
+    "mini50-1121-a-model": [
+      1,
+      1
+    ],
+    "mini50-1121-a-program": [
+      1,
+      1
+    ],
+    "mini50-1121-a-task": [
+      1,
+      1
+    ],
+    "mini50-1121-a-workspace": [
+      1,
+      1
+    ],
+    "mini50-1121-b-api": [
+      1,
+      1
+    ],
+    "mini50-1121-b-decision": [
+      1,
+      1
+    ],
+    "mini50-1121-b-model": [
+      1,
+      1
+    ],
+    "mini50-1121-b-program": [
+      1,
+      1
+    ],
+    "mini50-1121-b-task": [
+      1,
+      1
+    ],
+    "mini50-1121-b-workspace": [
+      1,
+      1
+    ],
+    "mini50-1121-gw": [
+      1,
+      1
+    ]
+  },
+  "effective_thinking_budget": 8192,
+  "model_profile": "a6api/gpt-6.1-sol@2026-11",
+  "namespace": "agent-runtime",
+  "replica_sources": {
+    "a-api": {
+      "image": "ghcr.io/agentruntime/task-service:rec-c8ed02ec",
+      "image_id": "sha256:ed447bb4a873b9c837eebc99220bd17ba4c2dc1cf43d0505d58e74819cca242a",
+      "pod_uid": "6823ebdf-3b3c-48fd-8dd9-9f0d48dff084",
+      "restarts": 1
+    },
+    "a-decision": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "be98f1f1-8b70-4e1c-8490-837eaaead8e6",
+      "restarts": 0
+    },
+    "a-model": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "60873d99-9e4e-4222-8b72-b0f68196c517",
+      "restarts": 0
+    },
+    "a-program": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "216138fd-44a4-4683-b7f8-d117e701eb2d",
+      "restarts": 0
+    },
+    "a-task": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "6a1c486c-6318-46b1-8ad7-f46ce2c61261",
+      "restarts": 0
+    },
+    "a-workspace": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "7ad5fddb-bf56-47bb-887a-fcefd8cb3209",
+      "restarts": 0
+    },
+    "b-api": {
+      "image": "ghcr.io/agentruntime/task-service:rec-c8ed02ec",
+      "image_id": "sha256:ed447bb4a873b9c837eebc99220bd17ba4c2dc1cf43d0505d58e74819cca242a",
+      "pod_uid": "3b02221a-624a-484f-8e52-0860932b52c3",
+      "restarts": 1
+    },
+    "b-decision": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "2887e248-651b-4fbe-864e-0bdeb0c2cf0d",
+      "restarts": 0
+    },
+    "b-model": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "4899089f-3024-4d85-bb7d-a6bc1649912e",
+      "restarts": 0
+    },
+    "b-program": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "028cda44-2fec-42f0-8c6c-ed3cc4966503",
+      "restarts": 0
+    },
+    "b-task": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "ca255ac0-bdd3-47b4-8395-67dd723c9426",
+      "restarts": 0
+    },
+    "b-workspace": {
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "image_id": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "pod_uid": "397d9ba0-49c3-4f72-bafe-f341b95e393e",
+      "restarts": 0
+    },
+    "shared-gateway": {
+      "image": "ghcr.io/agentruntime/model-gateway:rec-c8ed02ec",
+      "image_id": "sha256:8ea10ccd09d73cd6f3facba8b811e855849e00532cc0a5c1f5121ea7d4a8c9df",
+      "pod_uid": "04bc2e8e-47c8-4248-bfdc-eb9c34ca482a",
+      "restarts": 0
+    }
+  },
+  "route_config_sha256": "0c94878fbe2bd1510437a1b1b7e1fd89f0be0a8732e42a1d71c2795541793c27",
+  "security": {
+    "allowed_ops_tenants": [
+      "swebench",
+      "evals"
+    ],
+    "dev_tokens": "refuse",
+    "external_jev": false,
+    "ingress": "ClusterIP only; dedicated network policies",
+    "service_account_token_automount": false,
+    "shared_remote_memory": false
+  },
+  "selector": "agentruntime.io/experiment=mini50-1121",
+  "services": {
+    "mini50-1121-a-api": {
+      "ip": "10.43.166.57",
+      "selector": {
+        "agentruntime.io/arm": "a",
+        "agentruntime.io/experiment": "mini50-1121",
+        "agentruntime.io/role": "api"
+      },
+      "type": "ClusterIP"
+    },
+    "mini50-1121-b-api": {
+      "ip": "10.43.96.206",
+      "selector": {
+        "agentruntime.io/arm": "b",
+        "agentruntime.io/experiment": "mini50-1121",
+        "agentruntime.io/role": "api"
+      },
+      "type": "ClusterIP"
+    },
+    "mini50-1121-gw": {
+      "ip": "10.43.38.98",
+      "selector": {
+        "agentruntime.io/arm": "shared",
+        "agentruntime.io/experiment": "mini50-1121",
+        "agentruntime.io/role": "gateway"
+      },
+      "type": "ClusterIP"
+    }
+  },
+  "thinking_tier": "strong@medium"
+}

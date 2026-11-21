@@ -524,6 +524,7 @@ def report(out_dir: Path) -> dict[str, Any]:
 
     rep = {
         "benchmark": "terminal-bench", "run_id": run_doc["run_id"], "model_name": (run_doc.get("settings") or {}).get("model_name"),
+        "selection": run_doc.get("selection") or {},
         "selected": selected, "ran": ran, "graded": bool(graded), "resolved": resolved if graded else None,
         "resolve_rate": (resolved / selected) if graded and selected else None, "cost_usd": cost, "cost_per_instance_usd": (cost / ran) if ran else None,
         "by_difficulty": by("difficulty"), "by_category": by("category"),

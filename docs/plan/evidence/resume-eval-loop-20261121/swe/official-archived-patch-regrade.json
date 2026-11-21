@@ -1,0 +1,52 @@
+{
+  "run_id": "resume-regrade-sphinx-20261121T104358Z",
+  "evaluated_at_utc": "2026-11-21T10:46:32.790461+00:00",
+  "scope": "new execution of the official grader against archived rev19 patches; no new agent predictions",
+  "source_run": "t18-rev19",
+  "model_calls": 0,
+  "cost_model_usd": 0,
+  "grading_exit": 0,
+  "selected": 2,
+  "resolved": 2,
+  "new_end_to_end_model_score": null,
+  "cases": [
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8056:latest",
+      "image_id": "sha256:c5d72616211c546700776a1d7c2aceac6cb602518faa5f9d46b87a2701d71111",
+      "archived_patch_sha256": "03d102a4c44195eef15fd6dfd5bc9e494c07fc254dcd518053614894dad4fc1a",
+      "graded_again": true,
+      "grader_report_sha256": "3e0330a47dcb351e8275531c032569dfc8a89f61820c23659f748876d30b0251",
+      "test_counts": {
+        "FAIL_TO_PASS": {
+          "passed": 1,
+          "failed": 0
+        },
+        "PASS_TO_PASS": {
+          "passed": 40,
+          "failed": 0
+        }
+      }
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9367",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9367:latest",
+      "image_id": "sha256:ce3659548ac712a11d3c45a9c47fe8010de0e3a83efee229dcdd9646069dfec1",
+      "archived_patch_sha256": "46dcb3c09770d3620afaa6c2faa8bb9ba76203f7507b48b1f288cfd3445b1ac0",
+      "graded_again": true,
+      "grader_report_sha256": "4efdf02de7eda86aa197df0036656fbb52f020c2fc8d9332b31c16091b6672eb",
+      "test_counts": {
+        "FAIL_TO_PASS": {
+          "passed": 1,
+          "failed": 0
+        },
+        "PASS_TO_PASS": {
+          "passed": 25,
+          "failed": 0
+        }
+      }
+    }
+  ],
+  "official_report_sha256": "959a3fbfea7b2ec2cce7ca1f5d010a4b7e6ce241d3fc17a9661c487000302cae",
+  "official_report": "agent-runtime-rev19.resume-regrade-sphinx-20261121T104358Z.json"
+}

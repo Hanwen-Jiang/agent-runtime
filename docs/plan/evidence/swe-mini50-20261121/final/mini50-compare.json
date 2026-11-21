@@ -1,0 +1,1066 @@
+{
+  "protocol": "public-mini-50-v1",
+  "protocols_match": true,
+  "groups": {
+    "public_mini_50": {
+      "selected": 50,
+      "paired_outcomes": {
+        "gained": 2,
+        "both_resolved": 20,
+        "not_a_valid_pair": 24,
+        "neither_resolved": 4
+      },
+      "formal": false,
+      "delta_resolved_count": null,
+      "delta_percentage_points": null,
+      "valid_first_attempt_pairs": 26,
+      "arms": [
+        {
+          "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+          "selected": 50,
+          "observed_official_resolved": 26,
+          "observed_resolved_per_selected": 0.52,
+          "outcomes": {
+            "unresolved": 11,
+            "resolved": 26,
+            "empty_patch": 11,
+            "run_error": 2
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 22,
+            "official_runtime_environment_unverified": 10,
+            "environment_or_grader_error": 2
+          },
+          "audited_first_attempt_rate": null
+        },
+        {
+          "run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+          "selected": 50,
+          "observed_official_resolved": 27,
+          "observed_resolved_per_selected": 0.54,
+          "outcomes": {
+            "resolved": 27,
+            "unresolved": 8,
+            "empty_patch": 11,
+            "run_error": 3,
+            "error": 1
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 21,
+            "official_runtime_environment_unverified": 10,
+            "environment_or_grader_error": 4
+          },
+          "audited_first_attempt_rate": null
+        }
+      ]
+    },
+    "not_in_old50": {
+      "selected": 44,
+      "paired_outcomes": {
+        "gained": 1,
+        "both_resolved": 18,
+        "not_a_valid_pair": 21,
+        "neither_resolved": 4
+      },
+      "formal": false,
+      "delta_resolved_count": null,
+      "delta_percentage_points": null,
+      "valid_first_attempt_pairs": 23,
+      "arms": [
+        {
+          "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+          "selected": 44,
+          "observed_official_resolved": 24,
+          "observed_resolved_per_selected": 0.5454545454545454,
+          "outcomes": {
+            "unresolved": 9,
+            "resolved": 24,
+            "empty_patch": 10,
+            "run_error": 1
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 19,
+            "official_runtime_environment_unverified": 9,
+            "environment_or_grader_error": 1
+          },
+          "audited_first_attempt_rate": null
+        },
+        {
+          "run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+          "selected": 44,
+          "observed_official_resolved": 24,
+          "observed_resolved_per_selected": 0.5454545454545454,
+          "outcomes": {
+            "resolved": 24,
+            "unresolved": 8,
+            "run_error": 2,
+            "empty_patch": 10
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 18,
+            "environment_or_grader_error": 2,
+            "official_runtime_environment_unverified": 9
+          },
+          "audited_first_attempt_rate": null
+        }
+      ]
+    },
+    "overlap_old50": {
+      "selected": 6,
+      "paired_outcomes": {
+        "both_resolved": 2,
+        "not_a_valid_pair": 3,
+        "gained": 1
+      },
+      "formal": false,
+      "delta_resolved_count": null,
+      "delta_percentage_points": null,
+      "valid_first_attempt_pairs": 3,
+      "arms": [
+        {
+          "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+          "selected": 6,
+          "observed_official_resolved": 2,
+          "observed_resolved_per_selected": 0.3333333333333333,
+          "outcomes": {
+            "resolved": 2,
+            "empty_patch": 1,
+            "unresolved": 2,
+            "run_error": 1
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 3,
+            "official_runtime_environment_unverified": 1,
+            "environment_or_grader_error": 1
+          },
+          "audited_first_attempt_rate": null
+        },
+        {
+          "run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+          "selected": 6,
+          "observed_official_resolved": 3,
+          "observed_resolved_per_selected": 0.5,
+          "outcomes": {
+            "resolved": 3,
+            "empty_patch": 1,
+            "error": 1,
+            "run_error": 1
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 3,
+            "official_runtime_environment_unverified": 1,
+            "environment_or_grader_error": 2
+          },
+          "audited_first_attempt_rate": null
+        }
+      ]
+    },
+    "overlap_sphinx_smoke": {
+      "selected": 2,
+      "paired_outcomes": {
+        "not_a_valid_pair": 2
+      },
+      "formal": false,
+      "delta_resolved_count": null,
+      "delta_percentage_points": null,
+      "valid_first_attempt_pairs": 0,
+      "arms": [
+        {
+          "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+          "selected": 2,
+          "observed_official_resolved": 0,
+          "observed_resolved_per_selected": 0.0,
+          "outcomes": {
+            "run_error": 1,
+            "empty_patch": 1
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 2,
+            "environment_or_grader_error": 1,
+            "official_runtime_environment_unverified": 1
+          },
+          "audited_first_attempt_rate": null
+        },
+        {
+          "run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+          "selected": 2,
+          "observed_official_resolved": 0,
+          "observed_resolved_per_selected": 0.0,
+          "outcomes": {
+            "run_error": 1,
+            "empty_patch": 1
+          },
+          "issue_flags_nonexclusive": {
+            "unverified_model_or_attempts": 2,
+            "environment_or_grader_error": 1,
+            "official_runtime_environment_unverified": 1
+          },
+          "audited_first_attempt_rate": null
+        }
+      ]
+    }
+  },
+  "baseline": {
+    "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+    "runtime_revision": "git-tree:c095dc8a858f4acd798396dc898f1ea3c176e906",
+    "conditions": {
+      "dataset_sha256": "2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52",
+      "environment": "official",
+      "hints": false,
+      "limits": {
+        "budget_usd": 150.0,
+        "task_usd_limit": 3.0,
+        "concurrency": 3,
+        "task_timeout_s": 3600.0
+      },
+      "model_profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium",
+      "settings_digest": "cdc38ae8fc275d6d1c61169b6ca7993c67e312b78787aa60fa9b59934284ca47"
+    },
+    "protocol_evidence_present": true,
+    "rows": {
+      "django__django-11790": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 24
+      },
+      "django__django-12050": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 18
+      },
+      "django__django-12262": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 45
+      },
+      "django__django-12713": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 19
+      },
+      "sphinx-doc__sphinx-8475": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 38
+      },
+      "sphinx-doc__sphinx-8721": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 53
+      },
+      "sphinx-doc__sphinx-9320": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 43
+      },
+      "sphinx-doc__sphinx-9698": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 32
+      },
+      "django__django-11848": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 19
+      },
+      "django__django-12774": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 31
+      },
+      "sphinx-doc__sphinx-7748": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 36
+      },
+      "sphinx-doc__sphinx-8035": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 58
+      },
+      "sphinx-doc__sphinx-8548": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 45
+      },
+      "sphinx-doc__sphinx-9229": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 45
+      },
+      "django__django-11880": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 22
+      },
+      "django__django-12143": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 20
+      },
+      "django__django-12155": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 12
+      },
+      "sphinx-doc__sphinx-9367": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 0,
+        "model_calls": 0
+      },
+      "django__django-12209": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 36
+      },
+      "django__django-11951": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 32
+      },
+      "django__django-12193": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 44
+      },
+      "django__django-12276": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 14
+      },
+      "django__django-12304": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 20
+      },
+      "django__django-9296": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 21
+      },
+      "sphinx-doc__sphinx-10466": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 34
+      },
+      "django__django-11999": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 42
+      },
+      "django__django-12039": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 20
+      },
+      "django__django-12273": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 37
+      },
+      "django__django-12325": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 31
+      },
+      "django__django-12406": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 24
+      },
+      "sphinx-doc__sphinx-10673": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 45
+      },
+      "sphinx-doc__sphinx-11510": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 46
+      },
+      "sphinx-doc__sphinx-7757": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 36
+      },
+      "sphinx-doc__sphinx-8265": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 39
+      },
+      "sphinx-doc__sphinx-8551": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 45
+      },
+      "sphinx-doc__sphinx-8638": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 28
+      },
+      "django__django-11815": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 78
+      },
+      "django__django-11885": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 90
+      },
+      "django__django-12708": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 91
+      },
+      "sphinx-doc__sphinx-7590": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-7985": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 59
+      },
+      "sphinx-doc__sphinx-8056": {
+        "state": "error",
+        "grade": "run_error",
+        "issues": [
+          "unverified_model_or_attempts",
+          "environment_or_grader_error"
+        ],
+        "generation_attempts": 0,
+        "model_calls": 0
+      },
+      "sphinx-doc__sphinx-9461": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "django__django-11964": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "django__django-12308": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-10323": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-10435": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-8269": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-9230": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-9281": {
+        "state": "error",
+        "grade": "run_error",
+        "issues": [
+          "unverified_model_or_attempts",
+          "environment_or_grader_error"
+        ],
+        "generation_attempts": 0,
+        "model_calls": 0
+      }
+    },
+    "report_sha256": "f1deb279f56d35c71dae8618bc9cdd4b850b8e6abd6ff0adaf0a98055e791a36",
+    "audit_sha256": "ea80896774cdca1e661e6f6def0453e9d3ee60fb17e891b8ccc2f32b54d43f7a",
+    "graded": true,
+    "reported_cost_usd": 41.782292
+  },
+  "candidate": {
+    "run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+    "runtime_revision": "git-tree:014d63df7e525c09f03e52fc226f3ea88bacf198",
+    "conditions": {
+      "dataset_sha256": "2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52",
+      "environment": "official",
+      "hints": false,
+      "limits": {
+        "budget_usd": 150.0,
+        "task_usd_limit": 3.0,
+        "concurrency": 3,
+        "task_timeout_s": 3600.0
+      },
+      "model_profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium",
+      "settings_digest": "cdc38ae8fc275d6d1c61169b6ca7993c67e312b78787aa60fa9b59934284ca47"
+    },
+    "protocol_evidence_present": true,
+    "rows": {
+      "django__django-11790": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 25
+      },
+      "django__django-12050": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 12
+      },
+      "django__django-12262": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 30
+      },
+      "django__django-12713": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 21
+      },
+      "sphinx-doc__sphinx-8475": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 23
+      },
+      "sphinx-doc__sphinx-8721": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 22
+      },
+      "sphinx-doc__sphinx-9320": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 24
+      },
+      "sphinx-doc__sphinx-9698": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 37
+      },
+      "django__django-11848": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 23
+      },
+      "django__django-12774": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 52
+      },
+      "sphinx-doc__sphinx-7748": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 54
+      },
+      "sphinx-doc__sphinx-8035": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 36
+      },
+      "sphinx-doc__sphinx-8548": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 43
+      },
+      "sphinx-doc__sphinx-9229": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 49
+      },
+      "django__django-11880": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 18
+      },
+      "django__django-12143": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 29
+      },
+      "django__django-12155": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 35
+      },
+      "sphinx-doc__sphinx-9367": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 0,
+        "model_calls": 0
+      },
+      "django__django-12209": {
+        "state": "error",
+        "grade": "run_error",
+        "issues": [
+          "environment_or_grader_error"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 67
+      },
+      "django__django-11951": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 23
+      },
+      "django__django-12193": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 25
+      },
+      "django__django-12276": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 21
+      },
+      "django__django-12304": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 33
+      },
+      "django__django-9296": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 25
+      },
+      "sphinx-doc__sphinx-10466": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 37
+      },
+      "django__django-11999": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 32
+      },
+      "django__django-12039": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 23
+      },
+      "django__django-12273": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 37
+      },
+      "django__django-12325": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 31
+      },
+      "django__django-12406": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 29
+      },
+      "sphinx-doc__sphinx-10673": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 47
+      },
+      "sphinx-doc__sphinx-11510": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 36
+      },
+      "sphinx-doc__sphinx-7757": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 31
+      },
+      "sphinx-doc__sphinx-8265": {
+        "state": "finished",
+        "grade": "unresolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 32
+      },
+      "sphinx-doc__sphinx-8551": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 41
+      },
+      "sphinx-doc__sphinx-8638": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [],
+        "generation_attempts": 1,
+        "model_calls": 25
+      },
+      "django__django-11815": {
+        "state": "finished",
+        "grade": "resolved",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 75
+      },
+      "django__django-11885": {
+        "state": "finished",
+        "grade": "error",
+        "issues": [
+          "unverified_model_or_attempts",
+          "environment_or_grader_error"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 93
+      },
+      "django__django-12708": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 89
+      },
+      "sphinx-doc__sphinx-7590": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-7985": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-8056": {
+        "state": "error",
+        "grade": "run_error",
+        "issues": [
+          "unverified_model_or_attempts",
+          "environment_or_grader_error"
+        ],
+        "generation_attempts": 0,
+        "model_calls": 0
+      },
+      "sphinx-doc__sphinx-9461": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "django__django-11964": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "django__django-12308": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-10323": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-10435": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-8269": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 59
+      },
+      "sphinx-doc__sphinx-9230": {
+        "state": "finished",
+        "grade": "empty_patch",
+        "issues": [
+          "unverified_model_or_attempts",
+          "official_runtime_environment_unverified"
+        ],
+        "generation_attempts": 1,
+        "model_calls": 60
+      },
+      "sphinx-doc__sphinx-9281": {
+        "state": "error",
+        "grade": "run_error",
+        "issues": [
+          "unverified_model_or_attempts",
+          "environment_or_grader_error"
+        ],
+        "generation_attempts": 0,
+        "model_calls": 0
+      }
+    },
+    "report_sha256": "04694401712aead925d70a82e31a397b8cbaa326d82d5f5e4e3b8128d75b2f38",
+    "audit_sha256": "9821ea4424206c2310599c9c512b904524a03f9cbf9183fb8dc82c7d43558726",
+    "graded": true,
+    "reported_cost_usd": 41.118295
+  }
+}

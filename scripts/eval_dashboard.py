@@ -29,6 +29,11 @@ from pathlib import Path
 from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
+# These public projections share the serving contract and use only the standard library.
+sys.path.insert(0, str(REPO / "services/py-learning/src"))
+from agentruntime_learning.evals.public_benchmarks import project_swe_selection
+from agentruntime_learning.evals.public_selection import clean_selection
+
 DEFAULT_REPORTS = REPO / "services" / "py-learning" / ".eval-reports"
 # 一次运行里回退成规则（模型调用失败）的决策超过这个比例，这次运行不代表模型（真模型实验第 1.2 条）。
 INVALID_FALLBACK_RATIO = 0.05
@@ -83,7 +88,13 @@ def collect_reports(root: Path) -> dict[str, Any]:
         group = _group(path, root)
         # 只有被测对象是 worker（Planner 加 Reviewer）时 Reviewer 的指标才是模型的；S-09 的被测对象用规则的基线 Reviewer。
         model_reviewer = d.get("subject") == REVIEWER_SUBJECT
+        eval_set = d.get("eval_set") or {}
+        selection = clean_selection({**(d.get("selection") or {}), "dataset": eval_set.get("name"),
+                                     "version": eval_set.get("version"), "split": d.get("split"), "source": "task-loop report",
+                                     "method": (d.get("selection") or {}).get("method", "historical_unrecorded")},
+                                    private=d.get("split") == "holdout")
         runs.append({
+            "selection_info": selection,
             "group": group, "file": path.name, "subject": d.get("subject"), "split": d.get("split"), "created_at": d.get("created_at"),
             "triage": _num(planner.get("triage_accuracy")), "shape": _num(planner.get("shape_match_rate")),
             "reviewer": _num(reviewer.get("verdict_accuracy")) if model_reviewer else None,
@@ -104,6 +115,10 @@ def collect_reports(root: Path) -> dict[str, Any]:
         m = d.get("metrics") or {}
         full, mask = m.get("full") or {}, m.get("mask_only") or {}
         contexts.append({
+            "selection_info": clean_selection(d.get("selection_info") or {
+                "dataset": "context", "split": d.get("split"), "source": "context report",
+                "method": "historical_unrecorded", "selected_count": _num(full.get("samples")),
+            }, private=d.get("split") == "holdout"),
             "group": _group(path, root), "file": path.name, "split": d.get("split"), "gate": d.get("gate_passed"), "date": _date_of(path.name),
             "full_probe": _num(full.get("probe_pass_rate")), "mask_probe": _num(mask.get("probe_pass_rate")),
             "full_retention": _num(full.get("retention_rate")), "repeat_rate": _num(full.get("repeat_rate")),
@@ -122,7 +137,15 @@ def collect_benchmarks(root: Path) -> list[dict[str, Any]]:
             continue
         if not d.get("graded") or d.get("resolved") is None or not d.get("selected"):
             continue
+        instances = {i["instance_id"]: i for i in d.get("instances", []) if isinstance(i, dict) and isinstance(i.get("instance_id"), str)}
+        selection = d.get("selection") if isinstance(d.get("selection"), dict) else {}
+        if len(instances) == d["selected"] and len(instances) == len(d["instances"]):
+            facts = project_swe_selection(selection, sorted(instances), instances, selection.get("split"), selection.get("instances_sha256"))
+            facts["source"] = "report.json"
+        else:
+            facts = {"dataset": "SWE-bench", "method": "historical_unrecorded", "selected_count": d["selected"], "source": "report.json"}
         out.append({
+            "selection_info": clean_selection(facts, benchmark=True),
             "run_id": d.get("run_id"), "model": d.get("model_name"), "selected": d["selected"], "resolved": d["resolved"], "rate": _num(d.get("resolve_rate")),
             "cost_usd": _num(d.get("cost_usd")), "per_problem_usd": _num(d.get("cost_per_instance_usd")), "complete": bool(d.get("graded_complete")),
             "rounds_median": (d.get("rounds") or {}).get("median"), "environment": (d.get("settings") or {}).get("environment"),
@@ -541,11 +564,17 @@ def tuning_series(benchmarks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         low, high = wilson(run["resolved"], run["selected"])
         zh, en = TUNING_SHORT[run_id]
+        baseline_ids = set(base.get("problems") or []) if base else set()
+        identifiers = set(run.get("problems") or [])
+        same = (baseline_ids == identifiers if base and len(baseline_ids) == base["selected"]
+                and len(identifiers) == run["selected"] else None)
         point = {
             "run_id": run_id, "short_zh": zh, "short_en": en, "resolved": run["resolved"], "selected": run["selected"], "rate": run["rate"], "low": low, "high": high,
-            "per_problem_usd": run["per_problem_usd"], "same_problems": run_id != VALIDATION_RUN,
+            "per_problem_usd": run["per_problem_usd"], "same_problems": same,
         }
-        if base is not None and run is not base and run_id != VALIDATION_RUN and set(run.get("problems") or []) == set(base.get("problems") or []):
+        if run.get("selection_info"):
+            point["selection_info"] = run["selection_info"]
+        if base is not None and run is not base and run_id != VALIDATION_RUN and same:
             point["gained"] = len(set(run.get("solved") or []) - set(base.get("solved") or []))
             point["lost"] = len(set(base.get("solved") or []) - set(run.get("solved") or []))
         points.append(point)
@@ -804,7 +833,6 @@ def render_public(data: dict[str, Any], title: str, summary: dict[str, Any], cou
 PUBLIC_PAGE = r"""<!doctype html>
 <html lang="zh-CN" data-lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__TITLE__</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
 /* 评测网站的设计规范（SITE-UI，2026-11-06）：白底墨字，蓝色只给链接与操作，琥珀色只给“草稿·未经人审”；图表用 dataviz 参考调色板的前三个分类色（亮暗两档都过了校验）。三页同一组值。 */
 :root{color-scheme:light;--bg:#ffffff;--fg:#16181d;--ink2:#3d3d3a;--muted:#63625e;--card:#ffffff;--soft:#f5f5f3;--line:#e2e1dc;--accent:#1c5cab;--ok:#006300;--bad:#c23434;--warn:#8a5a00;--draft-bg:#fff3d1;--code:#f7f7f5;--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a}

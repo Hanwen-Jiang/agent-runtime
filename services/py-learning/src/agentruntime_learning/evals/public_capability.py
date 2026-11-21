@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from agentruntime_learning.evals.public_cohorts import facts, sha
+
 MAX_BYTES = 2 * 1024 * 1024
 MAX_RUNS = 64
 NAME = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$")
@@ -96,6 +98,58 @@ def _measurement(candidate: dict[str, Any], cell: dict[str, Any], at: str | None
             "at": _date(cell.get("at")) or at}
 
 
+# Public evaluator aliases as registered in capability/evals. Unknown plugins
+# keep their version and counts but must not inherit a built-in sampling rule.
+_EVAL_NAMES = {"bfcl": "bfcl-v4", "tau2": "tau2-bench", "longbench": "longbench-v2",
+               "s09:route": "s09-route", **{n: n for n in ("s09", "s10", "s11", "judgebench", "rewardbench2", "simpleqa", "frames")}}
+_BUCKETS = {"bfcl-v4": ("工具调用类别", "tool-call category"), "tau2-bench": ("业务领域", "domain"),
+            "rewardbench2": ("子任务", "subtask")}
+
+
+def _selection(column: dict, plan: dict, cell_plan: dict, seed: int | None,
+               candidate: dict | None = None) -> dict:
+    specs = {}
+    entries = cell_plan.get("evals")
+    for entry in entries[:32] if isinstance(entries, list) else []:
+        spec = {"eval": entry} if isinstance(entry, str) else entry
+        if isinstance(spec, dict) and isinstance(spec.get("eval"), str) and spec["eval"] in _EVAL_NAMES:
+            specs[_EVAL_NAMES[spec["eval"]]] = spec
+    measured = {v["name"]: v["version"] for v in column["evals"] if NAME.fullmatch(v["name"])}
+    cohorts = (candidate or {}).get("observed_cohorts", {})
+    groups = []
+    for dataset in dict.fromkeys([*measured, *specs]):
+        spec = specs.get(dataset, {})
+        options = spec.get("options") if isinstance(spec.get("options"), dict) else {}
+        split = options.get("split", "all") if dataset in {"s09", "s09-route", "s10", "s11"} and spec else None
+        if split not in ("all", "dev", "holdout"):
+            split = None
+        method, zh, en = "historical_unrecorded", "未记录如何从原始题库选题。", "The original selection method is not recorded."
+        if dataset in _BUCKETS:
+            zh_group, en_group = _BUCKETS[dataset]
+            method = "seeded_round_robin"
+            zh, en = (f"按{zh_group}分层，层内按种子与题号的 SHA-256 排序，各层轮流取题。",
+                      f"Group by {en_group}, rank IDs within each group by a seeded SHA-256 hash, then draw round-robin.")
+        elif dataset in ("longbench-v2", "simpleqa", "frames", "judgebench"):
+            method = "seeded_hash_prefix"
+            zh, en = "按种子与题号的 SHA-256 排序，从固定顺序开头取题。", "Rank IDs by a seeded SHA-256 hash and take a prefix."
+        elif dataset in ("s09", "s09-route", "s10", "s11"):
+            method = "seeded_shuffle_prefix"
+            zh, en = "对该组件的合格题号排序，用种子打乱，从开头取题。", "Sort eligible component IDs, shuffle with the seed, then take a prefix."
+        observed = cohorts.get(dataset) if isinstance(cohorts, dict) else None
+        observed = observed if isinstance(observed, dict) else {}
+        requested = _count(spec.get("n", cell_plan.get("n", plan.get("n", 40)))) if spec else None
+        version = measured.get(dataset)
+        groups.append(facts(dataset, method, "scores.json + plan.json" if spec else "scores.json", zh, en,
+                            role=column["role"], tier=column["tier"], split=split, seed=seed,
+                            requested_count=requested, observed_count=_count(observed.get("count")),
+                            version=version if version and re.fullmatch(r"[A-Za-z0-9_.@-]{1,128}", version) else None,
+                            cohort_sha256=sha(observed.get("sha256"))))
+    return facts("capability", "per_evaluator", "scores.json + plan.json" if cell_plan else "scores.json",
+                 "不同评测分别取题；计划上限不等于每个候选实际得到的题数，重复运行不另算题。",
+                 "Datasets are sampled separately. Planned limits may differ from a candidate’s observed cases; repeats are not new cases.",
+                 groups=groups)
+
+
 def project_scores(name: str, scores: dict[str, Any], plan: dict[str, Any], digest: str) -> dict[str, Any]:
     if not isinstance(scores.get("cells"), list) or len(scores["cells"]) > 64:
         raise ValueError("invalid capability cells")
@@ -106,11 +160,16 @@ def project_scores(name: str, scores: dict[str, Any], plan: dict[str, Any], dige
     planned = plan.get("cells", [])
     if not isinstance(planned, list) or len(planned) > 64:
         raise ValueError("invalid capability plan")
+    plans: dict[str, dict] = {}
+    seed = scores.get("seed", plan.get("seed", 0 if planned else None))
+    seed = seed if type(seed) is int and abs(seed) < 2**53 else None
     for c in planned:
         if not isinstance(c, dict):
             continue
         col = _column({**c, "task_family": c.get("task_family", plan.get("task_family")), "evals": []})
         if col:
+            plans[col["id"]] = c
+            col["selection_info"] = _selection(col, plan, c, seed)
             columns[col["id"]] = col
             for model in c.get("candidates", [])[:256]:
                 model = _text(model)
@@ -122,6 +181,8 @@ def project_scores(name: str, scores: dict[str, Any], plan: dict[str, Any], dige
         column = _column(cell)
         if column is None:
             continue
+        plan_cell = plans.get(column["id"], {})
+        column["selection_info"] = _selection(column, plan, plan_cell, seed)
         columns[column["id"]] = column
         candidates = cell.get("candidates", [])
         if not isinstance(candidates, list) or len(candidates) > 256:
@@ -134,10 +195,18 @@ def project_scores(name: str, scores: dict[str, Any], plan: dict[str, Any], dige
                 raise ValueError("duplicate model measurement")
             seen.add(model)
             row = models.setdefault(model, {"id": model, "label": model.split("/", 1)[-1], "cells": {}})
-            row["cells"][column["id"]] = _measurement(candidate, cell, at)
+            measurement = _measurement(candidate, cell, at)
+            # A model can have an early tournament stop or adaptive extension.
+            # Publish per-evaluator cohorts only when present in this model's own score.
+            if isinstance(candidate.get("observed_cohorts"), dict):
+                measurement["selection_info"] = _selection(column, plan, plan_cell, seed, candidate)
+            row["cells"][column["id"]] = measurement
     return {"id": name, "label": _text(scores.get("plan")) or name, "at": at,
             "evaluation_type": "model", "evaluation_scope": "component",
             "task_family": _text(plan.get("task_family")) or "general.unclassified",
+            "selection_info": facts("capability", "per_evaluator", "scores.json + plan.json" if planned else "scores.json",
+                                    "按角色、推理档与组件分别取题。", "Items are selected separately per role, tier and evaluator.",
+                                    seed=seed, groups=[g for col in columns.values() for g in col["selection_info"]["groups"]]),
             "columns": list(columns.values()), "models": [models[k] for k in sorted(models)], "source_sha256": digest}
 
 

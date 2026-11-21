@@ -32,6 +32,7 @@ from agentruntime_learning.evals.public_capability import PublicCapabilitySource
 from agentruntime_learning.evals.public_benchmarks import PublicBenchmarkSource
 from agentruntime_learning.evals.public_terminalbench import PublicTerminalBenchSource
 from agentruntime_learning.evals.public_task_loop import PublicTaskLoopSource, merge_task_loop_runs, public_models
+from agentruntime_learning.evals.public_selection import clean_selection, private_selection
 
 PAGE_NAME = "index.html"
 # 评测网站（docs/plan/eval-site.md）：/ 是主页，原来的看板搬到 /results，旧地址 /index.html 永久跳过去。
@@ -84,7 +85,9 @@ MAX_RUNS = 80
 _K = "eval_run_id, eval_process"
 # 写死的查询：只有 runtime_eval_* 指标。键是合成时用的名字。
 QUERIES: Final[dict[str, str]] = {
-    "planned": f"max by ({_K}, eval_suite, eval_subject, eval_split) (last_over_time(runtime_eval_cases_planned_total[{LOOKBACK}]))",
+    "planned": f"max by ({_K}, eval_suite, eval_subject, eval_split, eval_selection_dataset, eval_selection_method, "
+               f"eval_selection_population, eval_selection_count, eval_selection_eligible, eval_selection_excluded, eval_selection_seed) "
+               f"(last_over_time(runtime_eval_cases_planned_total[{LOOKBACK}]))",
     "carried": f"max by ({_K}) (last_over_time(runtime_eval_cases_carried_total[{LOOKBACK}]))",
     "carried_cost": f"max by ({_K}) (last_over_time(runtime_eval_cost_carried_usd_sum[{LOOKBACK}]))",
     "cases": f"sum by ({_K}, eval_outcome) (last_over_time(runtime_eval_cases_total[{LOOKBACK}]))",
@@ -144,6 +147,16 @@ def combine(results: Mapping[str, list[dict[str, Any]]], now: float) -> list[dic
         run["planned"] = max(run["planned"], int(value))
         for key in ("suite", "subject", "split"):
             run[key] = run[key] or str(labels.get(f"eval_{key}", ""))
+        if labels.get("eval_selection_method"):
+            selection = {"dataset": labels.get("eval_selection_dataset"), "split": run["split"],
+                         "method": labels["eval_selection_method"], "source": "run_telemetry"}
+            for field, label in (("selected_count", "eval_selection_count"), ("population_count", "eval_selection_population"),
+                                 ("eligible_count", "eval_selection_eligible"), ("excluded_count", "eval_selection_excluded"),
+                                 ("seed", "eval_selection_seed")):
+                n = str(labels.get(label, ""))
+                if re.fullmatch(r"-?[0-9]{1,16}", n):
+                    selection[field] = int(n)
+            run["selection_info"] = clean_selection(selection)
         proc_of(labels)
     for name, field in (("carried", "carried"), ("carried_cost", "carried_cost"), ("cost", "cost")):
         for sample in results.get(name, []):
@@ -327,7 +340,7 @@ def _archive_counts(value: Any) -> dict[str, int]:
     return {key: count for key, count in value.items() if isinstance(key, str) and type(count) is int and 0 <= count <= 2**53 - 1}
 
 
-def _clean_report_document(data: Any) -> dict[str, Any]:
+def _clean_report_document(data: Any, *, projected: bool = False) -> dict[str, Any]:
     if not isinstance(data, dict) or not isinstance(data.get("reports"), dict):
         raise ValueError("invalid archive")
     reports = data["reports"]
@@ -346,6 +359,9 @@ def _clean_report_document(data: Any) -> dict[str, Any]:
                     (key in flags and (value is None or type(value) is bool))}
             if kind == "runs" and "models" in row:
                 item["models"] = public_models(row["models"])
+            if selection := clean_selection(row.get("selection_info"), private=private_selection(row),
+                                            projected=projected, benchmark=kind in ("benchmarks", "tuning")):
+                item["selection_info"] = selection
             if kind == "benchmarks":
                 for field in ("by_repo", "by_difficulty"):
                     groups = row.get(field, {})
@@ -459,7 +475,7 @@ class ReportArchiveSource:
                 doc["error"] = error
             if self.experiments is not None:
                 live = self.experiments.get()
-                projected = _clean_report_document({"reports": {"experiments": live["items"]}})["reports"]["experiments"]
+                projected = _clean_report_document({"reports": {"experiments": live["items"]}}, projected=True)["reports"]["experiments"]
                 # Start with legacy history, then prefer actual artifact summaries by stable run ID.
                 merged = {row["id"]: row for row in doc["reports"]["experiments"] if isinstance(row.get("id"), str)}
                 merged.update({row["id"]: row for row in projected if isinstance(row.get("id"), str)})
@@ -476,7 +492,7 @@ class ReportArchiveSource:
                     doc.setdefault("error", "experiments_unavailable")
             if self.task_loop is not None:
                 live = self.task_loop.get()
-                projected = _clean_report_document({"reports": {"runs": live["items"]}})["reports"]["runs"]
+                projected = _clean_report_document({"reports": {"runs": live["items"]}}, projected=True)["reports"]["runs"]
                 doc["reports"] = {**doc["reports"], "runs": merge_task_loop_runs(doc["reports"]["runs"], projected)}
                 doc["task_loop_source"] = {key: value for key, value in live.items() if key != "items"}
                 if projected:
@@ -498,6 +514,36 @@ class ReportArchiveSource:
 def _report_archive(root: Path) -> bytes:
     """One-shot archive projection; servers use a persistent ReportArchiveSource for failure recovery."""
     return ReportArchiveSource(root).get()
+
+
+def _with_benchmark_selections(body: bytes, benchmarks: dict[str, Any], *, archive: bool = False) -> bytes:
+    """Join old summaries to an authoritative per-run manifest, never by suite name alone."""
+    selections = {(r["suite"], r["run_id"]): r["selection_info"] for r in benchmarks.get("runs", [])
+                  if r.get("selection_info") and r.get("run_id") and r.get("suite")}
+    if not selections:
+        return body
+    doc = json.loads(body)
+    if archive:
+        reports = doc["reports"]
+        rows = ((r, "swebench") for kind in ("benchmarks", "tuning") for r in reports.get(kind, []))
+    else:
+        rows = ((r, r.get("suite")) for r in doc["runs"])
+    for row, suite in rows:
+        info = selections.get((suite, row.get("run_id")))
+        if not info:
+            continue
+        existing = row.get("selection_info") or {}
+        if private_selection(row) or private_selection(existing):
+            continue
+        if any(value is not None and value != info.get(key)
+               for key, value in (("cohort_sha256", row.get("cohort_sha256")),
+                                  ("cohort_sha256", existing.get("cohort_sha256")),
+                                  ("dataset_sha256", row.get("dataset_sha256")),
+                                  ("dataset_sha256", existing.get("dataset_sha256")),
+                                  ("selected_count", row.get("selected")), ("selected_count", existing.get("selected_count")))):
+            continue
+        row["selection_info"] = info
+    return json.dumps(doc, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
 
 def _merge_terminalbench_feed(body: bytes, terminalbench: dict[str, Any], exclusions: list[dict[str, Any]] | None = None) -> bytes:
     """A final artifact replaces its telemetry row, including null costs/scores.
@@ -576,7 +622,9 @@ def make_server(root: Path, host: str, port: int, *, live: LiveSource | None = N
                 return
             if path == LIVE_PATH:
                 # 查询参数一概不用：查什么在服务端写死。
-                self._reply(HTTPStatus.OK, _merge_terminalbench_feed(source.get(), terminalbench_source.get(), json.loads(benchmark_source.get()).get("exclusions")), "application/json; charset=utf-8", Cache_Control=LIVE_CACHE_CONTROL)
+                benchmarks = json.loads(benchmark_source.get())
+                body = _merge_terminalbench_feed(source.get(), terminalbench_source.get(), benchmarks.get("exclusions"))
+                self._reply(HTTPStatus.OK, _with_benchmark_selections(body, benchmarks), "application/json; charset=utf-8", Cache_Control=LIVE_CACHE_CONTROL)
                 return
             if path == BENCHMARKS_PATH:
                 self._reply(HTTPStatus.OK, _merge_terminalbench_feed(benchmark_source.get(), terminalbench_source.get()), "application/json; charset=utf-8", Cache_Control="no-cache")
@@ -588,7 +636,8 @@ def make_server(root: Path, host: str, port: int, *, live: LiveSource | None = N
                 self._reply(HTTPStatus.OK, capability_source.get(), "application/json; charset=utf-8", Cache_Control="no-cache")
                 return
             if path == REPORTS_PATH:
-                self._reply(HTTPStatus.OK, report_source.get(), "application/json; charset=utf-8", Cache_Control="no-cache")
+                body = _with_benchmark_selections(report_source.get(), json.loads(benchmark_source.get()), archive=True)
+                self._reply(HTTPStatus.OK, body, "application/json; charset=utf-8", Cache_Control="no-cache")
                 return
             if path in ASSETS:
                 self._reply(HTTPStatus.OK, _static_page(path.lstrip("/")), ASSETS[path], Cache_Control="no-cache")

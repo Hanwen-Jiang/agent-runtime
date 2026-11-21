@@ -1,0 +1,8 @@
+{
+  "frozen_at_utc": "2026-11-21T10:42:50.397457+00:00",
+  "cohort_sha256": "c6c52bc214489c96767ab6743b6631634afe5c972191ea01f80bce59e8bf98ac",
+  "candidate": "implementation_scope",
+  "candidate_sha256": "4a29cf893f758cbcddf01159db68f377ed201971909af5c9fc745fd52e35738e",
+  "selection_basis": "development: default and identifier subwords 0/6 evidence hits; source-only implementation scope 3/6. Retain only that scope candidate for the single validation pass. Scope applies to queries asking where code implements a behavior.",
+  "validation_case_count": 12
+}

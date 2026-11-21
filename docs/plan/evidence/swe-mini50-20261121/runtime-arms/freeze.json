@@ -1,0 +1,20 @@
+{
+  "baseline_commit": "da58416909fc54f02519de95706df01d9bbd1701",
+  "baseline_files": {
+    "reviewer/rules.py": "c3f69d7c8cf4ab82656fd0890a9f04b18644a11b24491f33496733f5f04bbf5d",
+    "workflows/verification.py": "36caaf82b4c24cb0cf824f73229c5534f2f31c0a28c115cbd1968026c15c6beb"
+  },
+  "baseline_tree": "c095dc8a858f4acd798396dc898f1ea3c176e906",
+  "candidate_files": {
+    "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+    "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2"
+  },
+  "candidate_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+  "changed_paths": [
+    "services/py-worker/src/agentruntime_worker/reviewer/rules.py",
+    "services/py-worker/src/agentruntime_worker/workflows/verification.py"
+  ],
+  "model_profile": "a6api/gpt-6.2-sol@2026-11",
+  "thinking_budget": 8192,
+  "tier": "strong@medium"
+}

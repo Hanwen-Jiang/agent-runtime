@@ -9,6 +9,7 @@ Node 的 result 是模型写的，不算证据，这份才算。只改活动的�
 from __future__ import annotations
 
 import posixpath
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -28,6 +29,37 @@ WRITE_EFFECTS = frozenset({"write_reversible", "write_irreversible"})
 _READ_TOOLS = frozenset({"repo_read", "repo_list", "repo_grep", "context_read"})
 _READ_COMMANDS = frozenset({"cat", "find", "grep", "head", "ls", "nl", "pwd", "rg", "tail", "wc"})
 _READ_GIT = frozenset({"blame", "diff", "grep", "log", "ls-files", "rev-parse", "show", "status"})
+
+
+def _inconclusive_check(args: Any, observation: Any) -> bool:
+    """A timed-out command or a test run that demonstrably ran no tests supplies no verification."""
+    if not isinstance(observation, Mapping):
+        return False
+    if observation.get("timed_out") is True:
+        return True
+    argv = args.get("argv") if isinstance(args, Mapping) else None
+    if not isinstance(argv, list) or not argv or not isinstance(argv[0], str):
+        return False
+    exe = posixpath.basename(argv[0])
+    python_module = bool(re.fullmatch(r"python(?:\d+(?:\.\d+)*)?", exe)) and argv[1:2] == ["-m"]
+    module = argv[2] if python_module and len(argv) > 2 else exe
+    if module not in ("pytest", "py.test", "unittest"):
+        return False
+    if module in ("pytest", "py.test"):
+        # Collection can succeed with exit 0 without running any of the tests.
+        for arg in argv[3:] if python_module else argv[1:]:
+            if arg == "--":
+                break
+            if arg in ("--co", "--collect-only", "--collectonly"):
+                return True
+    # Both runners reserve exit 5 for no tests. On older Python, unittest
+    # instead prints a zero-test summary and exits successfully.
+    if observation.get("exit_code") == 5:
+        return True
+    stderr = observation.get("stderr")
+    return module == "unittest" and observation.get("exit_code") == 0 and isinstance(stderr, str) and bool(
+        re.search(r"^Ran 0 tests? in [\d.]+s\s+OK\s*\Z", stderr, re.MULTILINE)
+    )
 
 
 def only_reads(tool: Any, args: Any) -> bool:
@@ -107,6 +139,8 @@ class VerificationRecord:
             self.ran_after_write = False
             self.last_exit_code = None
         elif tool == "shell_run" and self.wrote and not only_reads(tool, args):
+            if _inconclusive_check(args, observation):
+                return
             self.ran_after_write = True
             code = observation.get("exit_code") if isinstance(observation, Mapping) else None
             self.last_exit_code = code if isinstance(code, int) else None

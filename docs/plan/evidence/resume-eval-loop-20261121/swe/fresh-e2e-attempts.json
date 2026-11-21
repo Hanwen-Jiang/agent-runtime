@@ -1,0 +1,61 @@
+{
+  "scope": "two new generation attempts using the supported scoped Task/Workspace APIs; no new predictions",
+  "selected_ids": [
+    "sphinx-doc__sphinx-8056",
+    "sphinx-doc__sphinx-9367"
+  ],
+  "hints": false,
+  "per_task_usd_limit": 3,
+  "batch_usd_limit": 6,
+  "fresh_model_score": null,
+  "runs": [
+    {
+      "id": "resume-e2e-20261121T103412Z-authv2",
+      "tenant": "swebench",
+      "workspace_failure": "503 sandbox_unavailable / gvisor",
+      "submitted_tasks": 0,
+      "patches": 0
+    },
+    {
+      "id": "resume-sphinx-evals-20261121T103856Z",
+      "tenant": "evals",
+      "cutoff_seconds": 600,
+      "submitted_tasks": 0,
+      "patches": 0,
+      "workspace_heads_at_cutoff": 0,
+      "workspace_snapshots_at_cutoff": 0,
+      "collector_active": false,
+      "active_workspaces_latest": 0,
+      "workspaces": [
+        {
+          "workspace_id": "swb-sphinx-doc-sphinx-9367-0f719d6fea",
+          "state": "COMPLETED",
+          "cancel_requested": true,
+          "result_error_code": "workspace_operation_failed",
+          "result_error_class": [
+            "失败"
+          ]
+        },
+        {
+          "workspace_id": "swb-sphinx-doc-sphinx-8056-2f50d3cbe9",
+          "state": "COMPLETED",
+          "cancel_requested": false,
+          "result_error_code": "workspace_exists",
+          "result_error_class": []
+        }
+      ],
+      "cleanup": {
+        "swb-sphinx-doc-sphinx-8056-2f50d3cbe9": {
+          "status": "WORKSPACE_OPERATION_STATUS_COMPLETED",
+          "error_code": null
+        },
+        "swb-sphinx-doc-sphinx-9367-0f719d6fea": {
+          "status": "WORKSPACE_OPERATION_STATUS_COMPLETED",
+          "error_code": null
+        }
+      },
+      "last_update_utc": "2026-11-21T10:54:50.424535+00:00"
+    }
+  ],
+  "other_supported_source_check": "No previously prepared snapshot matching either exact Sphinx repo/base_commit was reported in the isolated tenant; the official cached Docker images are available for grading."
+}

@@ -245,8 +245,14 @@ def fetch_instances(
             break
     if len(rows) != total:
         raise ValueError(f"只取到 {len(rows)} 行，接口说一共 {total} 行")
-    Path(out).parent.mkdir(parents=True, exist_ok=True)
-    _write_text(Path(out), "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    _write_text(out, "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    # Bind provenance to the exact file so replacing/editing the JSONL does not
+    # accidentally label a local corpus as the public benchmark.
+    source = {"dataset": dataset, "split": split, "config": config, "huggingface_rows": rows_url == ROWS_URL,
+              "instances_sha256": hashlib.sha256(out.read_bytes()).hexdigest()}
+    _write_text(out.with_name(out.name + ".source.json"), json.dumps(source) + "\n")
     return len(rows)
 
 
@@ -684,6 +690,7 @@ class _Runner:
             return False
         return (exc.status == 401 and exc.code == "unauthenticated"
                 or exc.status == 403 and exc.code == "permission_denied" and exc.message == "tenant model budget exceeded"
+                or exc.status == 503 and exc.code == "sandbox_unavailable"
                 or exc.status == 400 and exc.code == "invalid_argument" and exc.message in (
                     "命令不能为空", "命令过长", "消息太长", "session_id 格式不对",
                     "client_request_id 必须是 1 到 128 个可打印字符"))

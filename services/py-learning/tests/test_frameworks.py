@@ -191,6 +191,28 @@ def test_deliverables_run_records_the_reply(tmp_path: Path) -> None:
     assert live.of("finished") == ["sol"]
 
 
+def test_deliverables_frozen_selection_on_resume_keeps_original_population_and_no_public_ids(tmp_path: Path) -> None:
+    cases = dv.load_cases()[:3]
+    chosen, info = dv.select_cases(cases[:2], [cases[1].instance_id], root=tmp_path, manifest=None)
+    assert info == {"dataset": "supplied-deliverables", "method": "explicit_ids", "population_count": 2,
+                    "selected_count": 1, "source": "run.json"}
+    dv.run(DlvRuntime({chosen[0].instance_id: Script(deliverable="ok")}), chosen, tmp_path, settings(), selection=info)
+    manifest = json.loads((tmp_path / "run.json").read_text())
+    assert dv.select_cases(cases, [], root=tmp_path, manifest=manifest) == (chosen, info)
+    assert dv.report(tmp_path)["selection_info"] == info
+    with pytest.raises(sb.ResumeMismatch):
+        dv.select_cases(cases, [cases[0].instance_id], root=tmp_path, manifest=manifest)
+    del manifest["selection_info"]
+    assert dv.recorded_selection(manifest) == {"dataset": "deliverables", "selected_count": 1, "method": "unrecorded", "source": "run.json"}
+
+
+def test_rag_selection_counts_distinct_questions_without_exposing_custom_ids() -> None:
+    _, questions = rag.load_set()
+    info = rag.question_selection([questions[0], questions[1], questions[0]])
+    assert info == {"dataset": "supplied-rag-questions", "method": "supplied_cases", "population_count": 2,
+                    "selected_count": 2, "source": "supplied questions"}
+
+
 def fake_scores(name: str, python: str, cases: list[dict[str, Any]], **kw: Any) -> list[dict[str, Any]]:
     assert name == "deepeval" and kw["judge"].model == "gpt-x"
     out = []

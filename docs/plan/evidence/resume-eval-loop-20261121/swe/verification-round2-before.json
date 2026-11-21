@@ -1,0 +1,360 @@
+{
+  "subject": "VerificationRecord + deterministic Reviewer enforcement with a fixed done proposal",
+  "baseline_commit": "da58416909fc54f02519de95706df01d9bbd1701",
+  "baseline_recorder_sha256": "36caaf82b4c24cb0cf824f73229c5534f2f31c0a28c115cbd1968026c15c6beb",
+  "candidate_recorder_sha256": "2b46b56e49d96965c88bad208e6543087a9bbab61d71b4738144afd38c4c43f7",
+  "actual_commands": {
+    "empty_pytest": {
+      "exit_code": 5,
+      "timed_out": false
+    },
+    "all_deselected": {
+      "exit_code": 5,
+      "timed_out": false
+    },
+    "empty_unittest": {
+      "exit_code": 5,
+      "timed_out": false
+    },
+    "timed_out": {
+      "exit_code": null,
+      "timed_out": true
+    },
+    "passing_pytest": {
+      "exit_code": 0,
+      "timed_out": false
+    },
+    "collect_pytest": {
+      "exit_code": 0,
+      "timed_out": false
+    },
+    "collect_pytest_short": {
+      "exit_code": 0,
+      "timed_out": false
+    },
+    "failing_pytest": {
+      "exit_code": 1,
+      "timed_out": false
+    },
+    "passing_unittest": {
+      "exit_code": 0,
+      "timed_out": false
+    },
+    "purposeful_check": {
+      "exit_code": 0,
+      "timed_out": false
+    }
+  },
+  "baseline": {
+    "passed": 6,
+    "total": 15,
+    "rows": [
+      {
+        "case": "empty_pytest",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 5,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "selected_no_tests",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 5,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "empty_unittest",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 5,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "timeout",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": null,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "collect_only",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "collect_short",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "failed_then_collect",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 1,
+        "pass": false
+      },
+      {
+        "case": "passing_pytest",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "failed_tests_ran",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 1,
+        "expected_verdict": "done",
+        "expected_exit": 1,
+        "pass": true
+      },
+      {
+        "case": "passing_unittest",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "other_valid_check",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "empty_then_valid",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "failed_then_empty",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 5,
+        "expected_verdict": "done",
+        "expected_exit": 1,
+        "pass": false
+      },
+      {
+        "case": "pass_then_timeout",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": null,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": false
+      },
+      {
+        "case": "doc_only",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": false,
+        "last_exit_code": null,
+        "expected_verdict": "done",
+        "expected_exit": null,
+        "pass": true
+      }
+    ]
+  },
+  "candidate": {
+    "passed": 12,
+    "total": 15,
+    "rows": [
+      {
+        "case": "empty_pytest",
+        "verdict": "continue",
+        "reason_code": "rule_done_unverified",
+        "ran_after_write": false,
+        "last_exit_code": null,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": true
+      },
+      {
+        "case": "selected_no_tests",
+        "verdict": "continue",
+        "reason_code": "rule_done_unverified",
+        "ran_after_write": false,
+        "last_exit_code": null,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": true
+      },
+      {
+        "case": "empty_unittest",
+        "verdict": "continue",
+        "reason_code": "rule_done_unverified",
+        "ran_after_write": false,
+        "last_exit_code": null,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": true
+      },
+      {
+        "case": "timeout",
+        "verdict": "continue",
+        "reason_code": "rule_done_unverified",
+        "ran_after_write": false,
+        "last_exit_code": null,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": true
+      },
+      {
+        "case": "collect_only",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "collect_short",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "continue",
+        "expected_exit": null,
+        "pass": false
+      },
+      {
+        "case": "failed_then_collect",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 1,
+        "pass": false
+      },
+      {
+        "case": "passing_pytest",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "failed_tests_ran",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 1,
+        "expected_verdict": "done",
+        "expected_exit": 1,
+        "pass": true
+      },
+      {
+        "case": "passing_unittest",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "other_valid_check",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "empty_then_valid",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "failed_then_empty",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 1,
+        "expected_verdict": "done",
+        "expected_exit": 1,
+        "pass": true
+      },
+      {
+        "case": "pass_then_timeout",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": true,
+        "last_exit_code": 0,
+        "expected_verdict": "done",
+        "expected_exit": 0,
+        "pass": true
+      },
+      {
+        "case": "doc_only",
+        "verdict": "done",
+        "reason_code": null,
+        "ran_after_write": false,
+        "last_exit_code": null,
+        "expected_verdict": "done",
+        "expected_exit": null,
+        "pass": true
+      }
+    ]
+  }
+}

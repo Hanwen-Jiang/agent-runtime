@@ -1,0 +1,54 @@
+{
+  "source": "read-only swebench tenant environment registry vs Docker and k3s k8s.io stores; initial snapshot before repair. Absence is unregistered/unknown, not ready.",
+  "rows": {
+    "sphinx-doc__sphinx-7985": {
+      "state": "deleted",
+      "digest": "sha256:3710ae7995fbb71135b3ea5580a21464fac161ea66b8a9d8fd47fb6498d651f1",
+      "key": "982dc7386070b670e357369e0a614b940577db2993252e906bc338b8ab5cf90b",
+      "docker_cached": true,
+      "cri_cached": false
+    },
+    "django__django-11951": {
+      "state": "deleted",
+      "digest": "sha256:34d9fa013237ce98d53ba8926ca1f547269a38ab71bd9ce31326c1b7a8f2ce39",
+      "key": "b07ae1df548c8f4c3a0c2911bf6b7cdc4bae40a994a80e40189c66e46b137b8c",
+      "docker_cached": true,
+      "cri_cached": false
+    },
+    "django__django-11885": {
+      "state": "deleted",
+      "digest": "sha256:43998a3e101ee35303f61a07bac318fe66f79a9b2a25109d0ff77009c8d0939a",
+      "key": "541c8eeb2dd44e2fa5aabb7014fe88d8738c55785055022b596e91214ae281f4",
+      "docker_cached": true,
+      "cri_cached": false
+    },
+    "django__django-12262": {
+      "state": "deleted",
+      "digest": "sha256:6f0ff8c869dd8005bc4f176e9e1403fd8b235f8eef5a53a75a97a37f40c105a2",
+      "key": "93355a927fa048f37fb50476f03abf6165f9874633e81014399008fdba212f09",
+      "docker_cached": true,
+      "cri_cached": false
+    },
+    "sphinx-doc__sphinx-10673": {
+      "state": "deleted",
+      "digest": "sha256:05b7020e5de5f36a3f3623952bd9cdf0a8c9984f60be6ddb36a2795e34fcdc36",
+      "key": "3b4f360abe38e7b4bc0a2788c0050f6e0625fa4f0b1e51d8213cb4be69731782",
+      "docker_cached": true,
+      "cri_cached": false
+    },
+    "sphinx-doc__sphinx-9367": {
+      "state": "deleted",
+      "digest": "sha256:04a8e3cb1ebd30fd62a2371644b40e90b0691363a2dc6cc57d9491337f03e3a7",
+      "key": "16974e4ea1cdceb6d49551aa251ce67554fbdc95acece5b62247e712c1602ceb",
+      "docker_cached": true,
+      "cri_cached": false
+    },
+    "sphinx-doc__sphinx-8056": {
+      "state": "deleted",
+      "digest": "sha256:6a1890ecf779af4375c64a31a02a0d370f08019adda5967f1efdff6b473c9d60",
+      "key": "49859aadcc2e569be6a08e0f1a010feeecde748a33947b9f22ab4870bc0d0099",
+      "docker_cached": true,
+      "cri_cached": false
+    }
+  }
+}

@@ -1,0 +1,871 @@
+{
+  "protocol": "real named gateway profiles; BFCL v4 single-turn tool selection using AST checker; no tools executed",
+  "adapter_revision": "3500363",
+  "dataset_commit": "6ea57973c7a6097fd7c5915698c54c17c5b1b6c8",
+  "cohort": "per-category seeded hash ordering then round robin; 4 default BFCL categories",
+  "development_ids": [
+    "multiple_194",
+    "parallel_17",
+    "parallel_multiple_166",
+    "simple_python_311",
+    "multiple_97",
+    "parallel_157",
+    "parallel_multiple_69",
+    "simple_python_4"
+  ],
+  "validation_ids": [
+    "multiple_60",
+    "parallel_54",
+    "parallel_multiple_79",
+    "simple_python_106",
+    "multiple_46",
+    "parallel_111"
+  ],
+  "repeats": 1,
+  "total_invocations": 44,
+  "declared_budget_caps_usd": 3.85,
+  "actual_total_reported_usd": 0.182992,
+  "runs": [
+    {
+      "run_id": "bfcl-paired-20261121T103248Z",
+      "plan": {
+        "name": "bfcl-paired-20261121T103248Z",
+        "n": 8,
+        "r": 1,
+        "seed": 37,
+        "item_usd_limit": 0.125,
+        "concurrency": 1,
+        "extend": false,
+        "cells": [
+          {
+            "role": "act",
+            "tier": "medium",
+            "candidates": [
+              "a6api/gpt-5.5@2026-10",
+              "a6api/gpt-6.1-sol@2026-11"
+            ],
+            "evals": [
+              {
+                "eval": "bfcl",
+                "options": {
+                  "max_output_tokens": 1024
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "command_budget_usd": 2,
+      "scores_sha256": "19cc1b9700540bbeede14eed8efe6101458370b6300909a5284870889371919d",
+      "price_from": "gateway reported USD, includes routed fallbacks; excludes host costs",
+      "arms": [
+        {
+          "candidate": "a6api/gpt-5.5@2026-10",
+          "scored": 0,
+          "passed": 0,
+          "excluded": 8,
+          "cost_usd": 0.012008,
+          "rows": [
+            {
+              "instance_id": "multiple_194",
+              "passed": true,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.001258,
+              "calls": 1,
+              "miss": 1,
+              "checker": null,
+              "input_tokens": 504,
+              "output_tokens": 25
+            },
+            {
+              "instance_id": "parallel_17",
+              "passed": true,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.001176,
+              "calls": 1,
+              "miss": 1,
+              "checker": null,
+              "input_tokens": 148,
+              "output_tokens": 88
+            },
+            {
+              "instance_id": "parallel_multiple_166",
+              "passed": true,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.002542,
+              "calls": 1,
+              "miss": 1,
+              "checker": null,
+              "input_tokens": 511,
+              "output_tokens": 152
+            },
+            {
+              "instance_id": "simple_python_311",
+              "passed": true,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.000498,
+              "calls": 1,
+              "miss": 1,
+              "checker": null,
+              "input_tokens": 134,
+              "output_tokens": 23
+            },
+            {
+              "instance_id": "multiple_97",
+              "passed": true,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.000762,
+              "calls": 1,
+              "miss": 1,
+              "checker": null,
+              "input_tokens": 321,
+              "output_tokens": 12
+            },
+            {
+              "instance_id": "parallel_157",
+              "passed": true,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.001992,
+              "calls": 1,
+              "miss": 1,
+              "checker": null,
+              "input_tokens": 261,
+              "output_tokens": 147
+            },
+            {
+              "instance_id": "parallel_multiple_69",
+              "passed": false,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.002974,
+              "calls": 1,
+              "miss": 1,
+              "checker": "parallel_function_checker_no_order:cannot_find_match",
+              "input_tokens": 637,
+              "output_tokens": 170
+            },
+            {
+              "instance_id": "simple_python_4",
+              "passed": true,
+              "excluded": true,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.000806,
+              "calls": 1,
+              "miss": 1,
+              "checker": null,
+              "input_tokens": 113,
+              "output_tokens": 58
+            }
+          ]
+        },
+        {
+          "candidate": "a6api/gpt-6.1-sol@2026-11",
+          "scored": 8,
+          "passed": 7,
+          "excluded": 0,
+          "cost_usd": 0.082172,
+          "rows": [
+            {
+              "instance_id": "multiple_194",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.009826,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 4768,
+              "output_tokens": 29
+            },
+            {
+              "instance_id": "parallel_17",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.011106,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 4513,
+              "output_tokens": 208
+            },
+            {
+              "instance_id": "parallel_multiple_166",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.010894,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 4782,
+              "output_tokens": 133
+            },
+            {
+              "instance_id": "simple_python_311",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.00932,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 4510,
+              "output_tokens": 30
+            },
+            {
+              "instance_id": "multiple_97",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.009444,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 4627,
+              "output_tokens": 19
+            },
+            {
+              "instance_id": "parallel_157",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.010666,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 4623,
+              "output_tokens": 142
+            },
+            {
+              "instance_id": "parallel_multiple_69",
+              "passed": false,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.011644,
+              "calls": 1,
+              "miss": 0,
+              "checker": "parallel_function_checker_no_order:cannot_find_match",
+              "input_tokens": 4877,
+              "output_tokens": 189
+            },
+            {
+              "instance_id": "simple_python_4",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.009272,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 4486,
+              "output_tokens": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run_id": "bfcl-paired-20261121T103248Z-control",
+      "plan": {
+        "name": "bfcl-paired-20261121T103248Z-control",
+        "n": 8,
+        "r": 1,
+        "seed": 37,
+        "item_usd_limit": 0.125,
+        "concurrency": 1,
+        "extend": false,
+        "cells": [
+          {
+            "role": "act",
+            "tier": "medium",
+            "candidates": [
+              "a6api/kimi-k3.1-pro@2026-11"
+            ],
+            "evals": [
+              {
+                "eval": "bfcl",
+                "options": {
+                  "max_output_tokens": 1024
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "command_budget_usd": 0.5,
+      "scores_sha256": "e14cce2efecb8afe51c333f3b9961c2ad4bbcaaeddcb3e62890ae555de5262f9",
+      "price_from": "gateway reported USD, includes routed fallbacks; excludes host costs",
+      "arms": [
+        {
+          "candidate": "a6api/kimi-k3.1-pro@2026-11",
+          "scored": 8,
+          "passed": 7,
+          "excluded": 0,
+          "cost_usd": 0.06601,
+          "rows": [
+            {
+              "instance_id": "multiple_194",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.005284,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 504,
+              "output_tokens": 435
+            },
+            {
+              "instance_id": "parallel_17",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.007367,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 148,
+              "output_tokens": 712
+            },
+            {
+              "instance_id": "parallel_multiple_166",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.006466,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 511,
+              "output_tokens": 552
+            },
+            {
+              "instance_id": "simple_python_311",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.006605,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 134,
+              "output_tokens": 638
+            },
+            {
+              "instance_id": "multiple_97",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.00885,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 321,
+              "output_tokens": 832
+            },
+            {
+              "instance_id": "parallel_157",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.009808,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 261,
+              "output_tokens": 938
+            },
+            {
+              "instance_id": "parallel_multiple_69",
+              "passed": false,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.014992,
+              "calls": 1,
+              "miss": 0,
+              "checker": "parallel_function_checker_no_order:cannot_find_match",
+              "input_tokens": 637,
+              "output_tokens": 1393
+            },
+            {
+              "instance_id": "simple_python_4",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/kimi-k3.1-pro@2026-11": 1
+              },
+              "cost_usd": 0.006638,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 113,
+              "output_tokens": 645
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run_id": "bfcl-paired-20261121T103248Z-adapt",
+      "plan": {
+        "name": "bfcl-paired-20261121T103248Z-adapt",
+        "n": 8,
+        "r": 1,
+        "seed": 37,
+        "item_usd_limit": 0.125,
+        "concurrency": 1,
+        "extend": false,
+        "cells": [
+          {
+            "role": "act",
+            "tier": "medium",
+            "candidates": [
+              "a6api/gpt-6.1-sol@2026-11"
+            ],
+            "evals": [
+              {
+                "eval": "bfcl_contract:make",
+                "options": {
+                  "max_output_tokens": 1024
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "command_budget_usd": 0.45,
+      "scores_sha256": "e3e2aee16e63fe886d49fd8df6bf4a23a5c9806849014a70a94dac98c95ef6a6",
+      "price_from": "gateway reported USD, includes routed fallbacks; excludes host costs",
+      "arms": [
+        {
+          "candidate": "a6api/gpt-6.1-sol@2026-11",
+          "scored": 8,
+          "passed": 7,
+          "excluded": 0,
+          "cost_usd": 0.011026,
+          "rows": [
+            {
+              "instance_id": "multiple_194",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.001134,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 422,
+              "output_tokens": 29
+            },
+            {
+              "instance_id": "parallel_17",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.001264,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 167,
+              "output_tokens": 93
+            },
+            {
+              "instance_id": "parallel_multiple_166",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.002202,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 436,
+              "output_tokens": 133
+            },
+            {
+              "instance_id": "simple_python_311",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.000628,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 164,
+              "output_tokens": 30
+            },
+            {
+              "instance_id": "multiple_97",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.000752,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 281,
+              "output_tokens": 19
+            },
+            {
+              "instance_id": "parallel_157",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.001974,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 277,
+              "output_tokens": 142
+            },
+            {
+              "instance_id": "parallel_multiple_69",
+              "passed": false,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.002492,
+              "calls": 1,
+              "miss": 0,
+              "checker": "parallel_function_checker_no_order:cannot_find_match",
+              "input_tokens": 531,
+              "output_tokens": 143
+            },
+            {
+              "instance_id": "simple_python_4",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.00058,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 140,
+              "output_tokens": 30
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run_id": "bfcl-paired-20261121T103248Z-freshbase",
+      "plan": {
+        "name": "bfcl-paired-20261121T103248Z-freshbase",
+        "n": 6,
+        "r": 1,
+        "seed": 38,
+        "item_usd_limit": 0.125,
+        "concurrency": 1,
+        "extend": false,
+        "cells": [
+          {
+            "role": "act",
+            "tier": "medium",
+            "candidates": [
+              "a6api/gpt-6.1-sol@2026-11"
+            ],
+            "evals": [
+              {
+                "eval": "bfcl",
+                "options": {
+                  "max_output_tokens": 1024
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "command_budget_usd": 0.45,
+      "scores_sha256": "91384db063155be3dc4e6b527d48a16c4d3a42fd265c0d4367239a73469448fa",
+      "price_from": "gateway reported USD, includes routed fallbacks; excludes host costs",
+      "arms": [
+        {
+          "candidate": "a6api/gpt-6.1-sol@2026-11",
+          "scored": 6,
+          "passed": 5,
+          "excluded": 0,
+          "cost_usd": 0.005774,
+          "rows": [
+            {
+              "instance_id": "multiple_60",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.000772,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 251,
+              "output_tokens": 27
+            },
+            {
+              "instance_id": "parallel_54",
+              "passed": false,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.00115,
+              "calls": 1,
+              "miss": 0,
+              "checker": "parallel_function_checker_no_order:cannot_find_match",
+              "input_tokens": 125,
+              "output_tokens": 90
+            },
+            {
+              "instance_id": "parallel_multiple_79",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.001502,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 306,
+              "output_tokens": 89
+            },
+            {
+              "instance_id": "simple_python_106",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.000594,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 127,
+              "output_tokens": 34
+            },
+            {
+              "instance_id": "multiple_46",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.000712,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 221,
+              "output_tokens": 27
+            },
+            {
+              "instance_id": "parallel_111",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.001044,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 142,
+              "output_tokens": 76
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run_id": "bfcl-paired-20261121T103248Z-freshadapt",
+      "plan": {
+        "name": "bfcl-paired-20261121T103248Z-freshadapt",
+        "n": 6,
+        "r": 1,
+        "seed": 38,
+        "item_usd_limit": 0.125,
+        "concurrency": 1,
+        "extend": false,
+        "cells": [
+          {
+            "role": "act",
+            "tier": "medium",
+            "candidates": [
+              "a6api/gpt-6.1-sol@2026-11"
+            ],
+            "evals": [
+              {
+                "eval": "bfcl_contract:make",
+                "options": {
+                  "max_output_tokens": 1024
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "command_budget_usd": 0.45,
+      "scores_sha256": "22380dcb061373586aa093add6d39233a495c2d770a49e8c58b886606600310c",
+      "price_from": "gateway reported USD, includes routed fallbacks; excludes host costs",
+      "arms": [
+        {
+          "candidate": "a6api/gpt-6.1-sol@2026-11",
+          "scored": 6,
+          "passed": 4,
+          "excluded": 0,
+          "cost_usd": 0.006002,
+          "rows": [
+            {
+              "instance_id": "multiple_60",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.00084,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 285,
+              "output_tokens": 27
+            },
+            {
+              "instance_id": "parallel_54",
+              "passed": false,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.001218,
+              "calls": 1,
+              "miss": 0,
+              "checker": "parallel_function_checker_no_order:cannot_find_match",
+              "input_tokens": 159,
+              "output_tokens": 90
+            },
+            {
+              "instance_id": "parallel_multiple_79",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.00157,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 340,
+              "output_tokens": 89
+            },
+            {
+              "instance_id": "simple_python_106",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.000662,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 161,
+              "output_tokens": 34
+            },
+            {
+              "instance_id": "multiple_46",
+              "passed": true,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.00074,
+              "calls": 1,
+              "miss": 0,
+              "checker": null,
+              "input_tokens": 255,
+              "output_tokens": 23
+            },
+            {
+              "instance_id": "parallel_111",
+              "passed": false,
+              "excluded": false,
+              "actual_profiles": {
+                "a6api/gpt-6.1-sol@2026-11": 1
+              },
+              "cost_usd": 0.000972,
+              "calls": 1,
+              "miss": 0,
+              "checker": "parallel_function_checker_no_order:cannot_find_match",
+              "input_tokens": 176,
+              "output_tokens": 62
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "arm": "a",
+    "namespace": "ar-mini50-20261121-a",
+    "profile": "a6api/gpt-6.1-sol@2026-11",
+    "tier": "strong@medium",
+    "input_tokens": 13,
+    "output_tokens": 5,
+    "cost_usd_micros": 76,
+    "has_text": true
+  },
+  {
+    "arm": "b",
+    "namespace": "ar-mini50-20261121-b",
+    "profile": "a6api/gpt-6.1-sol@2026-11",
+    "tier": "strong@medium",
+    "input_tokens": 13,
+    "output_tokens": 5,
+    "cost_usd_micros": 76,
+    "has_text": true
+  }
+]

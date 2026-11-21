@@ -52,3 +52,58 @@ test("rejects non-finite scores and prefers a larger sample on equal scores", ()
   ]);
   assert.equal(result[0].run.run_id, "large");
 });
+
+test("includes a stronger valid historical run instead of limiting best to telemetry", () => {
+  const live = [run("latest", "task-loop", { success_rate: 0.384615 })];
+  const archive = {
+    runs: [
+      {
+        group: "earlier-best",
+        created_at: "2026-10-28T13:41:43Z",
+        subject: "worker",
+        split: "dev",
+        valid: true,
+        task_pass: 13,
+        task_total: 26,
+      },
+      {
+        group: "invalid",
+        split: "dev",
+        valid: false,
+        task_pass: 26,
+        task_total: 26,
+      },
+    ],
+  };
+  const [best] = bestResults(live, archive);
+  assert.equal(best.score[1], 0.5);
+  assert.equal(best.run.archive_query, "earlier-best");
+  assert.equal(best.run.archive, true);
+});
+test("only completed benchmark archives contribute scores", () => {
+  const [best] = bestResults([], {
+    benchmarks: [
+      {
+        run_id: "complete",
+        model: "model",
+        complete: true,
+        rate: 0.68,
+        selected: 50,
+      },
+      { run_id: "incomplete", complete: false, rate: 1, selected: 1 },
+    ],
+  });
+  assert.equal(best.run.run_id, "complete");
+});
+
+test('reviewed infrastructure exclusions are not selected as best but valid zero remains',()=>{
+ const rows=[{run_id:'infra',suite:'terminal-bench',split:'2.0',status:'finished',scores:{resolved_rate:.25}},{run_id:'measured',suite:'terminal-bench',split:'2.0',status:'finished',scores:{resolved_rate:0}}];
+ const [best]=bestResults(rows,{},[{suite:'terminal-bench',run_id:'infra',execution_valid:false}]);
+ assert.equal(best.run.run_id,'measured');assert.equal(best.score[1],0);
+});
+
+test("partially graded Terminal-Bench cannot become the best complete result",()=>{
+ const runs=[{run_id:"full",suite:"terminal-bench",split:"2.0",status:"finished",scores:{resolved_rate:.4}},
+ {run_id:"partial",suite:"terminal-bench",split:"2.0",status:"finished",source:"terminalbench_artifacts",complete:false,graded_complete:false,scores:{resolved_rate:1}}];
+ assert.equal(bestResults(runs)[0].run.run_id,"full");
+});

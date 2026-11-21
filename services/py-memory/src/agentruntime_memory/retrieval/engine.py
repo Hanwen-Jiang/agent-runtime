@@ -67,9 +67,13 @@ def _prioritize_symbol(hits: list[dict[str, Any]], query: str) -> list[dict[str,
 class RetrievalEngine:
     def __init__(self, *, vectors: VectorStoreProvider, embedder: Embedder,
                  relational: RelationalStoreProvider | None = None, authorize: Authorize | None = None,
-                 rerank: Rerank | None = None, chunk_size: int = 600, chunk_overlap: int = 80) -> None:
+                 rerank: Rerank | None = None, chunk_size: int = 600, chunk_overlap: int = 80,
+                 rerank_top8_depth: int = 40) -> None:
         if not 100 <= chunk_size <= 1000 or not 0 <= chunk_overlap <= min(80, chunk_size // 2):
             raise ValueError("Invalid retrieval chunk bounds")
+        if type(rerank_top8_depth) is not int or not 1 <= rerank_top8_depth <= 40:
+            raise ValueError("rerank_top8_depth must be an integer between 1 and 40")
+        self.rerank_top8_depth = rerank_top8_depth
         self.vectors, self.embedder, self.relational = vectors, embedder, relational
         self.authorize, self.rerank = authorize, rerank
         # UTF-8 bytes are a conservative tokenizer bound, deterministic and
@@ -234,15 +238,16 @@ class RetrievalEngine:
         dense=(await self.embed(identity,[query]))[0]
         must={"owner_id":row["owner_id"],"workspace_id":identity.workspace_id,"collection_id":collection,"generation":generation,"version_id":AnyOf(tuple(sorted(versions)))}
         bound=self.vectors.bind(identity.tenant_context())
+        depth = self.rerank_top8_depth if self.rerank and limit <= 8 else 40
         if self.rerank:
             # Keep each retrieval channel's strongest candidates until the
             # semantic scorer sees them. Early RRF truncation can otherwise
             # discard cross-language dense hits with no lexical overlap.
             sparse=sparse_vector(query)
-            dense_request=bound.query(CORPUS,embedding_version=embedding_version,top_k=40,dense=dense,filter=Filter(must=must))
+            dense_request=bound.query(CORPUS,embedding_version=embedding_version,top_k=depth,dense=dense,filter=Filter(must=must))
             if sparse.indices:
                 dense_hits,sparse_hits=await asyncio.gather(dense_request,
-                    bound.query(CORPUS,embedding_version=embedding_version,top_k=40,sparse=sparse,filter=Filter(must=must)))
+                    bound.query(CORPUS,embedding_version=embedding_version,top_k=depth,sparse=sparse,filter=Filter(must=must)))
             else:
                 dense_hits,sparse_hits=await dense_request,[]
             candidates=list({hit.id:hit for hit in (*dense_hits,*sparse_hits)}.values())
@@ -258,7 +263,7 @@ class RetrievalEngine:
         if self.rerank and hits:
             allowed=await self._authorized(identity,collection,generation,[hit["version_id"] for hit in hits])
             hits=[hit for hit in hits if hit["version_id"] in allowed]
-            scored=hits[:80]
+            scored=hits[:2 * depth]
             scores=await self.rerank(identity,query,[hit["text"] for hit in scored]) if scored else []
             if len(scores)!=len(scored) or any(not math.isfinite(value) for value in scores):raise InvalidError("retrieval_rerank", "Invalid rerank scores")
             for hit,score in zip(scored,scores,strict=True):hit["score"]=float(score)
@@ -267,7 +272,7 @@ class RetrievalEngine:
         allowed=await self._authorized(identity,collection,generation,[hit["version_id"] for hit in hits])
         if (await self._generation(identity,collection,generation))["state"]!="staged":
             raise ConflictError("retrieval_generation_deleted", "Generation was deleted during query")
-        return {"hits":[hit for hit in hits if hit["version_id"] in allowed][:limit],"generation":generation,"embedding_version":embedding_version,"coverage":"retrieved_candidates","retrieval":{"top_k":40,"candidate_limit":80 if self.rerank else 40,"fusion":"dense_sparse_union_rerank" if self.rerank else "runtime_rrf_60","sparse":"hashed_term_frequency","reranked":bool(self.rerank)}}
+        return {"hits":[hit for hit in hits if hit["version_id"] in allowed][:limit],"generation":generation,"embedding_version":embedding_version,"coverage":"retrieved_candidates","retrieval":{"top_k":depth,"candidate_limit":2 * depth if self.rerank else depth,"fusion":"dense_sparse_union_rerank" if self.rerank else "runtime_rrf_60","sparse":"hashed_term_frequency","reranked":bool(self.rerank)}}
 
     async def resolve(self, identity: Identity, collection: str, generation: str, node_ids: Sequence[str]) -> dict[str, Any]:
         collection,generation=_id(collection,"collection"),_id(generation,"generation")

@@ -1,0 +1,225 @@
+{
+  "split": "development",
+  "cohort_sha256": "c6c52bc214489c96767ab6743b6631634afe5c972191ea01f80bce59e8bf98ac",
+  "indexed_files": 837,
+  "chunks": 3799,
+  "cases": 6,
+  "variants": {
+    "baseline": {
+      "file_hits": 2,
+      "evidence_hits": 0,
+      "rows": [
+        {
+          "id": "d1",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 28.68,
+          "top8": [
+            "coding-agent/internal/github/inbox.go:1-64",
+            "coding-agent/docs/plan/entry-points.md:1-64",
+            "coding-agent/docs/plan/github-app.md:49-112",
+            "coding-agent/docs/plan/entry-points.md:145-208",
+            "coding-agent/docs/plan/entry-points.md:193-232",
+            "coding-agent/docs/plan/entry-points.md:97-160",
+            "coding-agent/docs/plan/github-app.md:1-64",
+            "coding-agent/README.md:49-112"
+          ]
+        },
+        {
+          "id": "d2",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 27.13,
+          "top8": [
+            "agent-runtime/docs/plan/n19-n20-contract-baseline.md:1-45",
+            "agent-runtime/docs/plan/n19-n20-implementation-2026-11-03.md:1-64",
+            "agent-runtime/docs/plan/n19-n20-implementation-2026-11-03.md:49-71",
+            "coding-agent/internal/server/snapshot.go:1-60",
+            "coding-agent/docs/plan/cloud-environments-config.md:1-42",
+            "agent-runtime/docs/plan/feedback-2026-11-01.md:145-208",
+            "agent-runtime/docs/plan/manual-acceptance-baseline-2026-11-03.md:49-112",
+            "coding-agent/internal/server/envhandoff.go:1-64"
+          ]
+        },
+        {
+          "id": "d3",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 28.13,
+          "top8": [
+            "coding-agent/docs/plan/coding-cache-2026-11-10.md:1-45",
+            "agent-runtime/libs/go-core/adapters/valkey/valkey.go:1-64",
+            "agent-runtime/docs/plan/workspace-read-latency-and-disk-2026-11-03.md:49-112",
+            "agent-runtime/docs/design/agent-runtime-design.md:481-544",
+            "coding-agent/README.md:49-112",
+            "coding-agent/docs/plan/entry-points.md:97-160",
+            "coding-agent/docs/plan/entry-points.md:193-232",
+            "coding-agent/docs/plan/entry-points.md:145-208"
+          ]
+        },
+        {
+          "id": "d4",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 27.27,
+          "top8": [
+            "agent-runtime/docs/plan/model-budget-enforcement-2026-11-03.md:1-42",
+            "agent-runtime/docs/plan/model-budget-ledger-implementation-2026-11-03.md:1-64",
+            "agent-runtime/docs/plan/model-budget-contract-baseline.md:1-29",
+            "agent-runtime/docs/plan/entry-task-budget-2026-11-10.md:1-43",
+            "agent-runtime/docs/plan/r02-r03-cost-context-contract-baseline-2026-11-03.md:1-57",
+            "agent-runtime/docs/plan/goal-gateway-eval-budget-regression-2026-11-06.md:1-53",
+            "agent-runtime/docs/plan/feedback-2026-11-01.md:337-377",
+            "agent-runtime/docs/reference/aster-project.md:49-112"
+          ]
+        },
+        {
+          "id": "d5",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 26.35,
+          "top8": [
+            "agent-runtime/docs/reference/context-engineering.md:1-62",
+            "agent-runtime/docs/design/agent-runtime-design.md:1249-1312",
+            "agent-runtime/docs/plan/file-intelligence-m0.md:49-102",
+            "agent-runtime/docs/note/context-compression.md:1-64",
+            "agent-runtime/docs/plan/transfer-final-B-audit-2026-11-07.md:1-24",
+            "agent-runtime/docs/plan/transfer-acceptance-2026-11-07.md:49-91",
+            "agent-runtime/docs/plan/transfer-acceptance-2026-11-07.md:1-64",
+            "agent-runtime/docs/plan/n18-file-delivery-contract-baseline-2026-11-03.md:1-52"
+          ]
+        },
+        {
+          "id": "d6",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 26.76,
+          "top8": [
+            "agent-runtime/docs/plan/capability-matrix-evals.md:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/capability/base.py:49-112",
+            "agent-runtime/docs/design/agent-runtime-design.md:385-448",
+            "agent-runtime/docs/plan/capability-matrix-evals.md:97-160",
+            "agent-runtime/docs/job-qualifications/real-model-experiments-2026-10-28/README.md:1-64",
+            "agent-runtime/docs/reference/risks-and-open-questions.md:97-154",
+            "agent-runtime/docs/plan/capability-matrix-evals.md:145-208",
+            "agent-runtime/docs/plan/review-R-02-model-gateway.md:49-112"
+          ]
+        }
+      ]
+    },
+    "identifier_subwords": {
+      "file_hits": 2,
+      "evidence_hits": 0,
+      "rows": [
+        {
+          "id": "d1",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 31.77,
+          "top8": [
+            "coding-agent/internal/github/inbox.go:1-64",
+            "coding-agent/docs/plan/github-app.md:49-112",
+            "coding-agent/docs/plan/entry-points.md:1-64",
+            "coding-agent/docs/plan/github-app.md:1-64",
+            "coding-agent/docs/plan/entry-points.md:145-208",
+            "coding-agent/internal/github/inbox.go:481-544",
+            "coding-agent/docs/plan/entry-points.md:97-160",
+            "coding-agent/docs/plan/entry-points-validation-2026-11-10.md:1-30"
+          ]
+        },
+        {
+          "id": "d2",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 30.03,
+          "top8": [
+            "agent-runtime/docs/plan/n19-n20-contract-baseline.md:1-45",
+            "agent-runtime/docs/plan/n19-n20-implementation-2026-11-03.md:1-64",
+            "agent-runtime/docs/plan/n19-n20-implementation-2026-11-03.md:49-71",
+            "coding-agent/internal/server/snapshot.go:1-60",
+            "coding-agent/docs/plan/cloud-environments-config.md:1-42",
+            "agent-runtime/docs/plan/feedback-2026-11-01.md:145-208",
+            "agent-runtime/docs/plan/manual-acceptance-baseline-2026-11-03.md:49-112",
+            "coding-agent/docs/plan/gin-migration-2026-11-11.md:97-146"
+          ]
+        },
+        {
+          "id": "d3",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 30.14,
+          "top8": [
+            "coding-agent/docs/plan/coding-cache-2026-11-10.md:1-45",
+            "agent-runtime/libs/go-core/adapters/valkey/valkey.go:1-64",
+            "agent-runtime/docs/plan/workspace-read-latency-and-disk-2026-11-03.md:49-112",
+            "agent-runtime/docs/design/agent-runtime-design.md:481-544",
+            "coding-agent/docs/plan/entry-points.md:97-160",
+            "coding-agent/docs/plan/entry-points.md:193-232",
+            "coding-agent/docs/plan/entry-points.md:145-208",
+            "coding-agent/README.md:49-112"
+          ]
+        },
+        {
+          "id": "d4",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 29.48,
+          "top8": [
+            "agent-runtime/docs/plan/model-budget-enforcement-2026-11-03.md:1-42",
+            "agent-runtime/docs/plan/model-budget-ledger-implementation-2026-11-03.md:1-64",
+            "agent-runtime/docs/plan/model-budget-contract-baseline.md:1-29",
+            "agent-runtime/docs/plan/entry-task-budget-2026-11-10.md:1-43",
+            "agent-runtime/docs/plan/r02-r03-cost-context-contract-baseline-2026-11-03.md:1-57",
+            "agent-runtime/docs/plan/goal-gateway-eval-budget-regression-2026-11-06.md:1-53",
+            "agent-runtime/docs/reference/aster-project.md:49-112",
+            "agent-runtime/docs/plan/feedback-2026-11-01.md:337-377"
+          ]
+        },
+        {
+          "id": "d5",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 29.0,
+          "top8": [
+            "agent-runtime/docs/reference/context-engineering.md:1-62",
+            "agent-runtime/docs/design/agent-runtime-design.md:1249-1312",
+            "agent-runtime/docs/note/context-compression.md:1-64",
+            "agent-runtime/docs/plan/file-intelligence-m0.md:49-102",
+            "agent-runtime/docs/plan/transfer-acceptance-2026-11-07.md:49-91",
+            "agent-runtime/docs/plan/transfer-final-B-audit-2026-11-07.md:1-24",
+            "agent-runtime/docs/plan/n18-file-delivery-contract-baseline-2026-11-03.md:1-52",
+            "agent-runtime/docs/plan/transfer-acceptance-2026-11-07.md:1-64"
+          ]
+        },
+        {
+          "id": "d6",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "query_ms": 29.36,
+          "top8": [
+            "agent-runtime/docs/plan/capability-matrix-evals.md:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/capability/base.py:49-112",
+            "agent-runtime/docs/design/agent-runtime-design.md:385-448",
+            "agent-runtime/docs/job-qualifications/real-model-experiments-2026-10-28/README.md:1-64",
+            "agent-runtime/docs/plan/capability-matrix-evals.md:97-160",
+            "agent-runtime/docs/reference/risks-and-open-questions.md:97-154",
+            "agent-runtime/docs/plan/capability-matrix-evals.md:145-208",
+            "agent-runtime/docs/note/planner-and-triage.md:49-74"
+          ]
+        }
+      ]
+    }
+  }
+}

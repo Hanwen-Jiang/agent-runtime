@@ -8,6 +8,8 @@ import re
 from datetime import datetime
 from typing import Any
 
+from agentruntime_learning.evals.public_cohorts import longbench_selection
+
 SCHEMA = "runtime-40-comparison-v1"
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 SHA = re.compile(r"^[a-f0-9]{64}$")
@@ -113,6 +115,7 @@ def project_context_comparison(raw: bytes) -> dict[str, Any]:
     return {"id": ident, "comparison_id": ident, "kind": "context-cohort-comparison",
         "evaluation_type": "ablation", "evaluation_scope": "component",
         "title_zh": "LongBench v2 · 原40题基线与策略对比", "title_en": "LongBench v2 · Original 40-question strategy comparison",
+        "selection_info": longbench_selection(doc),
         "dataset_name": "LongBench v2", "dataset_version": _text(doc.get("dataset_version"), 128),
         "runtime_revision": revision, "model_profile": model, "cohort_sha256": cohort,
         "protocol": "historical-shared-cohort-comparison-v1", "updated_at": stamp,

@@ -1,0 +1,44 @@
+{
+  "checked_at": "2026-11-21T11:40:33Z",
+  "tenant": "swebench",
+  "operations": [
+    {
+      "workspace": "swr-sphinx8056-112712",
+      "start_utc": "2026-11-21T11:27:15Z",
+      "expected_head": "e188d56ed1248dead58f3f8018c0e9a3f99193f7",
+      "create": {
+        "operation_id": "wso-00403203b32257c1e1e294ef71a6116a903652f60d1c5a56abade84fa333b54c",
+        "status": "WORKSPACE_OPERATION_STATUS_FAILED",
+        "error_code": "git_failed",
+        "connect_502": true
+      }
+    },
+    {
+      "workspace": "swr-sphinx8056-113126",
+      "start_utc": "2026-11-21T11:31:27Z",
+      "expected_head": "e188d56ed1248dead58f3f8018c0e9a3f99193f7",
+      "create": {
+        "operation_id": "wso-e23f1438b6e053f9a0051b07adcd651b8ccb7ee3de637da09a9504dd9fca57fe",
+        "status": "WORKSPACE_OPERATION_STATUS_COMPLETED",
+        "head": "e188d56ed1248dead58f3f8018c0e9a3f99193f7",
+        "connect_502": false
+      },
+      "archive": {
+        "operation_id": "wso-e59889256f7f50943ac180bb901923eadac6a1c89ffc24f80ddc3ffdb88c11db",
+        "status": "WORKSPACE_OPERATION_STATUS_FAILED",
+        "connect_502": false,
+        "error_code": "unknown_env",
+        "workspace_approx_mib": 64,
+        "file_count_probe": 1459,
+        "egress_connections_allowed_observed": 362,
+        "pod_started_utc": "2026-11-21T11:34:05Z",
+        "pod_stopped_utc": "2026-11-21T11:46:06Z"
+      },
+      "delete": {
+        "operation_id": "wso-a19e9bb515358d3abd96a255a09bef02972364338444d083031e2efd8380ae9a",
+        "status": "WORKSPACE_OPERATION_STATUS_RUNNING"
+      }
+    }
+  ],
+  "updated_at": "2026-11-21T11:51:29.287020+00:00"
+}

@@ -342,7 +342,7 @@ class _Rules:
                 return None
             return "能改文件，却一个文件都没有改就判 done：先确认是不是真的不用改", "rule_done_without_changes"
         if not record.get("ran_after_write") and not record.get("docs_only"):
-            return "改完之后没有运行过任何命令：先验证再交付", "rule_done_unverified"
+            return "改动后还没有可用的验证结果：运行能检查本次改动的命令并确认它实际执行，再交付", "rule_done_unverified"
         return None
 
     def undelivered(self, chosen: str) -> tuple[str, str] | None:

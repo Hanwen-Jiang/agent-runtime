@@ -1,0 +1,65 @@
+{
+  "executed_at_utc": "2026-11-21T10:41:49.396223+00:00",
+  "baseline_revision": "0cd2c890d214a53a3768568b7d80103eb0fd7341",
+  "candidate_sha256": {
+    "internal/web/static/app.js": "357125e394375c339b7ff957af02832526e064c683e2c892c5e8e015363ead20",
+    "internal/web/session_events_test.go": "63ac2e2595639a6dcf06416cbf66fea6b9e94c4b147eb2601626287c624031a0",
+    "internal/server/githubtrigger_test.go": "9ecc0faa7f7c084473ca63cb8a5a3e358f42b9d7f6961b8f047742b8ad5442ea"
+  },
+  "repeat": 5,
+  "baseline": {
+    "go_exit": 1,
+    "tests": {
+      "TestExpiredStreamRecoversAtBatchCursorWithoutReplayingFinishedTasks": {
+        "fail": 5
+      }
+    },
+    "browser_observations_after_snapshot_requests_equals": [
+      "2 batch requests=1 finished-task streams=1 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?]",
+      "2 batch requests=1 finished-task streams=1 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?]",
+      "2 batch requests=1 finished-task streams=1 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?]",
+      "2 batch requests=1 finished-task streams=1 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?]",
+      "2 batch requests=1 finished-task streams=1 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?]"
+    ]
+  },
+  "candidate": {
+    "go_exit": 0,
+    "tests": {
+      "TestExpiredStreamRecoversAtBatchCursorWithoutReplayingFinishedTasks": {
+        "pass": 5
+      },
+      "TestDuplicatesAreNotProcessedTwiceAcrossRestartsAndReplicas": {
+        "pass": 5
+      },
+      "TestExpiredLeasesAreReclaimed": {
+        "pass": 5
+      },
+      "TestOneTriggerAuthorizesOnePushAndOnePullRequest": {
+        "pass": 5
+      },
+      "TestAnInterruptedPushIsNotRetried": {
+        "pass": 5
+      },
+      "TestLostPushAcknowledgementDoesNotRepeatTheWrite": {
+        "pass": 5
+      },
+      "TestTheBatchIsPagedInBrowser": {
+        "pass": 5
+      },
+      "TestTasksTheBatchCannotServeAreReplayedInBrowser": {
+        "pass": 5
+      },
+      "TestTheFirstPaintComesFromTheSnapshotInBrowser": {
+        "pass": 5
+      }
+    },
+    "browser_observations_after_snapshot_requests_equals": [
+      "2 batch requests=2 finished-task streams=0 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5]",
+      "2 batch requests=2 finished-task streams=0 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5]",
+      "2 batch requests=2 finished-task streams=0 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5]",
+      "2 batch requests=2 finished-task streams=0 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5]",
+      "2 batch requests=2 finished-task streams=0 active-task streams=[/api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5 /api/projects/p1/sessions/s1/tasks/t1/events?last_event_id=5]"
+    ]
+  },
+  "environment": "Local Chrome, Go handlers and temporary PostgreSQL. Task, Git push and GitHub PR endpoints are test doubles."
+}

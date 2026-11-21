@@ -211,7 +211,7 @@ def build_live_focus(read: Callable[[str], bytes], names: Callable[[str], list[s
         'evaluation_type':'ablation','evaluation_scope':'component','split':'validation','answer_protocol':ANSWER_PROTOCOL,
         'runtime_revision':plan['runtime_revision'],'runtime_source_sha256':plan['source_sha256'],'config_sha256':plan['config_sha256'],'cohort_sha256':plan['cohort_sha256'],
         'dataset_name':'LongBench v2','dataset_version':plan['dataset_version'],'model_profile':MODEL,
-        'sample_count':20,'completed_count':len(pairs),'repeats':1,'collection_complete':complete,'status':'completed' if complete else 'running',
+        'sample_count':20,'excluded_count':len(excluded),'completed_count':len(pairs),'repeats':1,'collection_complete':complete,'status':'completed' if complete else 'running',
         'quality_valid':quality,'validation_cohort_frozen_before_tuning':True,'arms':arms,
         'cost_known':cost_known,'actual_cost_usd':known/1e6 if cost_known and known is not None else None,
         'known_cost_usd':known/1e6 if known is not None else None,'pending_reserved_usd':pending/1e6 if pending is not None else None,

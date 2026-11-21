@@ -18,6 +18,14 @@ When licensed packages already exist in a separate local installation, set `HERO
 
 The server only serves explicitly allowlisted assets and JSON routes. There are no analytics, third-party requests, or embedded report values in the application bundle.
 
+## 每次运行的选题说明（ⓘ）
+
+结果页按运行读取 `selection_info`，数据集概览不能替代本次运行的清单。新评测在**选题时**记录数据集版本、原始池和筛选后数量、最终选中数量，以及实际使用的方法（全量、指定 ID、预定义划分、带种子抽样、分层或冻结题单）。记录适用的种子、分层规则、排除条件、题单指纹和可公开的来源。多模型、策略和重复执行要说明是几道不同的题、几次执行；异质能力矩阵按评测组件拆开。
+
+例如历史 SWE Verified 的一个协议是 500 题中排除 `psf/requests` 的 8 题，从 492 题按仓库配额、仓内难度抽到 50 题，种子 0。只有协议及数据指纹吻合的运行才可引用这些数字。Terminal-Bench 的固定清单如果没有记录如何抽得，列出已知题号并标明抽法未记录。留出或私有集仅展示公开统计和指纹，不发原题、答案、私有题号或文件路径。
+
+旧记录缺少协议时显示已知字段和“本次运行未记录选题方法”。当前目录大小、完成数、每题多个策略的执行数都不能反推一个历史运行的入选题数。新增数据源时用一份已知清单和一份缺失/封存记录验证服务端 JSON 及 ⓘ 弹窗。
+
 ## Validation
 
 Run the existing `test_eval_dashboard_server.py`, `test_eval_site_server.py`, `test_dashboard_live.py`, `test_eval_dashboard.py` and `test_eval_site_pages.py` suites. Set `AR_TEST_BROWSER` and `AR_REQUIRE_BROWSER=1` for required browser coverage. The page suite exercises nonempty historical reports, catalog counts, search, grouping, pairwise question expansion, language switching and desktop/mobile overflow against the actual HTTP service.

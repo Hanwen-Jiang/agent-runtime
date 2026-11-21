@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from agentruntime_learning.evals.public_cohorts import digest as cohort_digest, facts, sha
 from agentruntime_learning.evals.public_longbench import project_longbench_summary
 from agentruntime_learning.evals.public_context_optimization import project_context_optimization
 from agentruntime_learning.evals.public_context_comparison import project_context_comparison
@@ -71,6 +72,42 @@ def _cost_projection(flag: Any, actual: Any, known: Any) -> tuple[bool | None, f
     else:
         zh, en = "费用完整性尚未确认，实际总额未知。", "Cost completeness is unconfirmed and the actual total is unknown."
     return cost_known, total, lower, zh, en
+
+
+def _memory_cohort(bundle_hash: str, candidate: dict, n: int, manifest: dict | None = None) -> dict:
+    # Digest of the four reports in docs/plan/evidence/longmemeval-final-20261107.
+    # Never infer its seed from a directory name or because another run also has 50 rows.
+    certified_legacy = (bundle_hash == "f48a674e8f34defdd165ac0e806b16c7ede16f307c9f0d526e4a9619a0c221cb"
+                        and n == 50)
+    ids = (manifest or {}).get("question_ids")
+    evidence = _mapping((manifest or {}).get("provenance"))
+    matched = (isinstance(ids, list) and len(ids) == n and all(isinstance(i, str) for i in ids)
+               and len(set(ids)) == n and candidate.get("manifest_digest") == cohort_digest(manifest))
+    seed = evidence.get("seed") if matched else 0 if certified_legacy else None
+    stratified = certified_legacy or (matched and type(evidence.get("limit")) is int and evidence["limit"] > 0
+                                      and type(seed) is int)
+    return facts("LongMemEval_S", "seeded_round_robin" if stratified else "frozen_cohort",
+                 "LongMemEval manifest" if matched else "LongMemEval evaluation summary",
+                 "排除拒答题，按题型分层，各层用种子打乱，轮流抽取；两种检索器使用同一批问题。" if stratified else
+                 "两种检索器使用同一批问题；原始题池和抽取规则未记录。",
+                 "Exclude abstentions; shuffle within question type using the seed and draw round-robin for both retrievers."
+                 if stratified else "Both retrievers use the same questions; the original pool and draw are not recorded.",
+                 selected_count=n, seed=seed if type(seed) is int else None,
+                 cohort_sha256=cohort_digest(ids) if matched else None,
+                 reference_url="https://github.com/Hanwen-Jiang/agent-runtime/blob/da584169/docs/plan/goal-memory-acceptance-2026-11-06.md"
+                 if certified_legacy else None)
+
+
+def _paired_cohort(pairs: list, provenance: dict) -> dict:
+    ids = [r.get("case_id") for r in pairs]
+    frozen = (isinstance(provenance.get("original_case_ids"), list) and ids == provenance["original_case_ids"]
+              and all(isinstance(i, str) and len(i) <= 256 for i in ids) and len(set(ids)) == len(ids))
+    return facts("paired-policy", "frozen_cohort" if frozen else "historical_unrecorded",
+                 "paired-completion-final.json", "两种策略分别运行同一份原始用例清单。"
+                 if frozen else "每道用例分别运行两种策略；原始选题规则未记录。",
+                 "Both policies ran the original fixed case list." if frozen else
+                 "Each case runs under two policies. The original selection rule was not recorded.",
+                 selected_count=len(pairs), cohort_sha256=cohort_digest(ids) if frozen else None)
 
 
 def _project_documents(raw_documents: dict[str, bytes], narrative: str | None = None, *,
@@ -136,6 +173,7 @@ def _project_documents(raw_documents: dict[str, bytes], narrative: str | None = 
             experiments.append({
                 "id": memory_identity, "kind": "retrieval-comparison", "title_zh": "LongMemEval 记忆检索", "title_en": "LongMemEval memory retrieval",
                 "completed_at": candidate.get("created_at") if isinstance(candidate.get("created_at"), str) else None,
+                "selection_info": _memory_cohort(digest, candidate, count),
                 "sample_count": count, "completed_count": completed,
                 "collection_complete": _bool(comparison.get("integrity_passed")), "quality_valid": quality_valid,
                 "acceptance_passed": final_gate, "cost_known": cost_known,
@@ -210,6 +248,7 @@ def _project_documents(raw_documents: dict[str, bytes], narrative: str | None = 
                 "id": paired_identity, "kind": "paired-policy", "title_zh": "多智能体策略配对实验", "title_en": "Paired multi-agent policy evaluation",
                 "completed_at": report.get("completed_at") if isinstance(report.get("completed_at"), str) else None,
                 "evaluated_on": evaluated_on, "reported_on": reported_on,
+                "selection_info": _paired_cohort(pairs, provenance),
                 "sample_count": len(pairs) * 2, "completed_count": len(pairs) * 2, "collection_complete": True,
                 "quality_valid": quality_valid, "acceptance_passed": final_gate,
                 "cost_known": cost_known, "known_cost_usd": known_cost, "actual_cost_usd": actual_cost,
@@ -365,6 +404,10 @@ class PublicExperimentSource:
                 metrics.append({"key": key, "label_zh": zh, "label_en": en, "baseline": values[0], "candidate": values[1], "unit": "score" if key.startswith("ndcg") else "rate"})
             cost_known, actual, known, _, _ = _cost_projection(report.get("cost_known"), report.get("actual_cost_usd"), report.get("known_cost_usd"))
             return {"id": "memory-bm25-" + suffix, "kind": "retrieval-comparison",
+                    "selection_info": facts("LongMemEval_S", "frozen_cohort", "public-summary.json",
+                                "两种排序方法使用同一批问题。每个问题的 50 个检索候选不是另选的评测题；摘要未记录问题抽取算法。",
+                                "The two ranking methods use the same questions. Fifty retrieval candidates per query are not fifty evaluation items; the question draw was not archived.",
+                                selected_count=count, cohort_sha256=sha(report.get("cohort_sha256"))),
                     "title_zh": "LongMemEval 排序对照 · 50 候选", "title_en": "LongMemEval reranking · 50 candidates",
                     "completed_at": timestamp, "sample_count": count, "completed_count": count,
                     "collection_complete": True, "quality_valid": _bool(report.get("quality_valid")), "acceptance_passed": None,
@@ -387,6 +430,14 @@ class PublicExperimentSource:
             if not projected:
                 return None
             row = projected[0]
+            try:
+                manifest = json.loads(self._read(name + "/live/manifest.json"))
+            except (OSError, ValueError, RecursionError):
+                # Optional provenance cannot invalidate an independently verified report.
+                manifest = None
+            if isinstance(manifest, dict):
+                row["selection_info"] = _memory_cohort(row["source_sha256"], json.loads(candidate),
+                                                       row["sample_count"], manifest)
             row["id"] = "longmemeval-" + suffix
             return row
         canonical = "paired-final-20261107/"

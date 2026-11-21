@@ -1,0 +1,407 @@
+{
+  "checked_at_utc": "2026-11-21T11:26:52.636542+00:00",
+  "origin": "public Docker Hub tag metadata; no image layers downloaded; sizes are per-tag and do not account for shared local layers or actual uncompressed storage",
+  "host_free_bytes_at_cohort_audit": 89752264704,
+  "rows": [
+    {
+      "instance_id": "django__django-11790",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11790:latest",
+      "registry_manifest_digest": "sha256:061b5e37b0dfc15512b9604c843618b47aece8e603d08d0926c3990e0e9b3ac4",
+      "amd64_manifest_digest": "sha256:97132bd9fa42be42add93741520b3e58dbba8a693a209757a18381a31d386ec5",
+      "registry_reported_bytes": 1153045341
+    },
+    {
+      "instance_id": "django__django-12050",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12050:latest",
+      "registry_manifest_digest": "sha256:34773901589784072af940b29697018dc17b32e37b4ff135a153c99ac2c38dec",
+      "amd64_manifest_digest": "sha256:e9b0dbb6b2fec8535a33dc242342020a3c3574adefb95b30d46b25669fe72108",
+      "registry_reported_bytes": 1153277842
+    },
+    {
+      "instance_id": "django__django-12262",
+      "local_cached": true,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12262:latest",
+      "registry_manifest_digest": "sha256:23c0777e08a37bd0643f7638eaca9c57d1ee16fca79b6312b8d6de7fd1b5e7da",
+      "amd64_manifest_digest": "sha256:1adcba61b71713a4ac9732c2ac05194acc4aebb2f904437d489db6bbf73e143f",
+      "registry_reported_bytes": 1154507468
+    },
+    {
+      "instance_id": "django__django-12713",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12713:latest",
+      "registry_manifest_digest": "sha256:cc6a38b67ce149e7db25db27dfd0075a3c28e4b85bc17c46f2606a3558a970eb",
+      "amd64_manifest_digest": "sha256:7a238335a0f05c3fbc1d9d193efb32d83cbba7c7fc72a89e37cc0496901e1993",
+      "registry_reported_bytes": 1155212679
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8475",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8475:latest",
+      "registry_manifest_digest": "sha256:36012a43df40098aa0e7027c9ae1f14d4ffde426e09b695bfe0b395f853fa4fa",
+      "amd64_manifest_digest": "sha256:fcb5d82fdcbc4b03d1552e9f3f1ed500647541e8cb25386f8d553d8f22bc8831",
+      "registry_reported_bytes": 1095401816
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8721",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8721:latest",
+      "registry_manifest_digest": "sha256:8f02afdb324767a2e56b7940569ea822cfa58c3c1f0ef9a910162d21cf52c3f5",
+      "amd64_manifest_digest": "sha256:71a0a1a008928d845e778a90977f86b700c6346453bcb5fbe5141de8bbbf820b",
+      "registry_reported_bytes": 1097777220
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9320",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9320:latest",
+      "registry_manifest_digest": "sha256:0dd7b74de29c5734fbcd2fb9ab5295f610b5b281bd2fdd87e9c3c1d3f272f28a",
+      "amd64_manifest_digest": "sha256:5bf9fd889410da27c44c220fd1dc9b2bf136ee87f7a4ab0b09c27ed34076ea84",
+      "registry_reported_bytes": 1099974075
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9698",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9698:latest",
+      "registry_manifest_digest": "sha256:38120cc331db6bb9d962101a6795a515d56c8a4ace9983f17afede39fd926d5b",
+      "amd64_manifest_digest": "sha256:1aa4fb3e28fa44b7a619b6edf41ca84b61d80d29baf1d474ef9f5e52e1b2eb25",
+      "registry_reported_bytes": 1102188997
+    },
+    {
+      "instance_id": "django__django-11848",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11848:latest",
+      "registry_manifest_digest": "sha256:08eac9219e5d4b15b445fde26c587157a0ad8a2d9209e4b1e266259edf51bb4b",
+      "amd64_manifest_digest": "sha256:3fb3b90074424b3deaed41b2e2e66483e54e922d22fa034952f5a7f8553be607",
+      "registry_reported_bytes": 1153779553
+    },
+    {
+      "instance_id": "django__django-12774",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12774:latest",
+      "registry_manifest_digest": "sha256:c3d0148636ca1fc2170212ba6cc2c3c2df470ccca9e2e6b755447e3e51abd9f6",
+      "amd64_manifest_digest": "sha256:1f65dc6387cca60297bcfccacc30a38367c5c82787a35b444f78d8bace351436",
+      "registry_reported_bytes": 1155512207
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7748",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7748:latest",
+      "registry_manifest_digest": "sha256:572d11650dea6831a1c81bb31ed468c49370f607b9af7dd762b16283c47bbd27",
+      "amd64_manifest_digest": "sha256:135d6c1cbce932b6897e0e625564f32c39abd3c42e061854a5857bd8321cffea",
+      "registry_reported_bytes": 1097726821
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8035",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8035:latest",
+      "registry_manifest_digest": "sha256:8f0c620e13fade585f0be2ed8f9d394319c63f33729e2fe4780360dca7871c19",
+      "amd64_manifest_digest": "sha256:6b18ecef25e5593f57a92958e0fd84c21f2cab5394e02d87ccd64b03c08a9da2",
+      "registry_reported_bytes": 1094863843
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8548",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8548:latest",
+      "registry_manifest_digest": "sha256:2a068d5390185b7b54da95f749fab5fc9e3bcfc4c182a4132d6cf57207d6385a",
+      "amd64_manifest_digest": "sha256:cd774ce3e168ff6eab9aaa110952b2a6f039d45336b532768eb9431a063d7985",
+      "registry_reported_bytes": 1097152328
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9229",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9229:latest",
+      "registry_manifest_digest": "sha256:63840fa7b92aa018cc9d45344872ebb241951a44c05c41fa8e6a038c28ffb6b8",
+      "amd64_manifest_digest": "sha256:ed5fc083440abc3c9219eec2102bc4977540194d914db119f9e4d758ef8ff24a",
+      "registry_reported_bytes": 1099533232
+    },
+    {
+      "instance_id": "django__django-11880",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11880:latest",
+      "registry_manifest_digest": "sha256:ce0c7fd75b0fe8d24632c627359c5e2bc1a4922843d889870931f80f2f98c311",
+      "amd64_manifest_digest": "sha256:4488d53c0526d3a4e679753beb3501d70253a1f687274ef9c2ed07e7225dde6c",
+      "registry_reported_bytes": 1152923689
+    },
+    {
+      "instance_id": "django__django-12143",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12143:latest",
+      "registry_manifest_digest": "sha256:c1b074e08c0e181ade18e1469908457b35de6ca5a2029dba393e32ba100aef0f",
+      "amd64_manifest_digest": "sha256:8560b59ed16f4d585a141e68373ef49755094a589a160fb88cce7623804268a4",
+      "registry_reported_bytes": 1153346242
+    },
+    {
+      "instance_id": "django__django-12155",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12155:latest",
+      "registry_manifest_digest": "sha256:e039b37f460b99a0cf541ea6759ac5a31e94ce9959d3755d99775792421e44dc",
+      "amd64_manifest_digest": "sha256:a0cc9fcdd67a7a030e947521e227ba9bfc37df118525c0d68ae3ed0d620ca07a",
+      "registry_reported_bytes": 1153364259
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9367",
+      "local_cached": true,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9367:latest",
+      "registry_manifest_digest": "sha256:ce3659548ac712a11d3c45a9c47fe8010de0e3a83efee229dcdd9646069dfec1",
+      "amd64_manifest_digest": "sha256:07f0d67fa8a5b793b86769a89b557bbf5b9b256729fec040140e1b37fcedc773",
+      "registry_reported_bytes": 1100119854
+    },
+    {
+      "instance_id": "django__django-12209",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12209:latest",
+      "registry_manifest_digest": "sha256:6781fe1de96e581d385aa7797a580274023f7a625a891f1ecd751ff303e6a256",
+      "amd64_manifest_digest": "sha256:e9e412759e0ecb8ae19fd06581a8e2a131745eea271d99b052eca76af566041a",
+      "registry_reported_bytes": 1154443394
+    },
+    {
+      "instance_id": "django__django-11951",
+      "local_cached": true,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11951:latest",
+      "registry_manifest_digest": "sha256:8b2b92376eadf6ac500e6c79798d18e46c506a76508fbb4417fde91c29cf1239",
+      "amd64_manifest_digest": "sha256:8b4902b984cbdb3c6dc3301a1ed8f34cd2ea3ab30ba06a32d5c41cd7274baffd",
+      "registry_reported_bytes": 1153181044
+    },
+    {
+      "instance_id": "django__django-12193",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12193:latest",
+      "registry_manifest_digest": "sha256:f2f0882bb350e6c7b073569444629513f4c0bd6821f3610d243a26b2b4eae26e",
+      "amd64_manifest_digest": "sha256:0e4343c4247f2f7488a3bc852a6caaef5223a4bb150433e3806a3518f3152d3b",
+      "registry_reported_bytes": 1154326884
+    },
+    {
+      "instance_id": "django__django-12276",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12276:latest",
+      "registry_manifest_digest": "sha256:903942f778dbcf0b61c62031697c4a5f3655569c11c84204bdfa307b844ec2ae",
+      "amd64_manifest_digest": "sha256:001fcf705cb514b1a4e6af9dad2a21a657127cf92fe00c1ef8200706d44186c9",
+      "registry_reported_bytes": 1154418269
+    },
+    {
+      "instance_id": "django__django-12304",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12304:latest",
+      "registry_manifest_digest": "sha256:46ad662e0ab1ab9417a26ceae392395f255634a054c25faf0fcfcd43aa52702c",
+      "amd64_manifest_digest": "sha256:86ac7281087965cb576c24e92ee6a71fecaf952948e388583949dac9935c5f7a",
+      "registry_reported_bytes": 1154551160
+    },
+    {
+      "instance_id": "django__django-9296",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-9296:latest",
+      "registry_manifest_digest": "sha256:c63adb629b6dafbb12aa506778e27b02f06387c64df3f2cebaba47f9b5f26150",
+      "amd64_manifest_digest": "sha256:cc101dee36124adc65a6571f8c897e0c1b4c7578ddc5d4a975104b9a0a3e5117",
+      "registry_reported_bytes": 1153273915
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10466",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10466:latest",
+      "registry_manifest_digest": "sha256:c02edca2a92a3353e0780dcd1b1a3ba2349245d7aa4e5fc6bc8f2a5327691452",
+      "amd64_manifest_digest": "sha256:5e02ca1446f493cdc9f47dd51a3e5c6d630a471a5b8eacdb85e2abedc95797e9",
+      "registry_reported_bytes": 1104319237
+    },
+    {
+      "instance_id": "django__django-11999",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11999:latest",
+      "registry_manifest_digest": "sha256:3c7e7f035f611b17f2093ee6409364bc28cce8b9bac266b9590db762d197607e",
+      "amd64_manifest_digest": "sha256:05dd1cd2aab112f4913de86ae083226419113b6aec969b8650f4ef45e34f2ddd",
+      "registry_reported_bytes": 1153868462
+    },
+    {
+      "instance_id": "django__django-12039",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12039:latest",
+      "registry_manifest_digest": "sha256:bd4dc8875144f8f3e0b8866575f9ab564b51774a71fa954cb8e4a9d34484a90c",
+      "amd64_manifest_digest": "sha256:a164db2152541c12d3a6ceae98645510ab3485cc753705da70f204515818f1ff",
+      "registry_reported_bytes": 1153114945
+    },
+    {
+      "instance_id": "django__django-12273",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12273:latest",
+      "registry_manifest_digest": "sha256:ceea46664eff0d02e627ee17f0f9230e5c20a1debf3eb1ca2b53c7ca476210aa",
+      "amd64_manifest_digest": "sha256:75717e276e656f42bd46e25c4fd2b2754bef012539030ecb89bfe426031ce0bd",
+      "registry_reported_bytes": 1154470132
+    },
+    {
+      "instance_id": "django__django-12325",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12325:latest",
+      "registry_manifest_digest": "sha256:9c15847c3fd7d269adf15233bd7034bb9e0491e45fefe87454013d2bdf7a6efe",
+      "amd64_manifest_digest": "sha256:ca93e7820abb93c4fdb4a567ab05b6625b6474ac437c9f2d9bd706093d7de9df",
+      "registry_reported_bytes": 1154472696
+    },
+    {
+      "instance_id": "django__django-12406",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12406:latest",
+      "registry_manifest_digest": "sha256:7d3be89e5d04229df52612992c678659e25a38908edbb465f9b83549a54d9294",
+      "amd64_manifest_digest": "sha256:02ec0a94d6eab4aa692f0a416af266132edd6d5264f184813f95bbb818d81914",
+      "registry_reported_bytes": 1154799157
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10673",
+      "local_cached": true,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10673:latest",
+      "registry_manifest_digest": "sha256:4654890cc32945f5021445040ad6f2efd3b651f1c9efe679021d3b3da5375eb0",
+      "amd64_manifest_digest": "sha256:e9ab2c706df3ab326ac6012a28b77c404f79f13ffad38a37753315866163454a",
+      "registry_reported_bytes": 1105601508
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-11510",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-11510:latest",
+      "registry_manifest_digest": "sha256:01bf15e77e5d0f6988c8107bf81a5091900228ca0d160bf677d9b07dd17e1a0f",
+      "amd64_manifest_digest": "sha256:1bd9c81ce4a2db48c547237d0ac9899cab789eca65a0b9e9221b76724023cb13",
+      "registry_reported_bytes": 1187873472
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7757",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7757:latest",
+      "registry_manifest_digest": "sha256:afdd76c95a6cc039f5f2aa49ba8f66da3eddc72a0c11bbc32666b99496f237c0",
+      "amd64_manifest_digest": "sha256:e8b26974c86962c84c5364b8112db0c095dc1782461809248b7e4abdc69a311a",
+      "registry_reported_bytes": 1097754862
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8265",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8265:latest",
+      "registry_manifest_digest": "sha256:31ac9a0a59b7e065eb7c662d9f5f8e4f33c7ba1bdf40913cfbdad93c576a9f4d",
+      "amd64_manifest_digest": "sha256:1d1718be41f71e422403f4cabb1267cb91ae85f2b3caf0b39ebb9f751653f721",
+      "registry_reported_bytes": 1098440505
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8551",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8551:latest",
+      "registry_manifest_digest": "sha256:7ef3c26b1f402bcae518faddbdea62e12496a29b8d49b582a752874df1a5cd57",
+      "amd64_manifest_digest": "sha256:0cee9556d1dab507161552be8bd82757ee1a835fe660a832a6df023bcb60b67d",
+      "registry_reported_bytes": 1097199232
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8638",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8638:latest",
+      "registry_manifest_digest": "sha256:704547bd5fff87b0485309ce562e5df09edb84525569d72e5786c14c6c8a772c",
+      "amd64_manifest_digest": "sha256:3f2d3335613ab578fc026ddf8cda2a835e8f0f24ba6c0605e53241ec518bf78a",
+      "registry_reported_bytes": 1097567085
+    },
+    {
+      "instance_id": "django__django-11815",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11815:latest",
+      "registry_manifest_digest": "sha256:19b66392c9872e6d07b331b0ed59466c3e6c3588bc4cdd89f56f8767dc774f8a",
+      "amd64_manifest_digest": "sha256:940abc2df3158ff37de107233680f637536b96cae7bfce51b633f7e5212a5d5e",
+      "registry_reported_bytes": 1153611422
+    },
+    {
+      "instance_id": "django__django-11885",
+      "local_cached": true,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11885:latest",
+      "registry_manifest_digest": "sha256:dcc7a94bc42733bb59e7ce45a83e7df1f203ae55ad570a1a1f098c438c5f5ca2",
+      "amd64_manifest_digest": "sha256:4a0f8c7fbcfa5101ffa2ba697c2a75aa58174acff3a286a81b0807a8395a46fc",
+      "registry_reported_bytes": 1153045920
+    },
+    {
+      "instance_id": "django__django-12708",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12708:latest",
+      "registry_manifest_digest": "sha256:3722a130f618602e5636c8c7ddd821550e2c2462b569907c4140fc162e24671e",
+      "amd64_manifest_digest": "sha256:5f920ccf13410e9fbc43b9e3a83e2b876f5a28d6b0db5369b428552320567b7d",
+      "registry_reported_bytes": 1156105629
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7590",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7590:latest",
+      "registry_manifest_digest": "sha256:5c86dab7120b83b3bdb4af86743a3910da328029ed92183477fe9865ea76cb2f",
+      "amd64_manifest_digest": "sha256:1518e4ea72ffff0ec1dddd3713ac9a99cd87ca225cdcb01ee5f34c12acb6d31c",
+      "registry_reported_bytes": 1097420074
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7985",
+      "local_cached": true,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7985:latest",
+      "registry_manifest_digest": "sha256:c82a2b449cb7709d069a6bf6a623ca8063ebdbbce3ded5ce6a066d24ac3816c1",
+      "amd64_manifest_digest": "sha256:2579905496e0d250cb9e930c01d4b7c6949797df936758047b52a6693ea97dfe",
+      "registry_reported_bytes": 1098076956
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "local_cached": true,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8056:latest",
+      "registry_manifest_digest": "sha256:c5d72616211c546700776a1d7c2aceac6cb602518faa5f9d46b87a2701d71111",
+      "amd64_manifest_digest": "sha256:9aad173b3a0e6f2311dc780764262d5c2592639408f8a38a5aaa65f50f8f7888",
+      "registry_reported_bytes": 1098261375
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9461",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9461:latest",
+      "registry_manifest_digest": "sha256:5927ba1f035f87117341343035f83150ab5a57fbdbaf49db13a36b809baaa8c7",
+      "amd64_manifest_digest": "sha256:7002375c0d6c01c893097a1214c94186f573b15d71d3ead09f50e0d5002deee0",
+      "registry_reported_bytes": 1100701679
+    },
+    {
+      "instance_id": "django__django-11964",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11964:latest",
+      "registry_manifest_digest": "sha256:098474801410af7303f0814d0d8557791ca2f55e455e5db766c3b3d0a9826df2",
+      "amd64_manifest_digest": "sha256:a3d3a631f68fe44d05fc86f526fa25dfdccb611600baa46459558f674af48dae",
+      "registry_reported_bytes": 1153868707
+    },
+    {
+      "instance_id": "django__django-12308",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12308:latest",
+      "registry_manifest_digest": "sha256:6250d2a608d52b82cd4eb03eb33082bb9927397c01876025499430b782cce9a6",
+      "amd64_manifest_digest": "sha256:748bcffc9cb391f94983dcccfbd753f4ad34d948f2d6a0f06d359ad29a674fcc",
+      "registry_reported_bytes": 1156598777
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10323:latest",
+      "registry_manifest_digest": "sha256:b27e055730cb8a826e4e2cf0503d03c6770d537ab29cb6df8caa93ef5db51e8f",
+      "amd64_manifest_digest": "sha256:30b09bb22c96bc3aeb3de19069452b4363805718e28bca5aa1e6199676243959",
+      "registry_reported_bytes": 1104921330
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10435",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10435:latest",
+      "registry_manifest_digest": "sha256:30d33734839d5f49cb85de2ef78d99a2c8869693b72c9abeb4d999bf1ffc830f",
+      "amd64_manifest_digest": "sha256:385e2304cfac060d2c858befb76c826f6aa93374ee5847cdfb87c374d17bb441",
+      "registry_reported_bytes": 1104038287
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8269",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8269:latest",
+      "registry_manifest_digest": "sha256:463ca25b904e464131cad1b7cb3f9e5f1db830967fd1d9aa1526fd44c7bfc997",
+      "amd64_manifest_digest": "sha256:a1f5a3dcde6461a718cbb0140c383c05671dec90b570502cc02e746ff76fa320",
+      "registry_reported_bytes": 1098416376
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9230",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9230:latest",
+      "registry_manifest_digest": "sha256:2a18fa57b69c646bf0e1916f1df157a62de80ca8b55325738f9c9eeff9c38c86",
+      "amd64_manifest_digest": "sha256:036fb5014ef0054831e7218af5addb8957f527fe4a01bf6d4b6e1eebfdd4fca1",
+      "registry_reported_bytes": 1099538443
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9281",
+      "local_cached": false,
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9281:latest",
+      "registry_manifest_digest": "sha256:08c9e293bbc73d548670319b2d37ef8eef6bf528b995959f361159c505355f2d",
+      "amd64_manifest_digest": "sha256:8cbe4bae14c379cc165a78e85f7651fd253123cf7b05b2a95b14708948ffcd28",
+      "registry_reported_bytes": 1099706876
+    }
+  ]
+}

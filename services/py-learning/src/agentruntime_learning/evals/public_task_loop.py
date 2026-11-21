@@ -19,6 +19,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from agentruntime_learning.evals.public_cohorts import facts, sha
+
 MAX_BYTES = 4 * 1024 * 1024
 MAX_FILES = 1024
 MAX_DIRECTORIES = 512
@@ -162,6 +164,22 @@ def project_report(data: Any, digest: str) -> dict[str, Any]:
     # source_sha256 above always identifies the report bytes, so keep both meanings.
     if "code_sha256" not in row and isinstance(data.get("source_sha256"), str) and re.fullmatch(r"[0-9a-f]{64}", data["source_sha256"]):
         row["code_sha256"] = data["source_sha256"]
+    selection = _mapping(data.get("selection"))
+    confirmed, draft = row["labels_confirmed"], row["labels_draft"]
+    labeled = confirmed + draft if confirmed is not None and draft is not None else None
+    population = _count(selection.get("population_count"))
+    selected = _count(selection.get("selected_count"))
+    documented = (selection.get("method") == "predefined_split" and selected is not None
+                  and population is not None and selected <= population and selected == labeled)
+    row["selection_info"] = facts(
+        evaluation["name"], "predefined_split" if documented else "historical_unrecorded", "task-loop report",
+        "按传入评测集预标的 dev / holdout 标签取题；题数包含任务和独立评审用例，任务中的轮次不另算。"
+        if documented else "报告记录了划分标签；更早的筛选规则和总池未记录。题数按已记录标签汇总。",
+        "Select by the supplied set’s predefined dev / holdout labels; count tasks and standalone reviewer samples, not their rounds."
+        if documented else "The report records the split label, not the original pool or earlier filters. Counts come from reported labels.",
+        split=split, population_count=population if documented else None, selected_count=labeled,
+        cohort_sha256=sha(selection.get("cohort_sha256")) if documented else sha(data.get("selection_sha256")),
+        version=version)
     return row
 
 

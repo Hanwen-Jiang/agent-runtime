@@ -1,0 +1,556 @@
+{
+  "checked_at_utc": "2026-11-21T11:48:28.710698+00:00",
+  "free_bytes": 61310332928,
+  "rows": [
+    {
+      "at": "2026-11-21T11:36:24.782954+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11790:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:061b5e37b0dfc15512b9604c843618b47aece8e603d08d0926c3990e0e9b3ac4",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11790@sha256:061b5e37b0dfc15512b9604c843618b47aece8e603d08d0926c3990e0e9b3ac4"
+      ],
+      "size": 1153052608,
+      "free_bytes": 79270948864
+    },
+    {
+      "at": "2026-11-21T11:36:34.027956+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12050:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:34773901589784072af940b29697018dc17b32e37b4ff135a153c99ac2c38dec",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12050@sha256:34773901589784072af940b29697018dc17b32e37b4ff135a153c99ac2c38dec"
+      ],
+      "size": 1153285110,
+      "free_bytes": 79024586752
+    },
+    {
+      "at": "2026-11-21T11:36:34.113701+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12262:latest",
+      "status": "already_cached",
+      "digest_matches": true,
+      "local_id": "sha256:23c0777e08a37bd0643f7638eaca9c57d1ee16fca79b6312b8d6de7fd1b5e7da",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12262@sha256:23c0777e08a37bd0643f7638eaca9c57d1ee16fca79b6312b8d6de7fd1b5e7da"
+      ],
+      "size": 1154514736
+    },
+    {
+      "at": "2026-11-21T11:36:44.364494+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12713:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:cc6a38b67ce149e7db25db27dfd0075a3c28e4b85bc17c46f2606a3558a970eb",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12713@sha256:cc6a38b67ce149e7db25db27dfd0075a3c28e4b85bc17c46f2606a3558a970eb"
+      ],
+      "size": 1155219947,
+      "free_bytes": 78774636544
+    },
+    {
+      "at": "2026-11-21T11:37:34.211062+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8475:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:36012a43df40098aa0e7027c9ae1f14d4ffde426e09b695bfe0b395f853fa4fa",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8475@sha256:36012a43df40098aa0e7027c9ae1f14d4ffde426e09b695bfe0b395f853fa4fa"
+      ],
+      "size": 1095409086,
+      "free_bytes": 76738146304
+    },
+    {
+      "at": "2026-11-21T11:38:19.305337+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8721:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:8f02afdb324767a2e56b7940569ea822cfa58c3c1f0ef9a910162d21cf52c3f5",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8721@sha256:8f02afdb324767a2e56b7940569ea822cfa58c3c1f0ef9a910162d21cf52c3f5"
+      ],
+      "size": 1097784485,
+      "free_bytes": 73471778816
+    },
+    {
+      "at": "2026-11-21T11:38:23.523473+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9320:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:0dd7b74de29c5734fbcd2fb9ab5295f610b5b281bd2fdd87e9c3c1d3f272f28a",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9320@sha256:0dd7b74de29c5734fbcd2fb9ab5295f610b5b281bd2fdd87e9c3c1d3f272f28a"
+      ],
+      "size": 1099981345,
+      "free_bytes": 73214619648
+    },
+    {
+      "at": "2026-11-21T11:38:28.217326+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9698:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:38120cc331db6bb9d962101a6795a515d56c8a4ace9983f17afede39fd926d5b",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9698@sha256:38120cc331db6bb9d962101a6795a515d56c8a4ace9983f17afede39fd926d5b"
+      ],
+      "size": 1102196267,
+      "free_bytes": 72956456960
+    },
+    {
+      "at": "2026-11-21T11:39:14.367031+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11848:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:08eac9219e5d4b15b445fde26c587157a0ad8a2d9209e4b1e266259edf51bb4b",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11848@sha256:08eac9219e5d4b15b445fde26c587157a0ad8a2d9209e4b1e266259edf51bb4b"
+      ],
+      "size": 1153786822,
+      "free_bytes": 70116478976
+    },
+    {
+      "at": "2026-11-21T11:39:22.782976+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12774:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:c3d0148636ca1fc2170212ba6cc2c3c2df470ccca9e2e6b755447e3e51abd9f6",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12774@sha256:c3d0148636ca1fc2170212ba6cc2c3c2df470ccca9e2e6b755447e3e51abd9f6"
+      ],
+      "size": 1155519475,
+      "free_bytes": 69822980096
+    },
+    {
+      "at": "2026-11-21T11:39:26.556737+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7748:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:572d11650dea6831a1c81bb31ed468c49370f607b9af7dd762b16283c47bbd27",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7748@sha256:572d11650dea6831a1c81bb31ed468c49370f607b9af7dd762b16283c47bbd27"
+      ],
+      "size": 1097734091,
+      "free_bytes": 69718163456
+    },
+    {
+      "at": "2026-11-21T11:39:30.820003+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8035:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:8f0c620e13fade585f0be2ed8f9d394319c63f33729e2fe4780360dca7871c19",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8035@sha256:8f0c620e13fade585f0be2ed8f9d394319c63f33729e2fe4780360dca7871c19"
+      ],
+      "size": 1094871113,
+      "free_bytes": 69525409792
+    },
+    {
+      "at": "2026-11-21T11:40:15.925667+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8548:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:2a068d5390185b7b54da95f749fab5fc9e3bcfc4c182a4132d6cf57207d6385a",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8548@sha256:2a068d5390185b7b54da95f749fab5fc9e3bcfc4c182a4132d6cf57207d6385a"
+      ],
+      "size": 1097159598,
+      "free_bytes": 67056664576
+    },
+    {
+      "at": "2026-11-21T11:40:20.344444+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9229:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:63840fa7b92aa018cc9d45344872ebb241951a44c05c41fa8e6a038c28ffb6b8",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9229@sha256:63840fa7b92aa018cc9d45344872ebb241951a44c05c41fa8e6a038c28ffb6b8"
+      ],
+      "size": 1099540502,
+      "free_bytes": 66919456768
+    },
+    {
+      "at": "2026-11-21T11:40:29.436140+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11880:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:ce0c7fd75b0fe8d24632c627359c5e2bc1a4922843d889870931f80f2f98c311",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11880@sha256:ce0c7fd75b0fe8d24632c627359c5e2bc1a4922843d889870931f80f2f98c311"
+      ],
+      "size": 1152930954,
+      "free_bytes": 66601054208
+    },
+    {
+      "at": "2026-11-21T11:40:38.081656+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12143:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:c1b074e08c0e181ade18e1469908457b35de6ca5a2029dba393e32ba100aef0f",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12143@sha256:c1b074e08c0e181ade18e1469908457b35de6ca5a2029dba393e32ba100aef0f"
+      ],
+      "size": 1153353510,
+      "free_bytes": 66342739968
+    },
+    {
+      "at": "2026-11-21T11:40:47.123138+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12155:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:e039b37f460b99a0cf541ea6759ac5a31e94ce9959d3755d99775792421e44dc",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12155@sha256:e039b37f460b99a0cf541ea6759ac5a31e94ce9959d3755d99775792421e44dc"
+      ],
+      "size": 1153371527,
+      "free_bytes": 65985134592
+    },
+    {
+      "at": "2026-11-21T11:40:47.216990+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9367:latest",
+      "status": "already_cached",
+      "digest_matches": true,
+      "local_id": "sha256:ce3659548ac712a11d3c45a9c47fe8010de0e3a83efee229dcdd9646069dfec1",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9367@sha256:ce3659548ac712a11d3c45a9c47fe8010de0e3a83efee229dcdd9646069dfec1"
+      ],
+      "size": 1100127122
+    },
+    {
+      "at": "2026-11-21T11:40:55.970564+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12209:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:6781fe1de96e581d385aa7797a580274023f7a625a891f1ecd751ff303e6a256",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12209@sha256:6781fe1de96e581d385aa7797a580274023f7a625a891f1ecd751ff303e6a256"
+      ],
+      "size": 1154450662,
+      "free_bytes": 65687789568
+    },
+    {
+      "at": "2026-11-21T11:40:56.056246+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11951:latest",
+      "status": "already_cached",
+      "digest_matches": true,
+      "local_id": "sha256:8b2b92376eadf6ac500e6c79798d18e46c506a76508fbb4417fde91c29cf1239",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11951@sha256:8b2b92376eadf6ac500e6c79798d18e46c506a76508fbb4417fde91c29cf1239"
+      ],
+      "size": 1153188312
+    },
+    {
+      "at": "2026-11-21T11:41:04.119482+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12193:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:f2f0882bb350e6c7b073569444629513f4c0bd6821f3610d243a26b2b4eae26e",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12193@sha256:f2f0882bb350e6c7b073569444629513f4c0bd6821f3610d243a26b2b4eae26e"
+      ],
+      "size": 1154334152,
+      "free_bytes": 65391349760
+    },
+    {
+      "at": "2026-11-21T11:41:11.530670+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12276:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:903942f778dbcf0b61c62031697c4a5f3655569c11c84204bdfa307b844ec2ae",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12276@sha256:903942f778dbcf0b61c62031697c4a5f3655569c11c84204bdfa307b844ec2ae"
+      ],
+      "size": 1154425537,
+      "free_bytes": 65098719232
+    },
+    {
+      "at": "2026-11-21T11:41:19.744223+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12304:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:46ad662e0ab1ab9417a26ceae392395f255634a054c25faf0fcfcd43aa52702c",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12304@sha256:46ad662e0ab1ab9417a26ceae392395f255634a054c25faf0fcfcd43aa52702c"
+      ],
+      "size": 1154558428,
+      "free_bytes": 64793014272
+    },
+    {
+      "at": "2026-11-21T11:41:28.797011+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-9296:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:c63adb629b6dafbb12aa506778e27b02f06387c64df3f2cebaba47f9b5f26150",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-9296@sha256:c63adb629b6dafbb12aa506778e27b02f06387c64df3f2cebaba47f9b5f26150"
+      ],
+      "size": 1153281183,
+      "free_bytes": 64348532736
+    },
+    {
+      "at": "2026-11-21T11:42:16.870702+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10466:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:c02edca2a92a3353e0780dcd1b1a3ba2349245d7aa4e5fc6bc8f2a5327691452",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10466@sha256:c02edca2a92a3353e0780dcd1b1a3ba2349245d7aa4e5fc6bc8f2a5327691452"
+      ],
+      "size": 1104326507,
+      "free_bytes": 61603147776
+    },
+    {
+      "at": "2026-11-21T11:42:26.625964+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11999:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:3c7e7f035f611b17f2093ee6409364bc28cce8b9bac266b9590db762d197607e",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11999@sha256:3c7e7f035f611b17f2093ee6409364bc28cce8b9bac266b9590db762d197607e"
+      ],
+      "size": 1153875731,
+      "free_bytes": 61279739904
+    },
+    {
+      "at": "2026-11-21T11:42:34.850714+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12039:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:bd4dc8875144f8f3e0b8866575f9ab564b51774a71fa954cb8e4a9d34484a90c",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12039@sha256:bd4dc8875144f8f3e0b8866575f9ab564b51774a71fa954cb8e4a9d34484a90c"
+      ],
+      "size": 1153122212,
+      "free_bytes": 61029273600
+    },
+    {
+      "at": "2026-11-21T11:42:42.414376+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12273:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:ceea46664eff0d02e627ee17f0f9230e5c20a1debf3eb1ca2b53c7ca476210aa",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12273@sha256:ceea46664eff0d02e627ee17f0f9230e5c20a1debf3eb1ca2b53c7ca476210aa"
+      ],
+      "size": 1154477400,
+      "free_bytes": 60728168448
+    },
+    {
+      "at": "2026-11-21T11:42:50.209999+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12325:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:9c15847c3fd7d269adf15233bd7034bb9e0491e45fefe87454013d2bdf7a6efe",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12325@sha256:9c15847c3fd7d269adf15233bd7034bb9e0491e45fefe87454013d2bdf7a6efe"
+      ],
+      "size": 1154479964,
+      "free_bytes": 60305788928
+    },
+    {
+      "at": "2026-11-21T11:42:57.766307+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12406:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:7d3be89e5d04229df52612992c678659e25a38908edbb465f9b83549a54d9294",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12406@sha256:7d3be89e5d04229df52612992c678659e25a38908edbb465f9b83549a54d9294"
+      ],
+      "size": 1154806425,
+      "free_bytes": 59887943680
+    },
+    {
+      "at": "2026-11-21T11:42:57.844644+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10673:latest",
+      "status": "already_cached",
+      "digest_matches": true,
+      "local_id": "sha256:4654890cc32945f5021445040ad6f2efd3b651f1c9efe679021d3b3da5375eb0",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10673@sha256:4654890cc32945f5021445040ad6f2efd3b651f1c9efe679021d3b3da5375eb0"
+      ],
+      "size": 1105608778
+    },
+    {
+      "at": "2026-11-21T11:43:49.549517+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-11510:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:01bf15e77e5d0f6988c8107bf81a5091900228ca0d160bf677d9b07dd17e1a0f",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-11510@sha256:01bf15e77e5d0f6988c8107bf81a5091900228ca0d160bf677d9b07dd17e1a0f"
+      ],
+      "size": 1187880743,
+      "free_bytes": 61960499200
+    },
+    {
+      "at": "2026-11-21T11:43:55.158478+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7757:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:afdd76c95a6cc039f5f2aa49ba8f66da3eddc72a0c11bbc32666b99496f237c0",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7757@sha256:afdd76c95a6cc039f5f2aa49ba8f66da3eddc72a0c11bbc32666b99496f237c0"
+      ],
+      "size": 1097762132,
+      "free_bytes": 64164925440
+    },
+    {
+      "at": "2026-11-21T11:43:59.582772+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8265:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:31ac9a0a59b7e065eb7c662d9f5f8e4f33c7ba1bdf40913cfbdad93c576a9f4d",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8265@sha256:31ac9a0a59b7e065eb7c662d9f5f8e4f33c7ba1bdf40913cfbdad93c576a9f4d"
+      ],
+      "size": 1098447775,
+      "free_bytes": 64754098176
+    },
+    {
+      "at": "2026-11-21T11:44:04.301755+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8551:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:7ef3c26b1f402bcae518faddbdea62e12496a29b8d49b582a752874df1a5cd57",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8551@sha256:7ef3c26b1f402bcae518faddbdea62e12496a29b8d49b582a752874df1a5cd57"
+      ],
+      "size": 1097206502,
+      "free_bytes": 66222034944
+    },
+    {
+      "at": "2026-11-21T11:44:08.137648+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8638:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:704547bd5fff87b0485309ce562e5df09edb84525569d72e5786c14c6c8a772c",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8638@sha256:704547bd5fff87b0485309ce562e5df09edb84525569d72e5786c14c6c8a772c"
+      ],
+      "size": 1097574355,
+      "free_bytes": 65903038464
+    },
+    {
+      "at": "2026-11-21T11:44:17.940247+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11815:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:19b66392c9872e6d07b331b0ed59466c3e6c3588bc4cdd89f56f8767dc774f8a",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11815@sha256:19b66392c9872e6d07b331b0ed59466c3e6c3588bc4cdd89f56f8767dc774f8a"
+      ],
+      "size": 1153618691,
+      "free_bytes": 66495455232
+    },
+    {
+      "at": "2026-11-21T11:44:18.039882+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11885:latest",
+      "status": "already_cached",
+      "digest_matches": true,
+      "local_id": "sha256:dcc7a94bc42733bb59e7ce45a83e7df1f203ae55ad570a1a1f098c438c5f5ca2",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11885@sha256:dcc7a94bc42733bb59e7ce45a83e7df1f203ae55ad570a1a1f098c438c5f5ca2"
+      ],
+      "size": 1153053188
+    },
+    {
+      "at": "2026-11-21T11:44:29.211688+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12708:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:3722a130f618602e5636c8c7ddd821550e2c2462b569907c4140fc162e24671e",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12708@sha256:3722a130f618602e5636c8c7ddd821550e2c2462b569907c4140fc162e24671e"
+      ],
+      "size": 1156112898,
+      "free_bytes": 66236297216
+    },
+    {
+      "at": "2026-11-21T11:44:33.865827+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7590:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:5c86dab7120b83b3bdb4af86743a3910da328029ed92183477fe9865ea76cb2f",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7590@sha256:5c86dab7120b83b3bdb4af86743a3910da328029ed92183477fe9865ea76cb2f"
+      ],
+      "size": 1097427344,
+      "free_bytes": 66141290496
+    },
+    {
+      "at": "2026-11-21T11:44:33.947700+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7985:latest",
+      "status": "already_cached",
+      "digest_matches": true,
+      "local_id": "sha256:c82a2b449cb7709d069a6bf6a623ca8063ebdbbce3ded5ce6a066d24ac3816c1",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7985@sha256:c82a2b449cb7709d069a6bf6a623ca8063ebdbbce3ded5ce6a066d24ac3816c1"
+      ],
+      "size": 1098084226
+    },
+    {
+      "at": "2026-11-21T11:44:34.035131+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8056:latest",
+      "status": "already_cached",
+      "digest_matches": true,
+      "local_id": "sha256:c5d72616211c546700776a1d7c2aceac6cb602518faa5f9d46b87a2701d71111",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8056@sha256:c5d72616211c546700776a1d7c2aceac6cb602518faa5f9d46b87a2701d71111"
+      ],
+      "size": 1098268645
+    },
+    {
+      "at": "2026-11-21T11:44:38.853063+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9461:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:5927ba1f035f87117341343035f83150ab5a57fbdbaf49db13a36b809baaa8c7",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9461@sha256:5927ba1f035f87117341343035f83150ab5a57fbdbaf49db13a36b809baaa8c7"
+      ],
+      "size": 1100708949,
+      "free_bytes": 66034876416
+    },
+    {
+      "at": "2026-11-21T11:44:49.587924+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-11964:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:098474801410af7303f0814d0d8557791ca2f55e455e5db766c3b3d0a9826df2",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-11964@sha256:098474801410af7303f0814d0d8557791ca2f55e455e5db766c3b3d0a9826df2"
+      ],
+      "size": 1153875976,
+      "free_bytes": 65774874624
+    },
+    {
+      "at": "2026-11-21T11:45:00.135012+00:00",
+      "image": "swebench/sweb.eval.x86_64.django_1776_django-12308:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:6250d2a608d52b82cd4eb03eb33082bb9927397c01876025499430b782cce9a6",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.django_1776_django-12308@sha256:6250d2a608d52b82cd4eb03eb33082bb9927397c01876025499430b782cce9a6"
+      ],
+      "size": 1156606046,
+      "free_bytes": 65509154816
+    },
+    {
+      "at": "2026-11-21T11:45:52.379898+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10323:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:b27e055730cb8a826e4e2cf0503d03c6770d537ab29cb6df8caa93ef5db51e8f",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10323@sha256:b27e055730cb8a826e4e2cf0503d03c6770d537ab29cb6df8caa93ef5db51e8f"
+      ],
+      "size": 1104928600,
+      "free_bytes": 63591030784
+    },
+    {
+      "at": "2026-11-21T11:45:57.183928+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10435:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:30d33734839d5f49cb85de2ef78d99a2c8869693b72c9abeb4d999bf1ffc830f",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10435@sha256:30d33734839d5f49cb85de2ef78d99a2c8869693b72c9abeb4d999bf1ffc830f"
+      ],
+      "size": 1104045557,
+      "free_bytes": 63474790400
+    },
+    {
+      "at": "2026-11-21T11:46:01.567530+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8269:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:463ca25b904e464131cad1b7cb3f9e5f1db830967fd1d9aa1526fd44c7bfc997",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8269@sha256:463ca25b904e464131cad1b7cb3f9e5f1db830967fd1d9aa1526fd44c7bfc997"
+      ],
+      "size": 1098423646,
+      "free_bytes": 63376928768
+    },
+    {
+      "at": "2026-11-21T11:46:06.566764+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9230:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:2a18fa57b69c646bf0e1916f1df157a62de80ca8b55325738f9c9eeff9c38c86",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9230@sha256:2a18fa57b69c646bf0e1916f1df157a62de80ca8b55325738f9c9eeff9c38c86"
+      ],
+      "size": 1099545713,
+      "free_bytes": 63275036672
+    },
+    {
+      "at": "2026-11-21T11:46:10.504764+00:00",
+      "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9281:latest",
+      "status": "fetched_by_digest",
+      "local_id": "sha256:08c9e293bbc73d548670319b2d37ef8eef6bf528b995959f361159c505355f2d",
+      "repo_digests": [
+        "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9281@sha256:08c9e293bbc73d548670319b2d37ef8eef6bf528b995959f361159c505355f2d"
+      ],
+      "size": 1099714146,
+      "free_bytes": 63172993024
+    }
+  ]
+}

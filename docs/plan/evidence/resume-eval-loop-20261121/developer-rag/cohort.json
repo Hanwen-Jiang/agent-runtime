@@ -1,0 +1,196 @@
+{
+  "frozen_at_utc": "2026-11-21T10:41:18.572098+00:00",
+  "authorship": "assistant-authored maintainer questions and single source anchors; not human-validated",
+  "repository_revisions": {
+    "agent-runtime": "da58416909fc54f02519de95706df01d9bbd1701",
+    "coding-agent": "0cd2c890d214a53a3768568b7d80103eb0fd7341"
+  },
+  "scoring": "per-case file Hit@8 and evidence line covered by any of the first eight returned chunks. Frozen on-disk before scoring.",
+  "primary_metric": "evidence_hit_at_8",
+  "variants": [
+    "stock LexicalRetriever TF-IDF",
+    "same retriever plus camelCase and snake_case identifier subwords in corpus and query"
+  ],
+  "questions": [
+    {
+      "id": "d1",
+      "group": "webhook inbox",
+      "split": "development",
+      "question": "同一个 GitHub webhook delivery 被投递两次时，服务端靠哪条数据库写入去重？",
+      "repository": "coding-agent",
+      "gold_file": "internal/github/inbox.go",
+      "evidence_line": 276,
+      "anchor": "func (s *Service) insert"
+    },
+    {
+      "id": "d2",
+      "group": "session event replay",
+      "split": "development",
+      "question": "会话刷新后没有快照时，从哪个 HTTP handler 按游标批量取回运行事件？",
+      "repository": "coding-agent",
+      "gold_file": "internal/server/session_events.go",
+      "evidence_line": 26,
+      "anchor": "func (s *Server) handleSessionEvents"
+    },
+    {
+      "id": "d3",
+      "group": "shared cache startup",
+      "split": "development",
+      "question": "多副本部署启动时在哪里连接共享 Valkey 缓存？连接失败时服务如何处理？",
+      "repository": "coding-agent",
+      "gold_file": "cmd/coding-web/cache.go",
+      "evidence_line": 21,
+      "anchor": "func newSharedCache"
+    },
+    {
+      "id": "d4",
+      "group": "model accounting",
+      "split": "development",
+      "question": "模型返回 usage 之后，哪个服务把实际调用费用与事先预留的模型预算结算？",
+      "repository": "agent-runtime",
+      "gold_file": "services/go-model-gateway/internal/gateway/budget.go",
+      "evidence_line": 135,
+      "anchor": "func (s *Server) settle"
+    },
+    {
+      "id": "d5",
+      "group": "context reconstruction",
+      "split": "development",
+      "question": "Worker 压缩上下文后若关键事实探针失败，哪个分支会把原文恢复进上下文？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-worker/src/agentruntime_worker/context/builder.py",
+      "evidence_line": 625,
+      "anchor": "def _restore("
+    },
+    {
+      "id": "d6",
+      "group": "profile pinning",
+      "split": "development",
+      "question": "组件评测怎样在模型调用前锁定角色的 profile，并检测实际使用的模型是否回退？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-learning/src/agentruntime_learning/capability/base.py",
+      "evidence_line": 145,
+      "anchor": "async def generate("
+    },
+    {
+      "id": "v1",
+      "group": "oauth PKCE",
+      "split": "validation",
+      "question": "OAuth 登录时用于 PKCE 的 code_verifier 有多长，随机内容在哪里生成？",
+      "repository": "coding-agent",
+      "gold_file": "internal/server/oauth.go",
+      "evidence_line": 167,
+      "anchor": "func (p *Provider) newPKCEVerifier"
+    },
+    {
+      "id": "v2",
+      "group": "draft PR delivery",
+      "split": "validation",
+      "question": "从界面发布工作区改动为草稿 PR 时，哪段服务逻辑区分推送分支的授权和创建 PR 的身份？",
+      "repository": "coding-agent",
+      "gold_file": "internal/server/publish.go",
+      "evidence_line": 44,
+      "anchor": "func (s *Server) handlePublish"
+    },
+    {
+      "id": "v3",
+      "group": "document preview",
+      "split": "validation",
+      "question": "文档预览里用户框选 PDF 某一页的一块区域后，前端怎样把 page_index 和 bbox 作为引用选择器传回？",
+      "repository": "coding-agent",
+      "gold_file": "ui/chat/file-preview.tsx",
+      "evidence_line": 24,
+      "anchor": "export function anchorSelector"
+    },
+    {
+      "id": "v4",
+      "group": "scheduled trigger",
+      "split": "validation",
+      "question": "定时任务漏跑后，如何根据 cron 表达式计算最近一次应触发的时间？",
+      "repository": "coding-agent",
+      "gold_file": "internal/entry/schedule/cron.go",
+      "evidence_line": 105,
+      "anchor": "func (c Cron) Latest"
+    },
+    {
+      "id": "v5",
+      "group": "email attachments",
+      "split": "validation",
+      "question": "邮件正文的 MIME 附件流在哪读出，单次附件大小上限超过后如何返回错误？",
+      "repository": "coding-agent",
+      "gold_file": "internal/entry/email/message.go",
+      "evidence_line": 232,
+      "anchor": "io.LimitReader(r, MaxAttachmentBytes+1)"
+    },
+    {
+      "id": "v6",
+      "group": "multi-repo workspace",
+      "split": "validation",
+      "question": "一个会话里有多个仓库时，服务如何把会话切换到指定仓库对应的工作区状态？",
+      "repository": "coding-agent",
+      "gold_file": "internal/server/workspace_repos.go",
+      "evidence_line": 43,
+      "anchor": "func projectRepoSession"
+    },
+    {
+      "id": "v7",
+      "group": "sandbox persistence",
+      "split": "validation",
+      "question": "沙箱归档恢复时，哪个持久层操作领取 archive lease，避免同时归档同一资源？",
+      "repository": "agent-runtime",
+      "gold_file": "services/go-sandbox-service/internal/ledger/archive_lease.go",
+      "evidence_line": 16,
+      "anchor": "func (l *Ledger) ClaimArchive"
+    },
+    {
+      "id": "v8",
+      "group": "environment build",
+      "split": "validation",
+      "question": "从仓库内容自动识别沙箱环境定义时，负责查找 devcontainer 配置的入口在哪里？",
+      "repository": "agent-runtime",
+      "gold_file": "services/go-sandbox-service/internal/envbuild/detect.go",
+      "evidence_line": 135,
+      "anchor": "func Detect("
+    },
+    {
+      "id": "v9",
+      "group": "symbol retrieval",
+      "split": "validation",
+      "question": "代码混合检索后，在哪个排序环节优先返回与查询符号匹配的代码片段？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-memory/src/agentruntime_memory/retrieval/engine.py",
+      "evidence_line": 51,
+      "anchor": "def _prioritize_symbol"
+    },
+    {
+      "id": "v10",
+      "group": "SWE sampling",
+      "split": "validation",
+      "question": "SWE-bench 回归如何在按仓库分配配额后按难度取样，同时应用种子和排除清单？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-learning/src/agentruntime_learning/benchmarks/swebench.py",
+      "evidence_line": 154,
+      "anchor": "def stratified("
+    },
+    {
+      "id": "v11",
+      "group": "repeated evaluations",
+      "split": "validation",
+      "question": "同一评测重复多轮时，哪段代码汇总每轮的中位数与波动范围？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-learning/src/agentruntime_learning/evals/repeat.py",
+      "evidence_line": 114,
+      "anchor": "def aggregate("
+    },
+    {
+      "id": "v12",
+      "group": "review policy",
+      "split": "validation",
+      "question": "Reviewer 决定是否接受一个 verdict 时，如何结合已经执行的结果计算最低强制处置？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-worker/src/agentruntime_worker/reviewer/rules.py",
+      "evidence_line": 129,
+      "anchor": "def floor("
+    }
+  ]
+}

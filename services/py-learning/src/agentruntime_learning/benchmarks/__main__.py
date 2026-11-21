@@ -27,7 +27,7 @@ import json
 import os
 import re
 import sys
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -170,7 +170,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 @contextlib.contextmanager
-def _live(run_id: str, model: str, *, suite: str = sb.SUITE, split: str = SPLIT) -> Iterator[Any]:
+def _live(run_id: str, model: str, *, suite: str = sb.SUITE, split: str = SPLIT,
+          selection: Mapping[str, Any] | None = None) -> Iterator[Any]:
     """设了 OTEL_EXPORTER_OTLP_ENDPOINT 时边跑边发进度（评测看板，第 11.16 节），结束时导出；没设时为 None。"""
     if not os.environ.get(OTLP_ENV, "").strip():
         yield None
@@ -180,7 +181,8 @@ def _live(run_id: str, model: str, *, suite: str = sb.SUITE, split: str = SPLIT)
     from agentruntime_learning.evals.live import BlockingLive, LiveRun
 
     provider = telemetry_from_env(TELEMETRY_SERVICE)
-    live = BlockingLive(LiveRun(provider.bind_platform(TELEMETRY_PURPOSE), suite=suite, subject=model or "agent-runtime", split=split, run_id=run_id, model=model))
+    live = BlockingLive(LiveRun(provider.bind_platform(TELEMETRY_PURPOSE), suite=suite, subject=model or "agent-runtime",
+                                split=split, run_id=run_id, model=model, selection=selection))
     try:
         yield live
     finally:
@@ -191,6 +193,33 @@ def _live(run_id: str, model: str, *, suite: str = sb.SUITE, split: str = SPLIT)
 
 def _lines(path: Path | None) -> list[str]:
     return [line.strip() for line in path.read_text("utf-8").splitlines() if line.strip()] if path else []
+
+
+def _live_cohort(suite: str, manifest: Mapping[str, Any]) -> dict[str, Any]:
+    """Project the same selector as the public archive, keeping metric label cardinality bounded."""
+    ids = manifest.get("instance_ids")
+    if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+        return {}
+    selection = manifest.get("selection") or {}
+    if not isinstance(selection, dict):
+        return {}
+    if suite == sb.SUITE:
+        from agentruntime_learning.evals.public_benchmarks import project_swe_selection
+
+        info = project_swe_selection(selection, ids, {}, "unknown", selection.get("instances_sha256"))
+    else:
+        from agentruntime_learning.evals.public_terminalbench import _selection_info
+
+        info = _selection_info({"selection": selection, "dataset_sha256": manifest.get("dataset_sha256")}, ids, "", None)
+    keys = ("dataset", "method", "selected_count", "population_count", "eligible_count", "seed", "excluded_count")
+    return {key: info[key] for key in keys if key in info}
+
+
+def _run_cohort(suite: str, out: Path, ids: list[str], selection: dict[str, Any]) -> dict[str, Any]:
+    path = out / "run.json"
+    # The runners retain their original selection manifest when a run is resumed.
+    manifest = json.loads(path.read_text("utf-8")) if path.exists() else {"instance_ids": ids, "selection": selection}
+    return _live_cohort(suite, manifest)
 
 
 def _terminalbench(args: argparse.Namespace) -> int:
@@ -206,7 +235,8 @@ def _terminalbench(args: argparse.Namespace) -> int:
         return 0
     if args.command == "grade":
         manifest = json.loads((args.out / "run.json").read_text("utf-8"))
-        with _live(str(manifest["run_id"]), str((manifest.get("settings") or {}).get("model_name") or ""), suite=tb.SUITE, split="2.0") as live:
+        with _live(str(manifest["run_id"]), str((manifest.get("settings") or {}).get("model_name") or ""), suite=tb.SUITE,
+                   split="2.0", selection=_live_cohort(tb.SUITE, manifest)) as live:
             summary = tb.grade(args.out, args.tasks, max_workers=args.max_workers, live=live)
         print(f"判分完成：判了 {summary['graded']} 个，解决 {len(summary['resolved_ids'])} 个；报告用 … terminalbench report --out {args.out}")
         return 0
@@ -223,7 +253,12 @@ def _terminalbench(args: argparse.Namespace) -> int:
     if only is not None and not only:
         print(f"{args.out}/prepared 里没有可移植的任务：先跑 terminalbench prepare（要 Docker）", file=sys.stderr)
         return 2
-    chosen = tb.select(tasks, limit=args.limit, seed=args.seed, ids=_lines(args.ids), difficulties=args.difficulty, categories=args.category, only=only)
+    ids = _lines(args.ids)
+    if args.ids and not ids:
+        print("选题清单为空", file=sys.stderr)
+        return 2
+    eligible = tasks if ids else tb.select(tasks, difficulties=args.difficulty, categories=args.category, only=only)
+    chosen = tb.select(eligible, limit=args.limit, seed=args.seed, ids=ids)
     run_id = args.run_id or re.sub(r"[^A-Za-z0-9._-]+", "-", args.out.absolute().name).strip("-.") or "run"
     hosts = tuple(h.strip().lower() for h in args.network_hosts.split(",") if h.strip())
     try:
@@ -236,9 +271,11 @@ def _terminalbench(args: argparse.Namespace) -> int:
     except ValueError as err:
         print(str(err), file=sys.stderr)
         return 2
-    selection = {"tasks_dir": str(args.tasks), **({"ids_file": str(args.ids)} if args.ids else {"limit": args.limit, "seed": args.seed}),
-                 "difficulties": sorted(args.difficulty), "categories": sorted(args.category), "portable_only": only is not None}
-    with _live(run_id, args.model_name, suite=tb.SUITE, split="2.0") as live:
+    selection = {"tasks_dir": str(args.tasks), "population_count": len(tasks), "eligible_count": len(eligible),
+                 **({"ids_file": str(args.ids)} if args.ids else {"limit": args.limit, "seed": args.seed,
+                    "difficulties": sorted(args.difficulty), "categories": sorted(args.category), "portable_only": only is not None})}
+    with _live(run_id, args.model_name, suite=tb.SUITE, split="2.0",
+               selection=_run_cohort(tb.SUITE, args.out, [t.instance_id for t in chosen], selection)) as live:
         summary = tb.run(RuntimeClient(args.task_api, token), chosen, args.out, settings, selection=selection, live=live)
     print(f"跑完 {summary.finished} 个（这次提交 {summary.submitted} 个 Task），没跑 {summary.not_run} 个，出错 {summary.errors} 个；已花 ${summary.spent_usd:.4f}")
     print(f"判分：… terminalbench grade --tasks {args.tasks} --out {args.out}（要 Docker）")
@@ -269,12 +306,23 @@ def _run(args: argparse.Namespace) -> int:
         concurrency=args.concurrency, task_timeout_s=args.task_timeout_min * 60, hints=args.hints, environment=args.environment,
         repo_url_template=args.repo_url_template, workspace_path=args.workspace_path, keep_workspaces=args.keep_workspaces, poll_s=args.poll_s,
     )
+    excluded, excluded_repos = set(exclude_ids), set(args.exclude_repo)
+    dataset_hash = hashlib.sha256(args.instances.read_bytes()).hexdigest()
     selection = {
-        "instances_file": str(args.instances), "instances_sha256": hashlib.sha256(args.instances.read_bytes()).hexdigest(),
+        "instances_file": str(args.instances), "instances_sha256": dataset_hash,
+        "population_count": len(instances),
+        "eligible_count": sum(i.instance_id not in excluded and i.repo not in excluded_repos for i in instances),
         **({"ids_file": str(args.ids), "ids": True} if args.ids else {"limit": args.limit, "seed": args.seed}),
         **({"stratified": True, "exclude_repos": sorted(args.exclude_repo), "excluded_ids": len(exclude_ids)} if args.stratify else {}),
     }
-    with _live(run_id, args.model_name) as live:
+    metadata = args.instances.with_name(args.instances.name + ".source.json")
+    if metadata.is_file():
+        provenance = json.loads(metadata.read_text("utf-8"))
+        if (isinstance(provenance, dict) and provenance.get("huggingface_rows") is True
+                and provenance.get("instances_sha256") == dataset_hash):
+            selection.update(dataset_name=provenance.get("dataset"), dataset_split=provenance.get("split"))
+    with _live(run_id, args.model_name,
+               selection=_run_cohort(sb.SUITE, args.out, [i.instance_id for i in chosen], selection)) as live:
         summary = sb.run(RuntimeClient(args.task_api, token), chosen, args.out, settings, selection=selection, live=live)
     print(
         f"跑完 {summary.finished} 题（这次提交 {summary.submitted} 个 Task），没跑 {summary.not_run} 题，出错 {summary.errors} 题；"
@@ -373,7 +421,8 @@ def main(argv: list[str] | None = None) -> int:
             return _run(args)
         if args.command == "grade":
             manifest = json.loads((args.out / "run.json").read_text("utf-8"))
-            with _live(str(manifest["run_id"]), str((manifest.get("settings") or {}).get("model_name") or "")) as live:
+            with _live(str(manifest["run_id"]), str((manifest.get("settings") or {}).get("model_name") or ""),
+                       selection=_live_cohort(sb.SUITE, manifest)) as live:
                 graded = sb.grade(args.out, python=args.python, max_workers=args.max_workers, modal=args.modal, live=live)
             print(f"判分完成：解决 {len(graded.get('resolved_ids') or [])} 题；报告用 … swebench report --out {args.out}")
             return 0

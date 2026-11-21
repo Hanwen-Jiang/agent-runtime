@@ -109,7 +109,47 @@ def _resources(raw: Any) -> dict[str, Any]:
     return result
 
 
-def project_terminalbench_summary(raw: Any, source_sha256: str | None = None) -> dict[str, Any]:
+def _selection_info(raw: dict[str, Any], ids: list[str], cohort_hash: str, manifest: Any) -> dict[str, Any]:
+    """A verified list is not itself evidence that a random/explicit selector was used."""
+    selection = raw.get("selection")
+    source = "public-summary.json"
+    if not isinstance(selection, dict) and isinstance(manifest, dict):
+        if (manifest.get("benchmark") == "terminal-bench" and manifest.get("run_id") == raw["run_id"]
+                and manifest.get("dataset_sha256") == raw.get("dataset_sha256")
+                and manifest.get("instance_ids") == ids and isinstance(manifest.get("selection"), dict)):
+            selection = manifest["selection"]
+            source = "public-summary.json + run.json"
+    selection = selection if isinstance(selection, dict) else {}
+    info = {
+        "dataset": "Terminal-Bench 2.0", "split": "2.0", "selected_count": len(ids),
+        "method": "unrecorded", "selection_ids": ids, "source": source,
+        "dataset_sha256": raw["dataset_sha256"], "cohort_sha256": cohort_hash,
+        "reference_url": "https://github.com/laude-institute/terminal-bench-2",
+    }
+    total, eligible = selection.get("population_count"), selection.get("eligible_count")
+    if type(total) is int and len(ids) <= total <= 1_000_000:
+        info["population_count"] = total
+        if type(eligible) is int and len(ids) <= eligible <= total:
+            info.update(eligible_count=eligible, excluded_count=total - eligible)
+    if selection.get("ids_file"):
+        # select(ids=...) takes precedence over sampling, portability and category filters.
+        info["method"] = "explicit_ids"
+    elif type(selection.get("limit")) is int and selection["limit"] >= len(ids):
+        if info.get("eligible_count") == len(ids):
+            info["method"] = "full" if total == len(ids) else "filtered_all"
+        elif type(selection.get("seed")) is int:
+            info.update(method="seeded_random", seed=selection["seed"])
+        for key, pattern in (("difficulties", r"easy|medium|hard"),
+                             ("categories", r"[a-z][a-z0-9-]{0,63}")):
+            values = selection.get(key)
+            if isinstance(values, list) and len(values) <= 64 and all(isinstance(v, str) and re.fullmatch(pattern, v) for v in values):
+                info[key] = values
+        if type(selection.get("portable_only")) is bool:
+            info["portable_only"] = selection["portable_only"]
+    return info
+
+
+def project_terminalbench_summary(raw: Any, source_sha256: str | None = None, *, manifest: Any = None) -> dict[str, Any]:
     if not isinstance(raw, dict) or raw.get("schema") != "terminalbench-summary-v1" or raw.get("benchmark") != "terminal-bench":
         raise ValueError("unsupported Terminal-Bench public summary")
     if raw.get("protocol") not in PROTOCOLS or raw.get("dataset_version") != "2.0":
@@ -199,6 +239,7 @@ def project_terminalbench_summary(raw: Any, source_sha256: str | None = None) ->
     if rate is not None:
         scores["resolved_rate"] = rate
     digest = _hash(source_sha256) if source_sha256 is not None else hashlib.sha256(json.dumps(raw, sort_keys=True, allow_nan=False).encode()).hexdigest()
+    cohort_hash = hashlib.sha256(json.dumps(sorted(ids), separators=(",", ":")).encode()).hexdigest()
     result = {
         "run_id": rid, "suite": "terminal-bench", "benchmark": "terminal-bench",
         "subject": "agent-runtime" if model.startswith("agent-runtime") else model,
@@ -214,7 +255,7 @@ def project_terminalbench_summary(raw: Any, source_sha256: str | None = None) ->
         "complete": complete, "graded_complete": complete, "finished": True, "status": "finished" if complete else "partial",
         "outcomes": dict(counts), "cases": [by_id[i] for i in ids],
         "carried_count": sum(row.get("source_attempt", {}).get("carried", False) and row["outcome"] in ("resolved", "unresolved") for row in by_id.values()),
-        "cohort_sha256": hashlib.sha256(json.dumps(sorted(ids), separators=(",", ":")).encode()).hexdigest(),
+        "cohort_sha256": cohort_hash, "selection_info": _selection_info(raw, ids, cohort_hash, manifest),
         "dataset_version": _identifier(raw.get("dataset_version")), "dataset_sha256": _hash(raw.get("dataset_sha256")),
         "protocol": raw["protocol"], "cost_scope": "cohort_tasks" if scope == "cohort" else scope,
         "cost_usd": cost["actual_cost_usd"], **cost,
@@ -283,14 +324,14 @@ class PublicTerminalBenchSource:
         finally:
             os.close(handle)
 
-    def _read(self, name: str) -> bytes:
+    def _read(self, name: str, filename: str = "public-summary.json") -> bytes:
         assert self.root is not None
         handle = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         try:
             child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=handle)
             os.close(handle)
             handle = child
-            fd = os.open("public-summary.json", os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=handle)
+            fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=handle)
             with os.fdopen(fd, "rb") as stream:
                 info = os.fstat(stream.fileno())
                 if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_BYTES:
@@ -324,7 +365,15 @@ class PublicTerminalBenchSource:
                         content = self._read(name)
                         raw = json.loads(content, object_pairs_hook=_strict_object,
                                          parse_constant=lambda _: (_ for _ in ()).throw(ValueError("nonfinite JSON")))
-                        row = project_terminalbench_summary(raw, hashlib.sha256(content).hexdigest())
+                        manifest = None
+                        if isinstance(raw, dict) and "selection" not in raw:
+                            try:
+                                manifest = json.loads(self._read(name, "run.json"), object_pairs_hook=_strict_object)
+                            except (OSError, ValueError, RecursionError):
+                                # Older public-only archives omit the private run manifest.
+                                # The independently valid summary still identifies its exact tasks.
+                                pass
+                        row = project_terminalbench_summary(raw, hashlib.sha256(content).hexdigest(), manifest=manifest)
                         if any(other != name and item["run_id"] == row["run_id"] for other, item in good.items()):
                             raise ValueError("duplicate published run identity")
                         good[name] = row

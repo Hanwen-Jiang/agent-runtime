@@ -1,0 +1,18 @@
+{
+  "a": {
+    "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+    "registry_scope": "platform",
+    "registry_revision": "v2",
+    "registry_document_sha256": "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a",
+    "actual_usd_micros": 76,
+    "tier": "strong@medium"
+  },
+  "b": {
+    "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+    "registry_scope": "platform",
+    "registry_revision": "v2",
+    "registry_document_sha256": "2e51d53adc1322bd370f592e9596d9ed845441d84176fb24e73963a47d3b236a",
+    "actual_usd_micros": 76,
+    "tier": "strong@medium"
+  }
+}

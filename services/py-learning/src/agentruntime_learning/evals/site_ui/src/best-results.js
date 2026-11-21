@@ -23,10 +23,65 @@ export function scoreForRun(scores = {}, suite) {
   ).find((key) => hasScore(scores, key));
   return key ? [key, scores[key]] : undefined;
 }
-export function bestResults(runs = []) {
+export function archiveCandidates(reports = {}) {
+  const rows = [];
+  for (const r of reports.runs || []) {
+    if (
+      r.valid !== true ||
+      !Number.isFinite(r.task_total) ||
+      r.task_total <= 0 ||
+      !Number.isFinite(r.task_pass) ||
+      r.task_pass < 0 ||
+      r.task_pass > r.task_total
+    )
+      continue;
+    rows.push({
+      selection_info: r.selection_info,
+      run_id: `archive:${r.group}:${r.created_at}`,
+      suite: "task-loop",
+      split: r.split || "",
+      status: "finished",
+      valid: true,
+      planned: r.task_total,
+      done: r.task_total,
+      model: r.subject || r.group,
+      updated_at: r.created_at,
+      scores: { success_rate: r.task_pass / r.task_total },
+      archive: true,
+      archive_query: r.group || r.subject || "",
+    });
+  }
+  for (const r of reports.benchmarks || []) {
+    if (
+      r.complete !== true ||
+      !Number.isFinite(r.rate) ||
+      r.rate < 0 ||
+      r.rate > 1
+    )
+      continue;
+    rows.push({
+      selection_info: r.selection_info,
+      run_id: r.run_id,
+      suite: "swebench",
+      split: "verified",
+      status: "finished",
+      valid: true,
+      planned: r.selected,
+      done: r.selected,
+      model: r.model || r.run_id,
+      scores: { resolved_rate: r.rate },
+      archive: true,
+      archive_query: "",
+    });
+  }
+  return rows;
+}
+export function bestResults(runs = [], reports = {}, exclusions = []) {
+  const excluded = new Set((exclusions || []).map((r) => `${r.suite}\0${r.run_id}`));
   const groups = new Map();
-  for (const run of runs) {
-    if (run.status !== "finished" || run.valid === false) continue;
+  for (const run of [...runs, ...archiveCandidates(reports)]) {
+    if (run.status !== "finished" || run.valid === false || run.execution_valid === false || excluded.has(`${run.suite}\0${run.run_id}`)) continue;
+    if (run.source === "terminalbench_artifacts" && (run.complete !== true || run.graded_complete !== true || run.infra_failed > 0 || run.grading_errors > 0)) continue;
     const group = `${run.suite}\0${run.split || ""}`;
     if (!groups.has(group)) groups.set(group, []);
     groups.get(group).push(run);

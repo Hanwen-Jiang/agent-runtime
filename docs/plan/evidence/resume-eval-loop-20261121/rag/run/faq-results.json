@@ -1,0 +1,35 @@
+{
+  "dev": {
+    "baseline": {
+      "queries": 38,
+      "hit_at_1": 16,
+      "hit_at_3": 25,
+      "hit_at_8": 30,
+      "mrr_at_8": 0.5548245614035088
+    },
+    "module-title": {
+      "queries": 38,
+      "hit_at_1": 20,
+      "hit_at_3": 26,
+      "hit_at_8": 30,
+      "mrr_at_8": 0.6162280701754386
+    }
+  },
+  "validation": {
+    "baseline": {
+      "queries": 45,
+      "hit_at_1": 15,
+      "hit_at_3": 28,
+      "hit_at_8": 34,
+      "mrr_at_8": 0.48058201058201055
+    },
+    "module-title": {
+      "queries": 45,
+      "hit_at_1": 21,
+      "hit_at_3": 32,
+      "hit_at_8": 36,
+      "mrr_at_8": 0.5898412698412698
+    }
+  },
+  "passed": true
+}

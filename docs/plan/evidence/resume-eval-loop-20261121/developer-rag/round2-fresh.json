@@ -1,0 +1,342 @@
+{
+  "split": "fresh",
+  "cohort_sha256": "f46ec22f1d2efbd4470d3a5107cc2a27d599dd6fed6917eee159e1b6c850f968",
+  "source_files": 652,
+  "source_chunks": 3302,
+  "symbol_spans": 9717,
+  "cases": 10,
+  "variants": {
+    "round1_source_scope": {
+      "file_hits": 5,
+      "evidence_hits": 1,
+      "rows": [
+        {
+          "id": "h1",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/go-sandbox-agent/cmd/sandbox-agent/dumpable_other.go:1-6",
+            "coding-agent/internal/server/server.go:1-64",
+            "agent-runtime/libs/rs-sys/src/lib.rs:1-64",
+            "coding-agent/cmd/coding-web/main.go:1-64",
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:1-64",
+            "coding-agent/cmd/coding-web/main.go:145-208",
+            "agent-runtime/libs/go-core/dev/localsandbox/localsandbox.go:1-64",
+            "agent-runtime/libs/py-core/src/agentruntime_core/dev/tool_driver.py:1-64"
+          ]
+        },
+        {
+          "id": "h2",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/libs/go-core/adapters/openaicompat/fakeopenai/fakeopenai.go:49-112",
+            "agent-runtime/services/rs-sandbox-agent/src/http.rs:1-64",
+            "coding-agent/internal/server/snapshot.go:1-60",
+            "agent-runtime/services/go-model-gateway/internal/gateway/gateway.go:1-64",
+            "agent-runtime/services/rs-fc-manager/src/http.rs:1-64",
+            "agent-runtime/libs/go-core/adapters/openaicompat/openaicompat.go:49-75",
+            "agent-runtime/libs/go-core/adapters/postgres/postgres.go:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/prompts.py:1-64"
+          ]
+        },
+        {
+          "id": "h3",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:49-112",
+            "coding-agent/internal/server/githubtrigger.go:1-64",
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/benchmarks/terminalbench.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workflows/patches.py:49-112",
+            "agent-runtime/services/go-model-gateway/internal/gateway/gateway.go:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/prompts.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workflows/patches.py:1-64"
+          ]
+        },
+        {
+          "id": "h4",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "coding-agent/internal/server/accounts.go:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workspace/operations.py:1-64",
+            "coding-agent/internal/server/accounts.go:769-832",
+            "coding-agent/cmd/coding-web/main.go:1-64",
+            "agent-runtime/services/go-sandbox-service/internal/broker/readpath.go:1-64",
+            "coding-agent/internal/server/runtime_errors.go:1-64",
+            "coding-agent/internal/server/messages_en.go:193-256",
+            "coding-agent/internal/server/messages_en.go:49-112"
+          ]
+        },
+        {
+          "id": "h5",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/libs/go-core/adapters/temporal/claimcheck/claimcheck.go:1-64",
+            "agent-runtime/libs/py-core/src/agentruntime_core/adapters/claim_check.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/executor/node_executor.py:97-160",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/activities/types.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/replay.py:1-64",
+            "agent-runtime/libs/py-core/src/agentruntime_core/providers/durable_engine.py:1-64",
+            "agent-runtime/libs/py-core/src/agentruntime_core/adapters/claim_check.py:193-256",
+            "agent-runtime/libs/go-core/adapters/temporal/temporal.go:1-64"
+          ]
+        },
+        {
+          "id": "h6",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:49-112",
+            "agent-runtime/services/go-sandbox-service/internal/envbuild/detect.go:1-64",
+            "agent-runtime/services/go-pkg-mirror/internal/mirror/mirror.go:1-64",
+            "agent-runtime/libs/go-core/providers/sandbox/sandbox.go:1-64",
+            "agent-runtime/services/go-sandbox-service/internal/envbuild/oci.go:1-64",
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:1-64",
+            "agent-runtime/services/go-sandbox-service/internal/broker/credentials.go:1-64",
+            "agent-runtime/services/go-pkg-mirror/internal/mirror/mirror.go:49-112"
+          ]
+        },
+        {
+          "id": "h7",
+          "file_hit8": 1,
+          "evidence_hit8": 1,
+          "evidence_rank": 7,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/__init__.py:1-12",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/__init__.py:1-6",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/evaluation.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/cases.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/__main__.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/context.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/gates.py:1-64",
+            "agent-runtime/services/py-memory/src/agentruntime_memory/eval_retriever.py:1-64"
+          ]
+        },
+        {
+          "id": "h8",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/repeat.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/__init__.py:1-12",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/context.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/repeat.py:49-112",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/rag.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/runner.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/gates.py:1-64",
+            "agent-runtime/services/py-memory/src/agentruntime_memory/eval_retriever.py:1-64"
+          ]
+        },
+        {
+          "id": "h9",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/judging.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/capability/evals/_judged.py:1-64",
+            "agent-runtime/services/go-model-gateway/internal/gateway/gateway.go:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/benchmarks/terminalbench.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/reviewer.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/__init__.py:1-10",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/runner.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/planner/__init__.py:1-16"
+          ]
+        },
+        {
+          "id": "h10",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/live.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workflows/task.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workflows/patches.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/executor/tool_loop.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/activities/types.py:97-160",
+            "agent-runtime/libs/rs-sys/src/lib.rs:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/stream.py:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workflows/stage_runner.py:241-304"
+          ]
+        }
+      ]
+    },
+    "symbols_top16": {
+      "file_hits": 6,
+      "evidence_hits": 2,
+      "rows": [
+        {
+          "id": "h1",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "coding-agent/internal/server/store.go:185-193",
+            "coding-agent/internal/server/store.go:174-188",
+            "agent-runtime/libs/go-core/dev/localsandbox/localsandbox.go:1-39",
+            "agent-runtime/libs/py-core/src/agentruntime_core/dev/tool_driver.py:1-34",
+            "agent-runtime/libs/go-core/dev/filesecrets/filesecrets.go:1-40",
+            "agent-runtime/libs/rs-sys/src/lib.rs:1-30",
+            "agent-runtime/libs/rs-sys/src/lib.rs:27-90",
+            "agent-runtime/libs/go-core/dev/localsandbox/localsandbox.go:36-52"
+          ]
+        },
+        {
+          "id": "h2",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "coding-agent/internal/server/routes.go:189-199",
+            "coding-agent/internal/server/routes.go:196-220",
+            "agent-runtime/services/rs-sandbox-agent/src/http.rs:1-30",
+            "agent-runtime/services/rs-fc-manager/src/http.rs:1-22",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/summary.py:1-16",
+            "coding-agent/internal/server/snapshot.go:1-17",
+            "coding-agent/internal/web/web.go:1-28",
+            "agent-runtime/libs/go-core/adapters/openaicompat/fakeopenai/fakeopenai.go:51-74"
+          ]
+        },
+        {
+          "id": "h3",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:84-101",
+            "coding-agent/internal/server/githubtrigger.go:1-46",
+            "coding-agent/internal/server/snapshot.go:1-17",
+            "coding-agent/internal/server/envhandoff.go:1-29",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/prompts.py:53-80",
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:1-36",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/benchmarks/terminalbench.py:1-64",
+            "coding-agent/internal/server/githubtrigger.go:43-78"
+          ]
+        },
+        {
+          "id": "h4",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "coding-agent/internal/server/providers.go:1-19",
+            "coding-agent/internal/server/providers.go:16-26",
+            "coding-agent/internal/server/accounts.go:1-32",
+            "coding-agent/internal/server/accounts.go:775-822",
+            "coding-agent/internal/server/messages_en.go:53-116",
+            "coding-agent/internal/server/runtime_errors.go:2-65",
+            "agent-runtime/libs/py-core/src/agentruntime_core/providers/durable_engine.py:1-31",
+            "agent-runtime/libs/go-core/providers/durable/durable.go:1-25"
+          ]
+        },
+        {
+          "id": "h5",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/libs/go-core/adapters/temporal/claimcheck/claimcheck.go:1-64",
+            "agent-runtime/libs/py-core/src/agentruntime_core/adapters/claim_check.py:1-64",
+            "agent-runtime/libs/py-core/src/agentruntime_core/adapters/claim_check.py:201-214",
+            "agent-runtime/libs/go-core/adapters/temporal/claimcheck/claimcheck.go:459-465",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/replay.py:1-28",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/activities/types.py:1-13",
+            "agent-runtime/libs/py-core/src/agentruntime_core/providers/durable_engine.py:1-31",
+            "agent-runtime/libs/go-core/providers/objectstore/objectstore.go:1-32"
+          ]
+        },
+        {
+          "id": "h6",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/go-pkg-mirror/internal/mirror/mirror.go:1-51",
+            "agent-runtime/services/go-sandbox-service/internal/broker/credentials.go:1-37",
+            "agent-runtime/libs/go-core/providers/sandbox/sandbox.go:29-47",
+            "agent-runtime/services/go-sandbox-service/internal/envbuild/detect.go:1-38",
+            "agent-runtime/services/go-pkg-mirror/internal/mirror/mirror.go:87-99",
+            "agent-runtime/services/go-pkg-mirror/internal/cache/blobs.go:46-57",
+            "agent-runtime/libs/py-core/src/agentruntime_core/envcred.py:1-37",
+            "agent-runtime/services/go-sandbox-service/internal/broker/credentials.go:62-76"
+          ]
+        },
+        {
+          "id": "h7",
+          "file_hit8": 1,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/evaluation.py:1-31",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/gates.py:1-14",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/__init__.py:1-6",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/context.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/run.py:182-245",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/__init__.py:1-12",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/run.py:1-53",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/repeat.py:1-64"
+          ]
+        },
+        {
+          "id": "h8",
+          "file_hit8": 1,
+          "evidence_hit8": 1,
+          "evidence_rank": 1,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/rag.py:111-121",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/rag.py:1-38",
+            "agent-runtime/services/py-memory/src/agentruntime_memory/eval_retriever.py:1-53",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/__init__.py:1-12",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/context.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/repeat.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/__main__.py:1-61",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/runner.py:1-64"
+          ]
+        },
+        {
+          "id": "h9",
+          "file_hit8": 1,
+          "evidence_hit8": 1,
+          "evidence_rank": 3,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/judging.py:1-37",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/capability/evals/_judged.py:1-30",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/judging.py:119-136",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/capability/evals/s09.py:102-108",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/capability/evals/_judged.py:31-38",
+            "agent-runtime/services/go-model-gateway/internal/gateway/gateway.go:1-64",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/reviewer.py:42-62",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/reviewer/__init__.py:1-10"
+          ]
+        },
+        {
+          "id": "h10",
+          "file_hit8": 0,
+          "evidence_hit8": 0,
+          "evidence_rank": null,
+          "top8": [
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/live.py:1-46",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/benchmarks/__main__.py:1-49",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workflows/stage_runner.py:1855-1884",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/workflows/patches.py:1-64",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/__init__.py:1-12",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/pipeline/stream.py:1-33",
+            "agent-runtime/services/py-worker/src/agentruntime_worker/activities/types.py:121-143",
+            "agent-runtime/services/py-learning/src/agentruntime_learning/evals/live.py:52-58"
+          ]
+        }
+      ]
+    }
+  }
+}

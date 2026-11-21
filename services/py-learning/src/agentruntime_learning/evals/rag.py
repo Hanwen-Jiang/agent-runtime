@@ -44,6 +44,12 @@ class Question:
     confirmed: bool
 
 
+def question_selection(questions: Sequence[Question], *, builtin: bool = False) -> dict[str, Any]:
+    unique = len({question.id for question in questions})
+    return {"dataset": "memory-rag" if builtin else "supplied-rag-questions", "method": "supplied_cases",
+            "population_count": unique, "selected_count": unique, "source": "questions.jsonl" if builtin else "supplied questions"}
+
+
 def _jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in Path(path).read_text("utf-8").splitlines() if line.strip()]
 
@@ -122,7 +128,7 @@ def retrieval_metrics(retrieved: Sequence[str], reference: Sequence[str]) -> dic
 async def run(
     retriever: Any, corpus: Sequence[Mapping[str, str]], questions: Sequence[Question], out_dir: Path, *, top_k: int = DEFAULT_TOP_K,
     python: str | None = None, judge: frameworks.JudgeConfig | None = None, live: Any = None, bridge: Any = frameworks.run_bridge,
-    judge_gateway: Any = None, judge_profile: str = "",
+    judge_gateway: Any = None, judge_profile: str = "", builtin_dataset: bool = False,
 ) -> dict[str, Any]:
     """检索、打分，写 <out_dir>/results.jsonl 与 summary.json，返回 summary。python 为空时不跑 Ragas，只给自己算的指标。"""
     out_dir = Path(out_dir)
@@ -158,6 +164,7 @@ async def run(
         values = [r["ragas"][name] for r in rows if r.get("ragas", {}).get(name) is not None]
         means[name] = round(sum(values) / len(values), 4) if values else None
     summary = {
+        "selection_info": question_selection(questions, builtin=builtin_dataset),
         "framework": "ragas", "retriever": getattr(retriever, "name", type(retriever).__name__), "top_k": top_k, "questions": len(rows),
         "metrics": means, "ragas": "gateway" if judge_gateway is not None else "judged" if (python and judge) else "offline" if python else "skipped",
         "judge_model": (judge_profile or "a6api/claude-opus-5-5@2026-10") if judge_gateway is not None else judge.model if judge else None, "unconfirmed": [q.id for q in questions if not q.confirmed],

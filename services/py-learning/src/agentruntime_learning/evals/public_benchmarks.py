@@ -8,6 +8,7 @@ import re
 import stat
 import threading
 import time
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,13 @@ MAX_DIRECTORIES = 128
 MAX_AUDIT_BYTES = 256 * 1024
 MAX_AUDIT_RUNS = 256
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$')
+# Identity of the archived 500-task Verified export (not every file named verified.jsonl).
+VERIFIED_EXPORT = '2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52'
+PUBLIC_SWE_REPOS = frozenset({
+    'astropy/astropy', 'django/django', 'matplotlib/matplotlib', 'mwaskom/seaborn',
+    'pallets/flask', 'psf/requests', 'pydata/xarray', 'pylint-dev/pylint',
+    'pytest-dev/pytest', 'scikit-learn/scikit-learn', 'sphinx-doc/sphinx', 'sympy/sympy',
+})
 
 
 def _digest(value: Any) -> str:
@@ -31,6 +39,68 @@ def _number(value: Any) -> float | None:
 
 def _count(value: Any) -> int | None:
     return value if type(value) is int and 0 <= value <= 1_000_000 else None
+
+
+def project_swe_selection(selection: dict[str, Any], ids: list[str], rows: dict[str, dict],
+                          split: str, dataset_hash: str | None, cohort_hash: str | None = None) -> dict[str, Any]:
+    verified = dataset_hash == VERIFIED_EXPORT
+    datasets = {f'{owner}/{variant}': variant for owner in ('SWE-bench', 'princeton-nlp')
+                for variant in ('SWE-bench_Verified', 'SWE-bench_Lite', 'SWE-bench')}
+    name = selection.get('dataset_name')
+    edition = datasets.get(name) if isinstance(name, str) else None
+    if verified:
+        edition = 'SWE-bench_Verified'
+    test_split = verified or (edition and selection.get('dataset_split') == 'test')
+    total = 500 if verified else _count(selection.get('population_count'))
+    eligible = _count(selection.get('eligible_count'))
+    excluded = selection.get('exclude_repos')
+    excluded_ids = _count(selection.get('excluded_ids'))
+    if verified and eligible is None:
+        # The frozen export contains eight psf/requests tasks. Do not apply these
+        # counts to another edition or to extra explicit exclusion lists.
+        if not excluded and not excluded_ids:
+            eligible = total
+        elif excluded == ['psf/requests'] and not excluded_ids:
+            eligible = 492
+    count = len(ids)
+    method = 'unrecorded'
+    if selection.get('ids') is True or selection.get('ids_file'):
+        method = 'explicit_ids'
+    elif _count(selection.get('limit')) is not None:
+        if eligible == count:
+            method = 'full' if eligible == total else 'filtered_all'
+        elif selection.get('stratified') is True:
+            method = 'stratified_repo_difficulty'
+        elif type(selection.get('seed')) is int:
+            method = 'seeded_random'
+    info = {'dataset': edition.replace('_', ' ') if edition else 'SWE-bench',
+            'split': 'test' if test_split else split if split in ('verified','lite','test','train','dev') else 'unknown',
+            'selected_count': count, 'method': method,
+            'cohort_sha256': cohort_hash or _digest(sorted(ids)), 'source': 'run.json'}
+    if dataset_hash:
+        info['dataset_sha256'] = dataset_hash
+    if total is not None and total >= count:
+        info['population_count'] = total
+        if eligible is not None and count <= eligible <= total:
+            info.update(eligible_count=eligible, excluded_count=total - eligible)
+    if method in ('stratified_repo_difficulty', 'seeded_random') and type(selection.get('seed')) is int:
+        info['seed'] = selection['seed']
+    if isinstance(excluded, list) and all(isinstance(r, str) and r in PUBLIC_SWE_REPOS for r in excluded):
+        info['excluded_repos'] = excluded
+    if excluded_ids is not None:
+        info['excluded_id_count'] = excluded_ids
+    # Never publish private benchmark task names, prompts or an IDs-file path.
+    # A known public export and canonical issue identities together permit the list.
+    if test_split:
+        info['reference_url'] = 'https://huggingface.co/datasets/SWE-bench/' + edition
+        repos = [i.rpartition('-')[0].replace('__', '/') for i in ids]
+        if all(repo in PUBLIC_SWE_REPOS and re.fullmatch(r'[0-9]{1,10}', i.rpartition('-')[2])
+               and i.rpartition('-')[0] == repo.replace('/', '__') for i, repo in zip(ids, repos, strict=True)):
+            info.update(selection_ids=ids, repo_counts=dict(sorted(Counter(repos).items())))
+            difficulties = [rows.get(i, {}).get('difficulty') for i in ids]
+            if all(isinstance(d, str) and d in ('<15 min fix', '15 min - 1 hour', '1-4 hours', '>4 hours') for d in difficulties):
+                info['difficulty_counts'] = dict(Counter(difficulties))
+    return info
 
 
 def project_benchmark(run: dict[str, Any], report: dict[str, Any], digest: str) -> dict[str, Any] | None:
@@ -97,11 +167,13 @@ def project_benchmark(run: dict[str, Any], report: dict[str, Any], digest: str) 
         dataset_hash = None
     protocol_hash = _digest({'protocol':protocol,'dataset_sha256':dataset_hash})
     cost = _number(report.get('cost_usd'))
+    cohort_hash = _digest(sorted(ids))
     return {'run_id':run_id,'suite':'swebench','split':split,'model':model,'subject':'agent-runtime' if model.startswith('agent-runtime') else model,
             'created_at':at,'started_at':at,'selected':selected,'sample_count':selected,'resolved':resolved,'rate':rate,'complete':complete,
             'finished':complete,'status':'finished' if complete else 'incomplete','graded_complete':report.get('graded_complete') is True,
             'graded_count':sum(r.get('state')=='finished' for r in by_id.values()),'errors':errors,'not_run':not_run,
-            'cohort_sha256':_digest(sorted(ids)),'protocol':protocol,'protocol_sha256':protocol_hash,'dataset_sha256':dataset_hash,
+            'cohort_sha256':cohort_hash,'protocol':protocol,'protocol_sha256':protocol_hash,'dataset_sha256':dataset_hash,
+            'selection_info':project_swe_selection(selection, ids, by_id, split, dataset_hash, cohort_hash),
             'source_sha256':digest,'source':'benchmark_artifacts','cost_usd':cost if cost is not None and cost>=0 else None,
             'scores':{'resolved':resolved,'resolved_rate':rate}}
 

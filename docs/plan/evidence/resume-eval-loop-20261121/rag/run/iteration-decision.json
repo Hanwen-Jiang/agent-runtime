@@ -1,0 +1,15 @@
+{
+  "selection_scope": "phase=development only, n=40; capped validation results not inspected",
+  "round": 1,
+  "candidate_per_channel": 8,
+  "development_live_observations": {
+    "hybrid_hits": 32,
+    "capped_hits": 36,
+    "hybrid_recall_at_8_rounded": 0.2858,
+    "capped_recall_at_8_rounded": 0.3692,
+    "hybrid_p95_ms_rounded": 205.2,
+    "capped_p95_ms_rounded": 2012.1
+  },
+  "constraint": "Warm gRPC search P95 must be at most 2000ms; round 1 exceeded it on development.",
+  "next": "Reduce each reranker retrieval channel from 8 to 6. Freeze that choice before reading round 1 validation; repeat paired hybrid and capped inference. Do not select thresholds by validation outcomes. Sequential containers, same image and resources."
+}

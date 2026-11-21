@@ -1,0 +1,53 @@
+{
+  "date_utc": "2026-11-21T11:46:51.368548+00:00",
+  "git_base": "0cd2c890d214a53a3768568b7d80103eb0fd7341",
+  "protocol": "Chromium sessions A and B, hold A recovery while B receives resnapshot_required; first attempt per repetition",
+  "public_case_count": 1,
+  "repetitions_per_case": 5,
+  "separate_control_case_count": 4,
+  "fixture_sha256": "f582faedba2ad89032e28ad3c6f2120b3bdc35ac6d46d332a68b8f2a285f1dbe",
+  "baseline": {
+    "exit": 1,
+    "counts": {
+      "TestRecoveryOfNewSessionIsIndependentOfPreviousSession": {
+        "fail": 5
+      }
+    },
+    "observations": [
+      "map[opens:map[s1:1 s2:1] waits:map[s1:2 s2:1]]; errors=[Error: second view remained disconnected while first recovery was pending]",
+      "map[opens:map[s1:1 s2:1] waits:map[s1:2 s2:1]]; errors=[Error: second view remained disconnected while first recovery was pending]",
+      "map[opens:map[s1:1 s2:1] waits:map[s1:2 s2:1]]; errors=[Error: second view remained disconnected while first recovery was pending]",
+      "map[opens:map[s1:1 s2:1] waits:map[s1:2 s2:1]]; errors=[Error: second view remained disconnected while first recovery was pending]",
+      "map[opens:map[s1:1 s2:1] waits:map[s1:2 s2:1]]; errors=[Error: second view remained disconnected while first recovery was pending]"
+    ],
+    "source_sha256": "357125e394375c339b7ff957af02832526e064c683e2c892c5e8e015363ead20"
+  },
+  "candidate": {
+    "exit": 0,
+    "counts": {
+      "TestRecoveryOfNewSessionIsIndependentOfPreviousSession": {
+        "pass": 5
+      },
+      "TestExpiredStreamRecoversAtBatchCursorWithoutReplayingFinishedTasks": {
+        "pass": 5
+      },
+      "TestTasksTheBatchCannotServeAreReplayedInBrowser": {
+        "pass": 5
+      },
+      "TestTheFirstPaintComesFromTheSnapshotInBrowser": {
+        "pass": 5
+      },
+      "TestTruncatedSnapshotBackfillsEveryProgressGroupAfterReload": {
+        "pass": 5
+      }
+    },
+    "observations": [
+      "map[opens:map[s1:1 s2:2] waits:map[s1:2 s2:2]]; errors=[]",
+      "map[opens:map[s1:1 s2:2] waits:map[s1:2 s2:2]]; errors=[]",
+      "map[opens:map[s1:1 s2:2] waits:map[s1:2 s2:2]]; errors=[]",
+      "map[opens:map[s1:1 s2:2] waits:map[s1:2 s2:2]]; errors=[]",
+      "map[opens:map[s1:1 s2:2] waits:map[s1:2 s2:2]]; errors=[]"
+    ],
+    "source_sha256": "5c8f065382f5ef67908e9d562aaebb1c2d1668e0a416057169c41f65a1eee139"
+  }
+}

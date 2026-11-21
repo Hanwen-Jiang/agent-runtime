@@ -259,7 +259,8 @@ def _deepeval(args: argparse.Namespace) -> int:
         if args.action == "score":
             run_doc = json.loads((args.out / "run.json").read_text("utf-8"))
             subject = [m for m in args.subject_models.split(",") if m]
-            with _live(str(run_doc["run_id"]), str(run_doc.get("model_name") or ""), suite=dv.SUITE, split="deliverables") as live:
+            with _live(str(run_doc["run_id"]), str(run_doc.get("model_name") or ""), suite=dv.SUITE, split="deliverables",
+                       selection=dv.recorded_selection(run_doc)) as live:
                 if args.judge == "gateway":
                     from agentruntime_learning.evals.judging import gateway_from_env
 
@@ -275,18 +276,15 @@ def _deepeval(args: argparse.Namespace) -> int:
         if not token:
             print(f"要设环境变量 {TOKEN_ENV}（线上用 ops-token.sh 为评测租户签发的 JWT；不是 Memory 内部令牌）", file=sys.stderr)
             return 2
-        cases = dv.load_cases(root)
-        wanted = [x for x in args.ids.split(",") if x]
-        if wanted:
-            if set(wanted) - {c.instance_id for c in cases}:
-                raise ValueError("未知 DeepEval case id")
-            cases = [c for c in cases if c.instance_id in wanted]
-        run_id = args.run_id or re.sub(r"[^A-Za-z0-9._-]+", "-", args.out.absolute().name).strip("-.") or "run"
+        path = args.out / "run.json"
+        previous = json.loads(path.read_text("utf-8")) if path.is_file() else None
+        cases, selection = dv.select_cases(dv.load_cases(root), [x for x in args.ids.split(",") if x], root=root, manifest=previous)
+        run_id = args.run_id or (previous or {}).get("run_id") or re.sub(r"[^A-Za-z0-9._-]+", "-", args.out.absolute().name).strip("-.") or "run"
         settings = sb.Settings(run_id=run_id, budget_usd=args.budget_usd, task_usd_limit=args.task_usd_limit, model_name=args.model_name,
                                concurrency=args.concurrency, task_timeout_s=args.task_timeout_min * 60, environment="none")
-        with _live(run_id, args.model_name, suite=dv.SUITE, split="deliverables") as live:
+        with _live(run_id, args.model_name, suite=dv.SUITE, split="deliverables", selection=selection) as live:
             frozen = json.loads(args.freeze_config.read_text("utf-8")) if args.freeze_config else None
-            summary = dv.run(RuntimeClient(args.task_api, token), cases, args.out, settings, root=root, live=live, frozen=frozen)
+            summary = dv.run(RuntimeClient(args.task_api, token), cases, args.out, settings, root=root, live=live, frozen=frozen, selection=selection)
         print(f"跑完 {summary.finished} 条，出错 {summary.errors} 条，已花 ${summary.spent_usd:.4f}；打分：… deepeval score --out {args.out} …")
         return 1 if summary.errors else 0
     except (ValueError, OSError, RuntimeError) as exc:
@@ -299,7 +297,9 @@ def _ragas(args: argparse.Namespace) -> int:
     from agentruntime_learning.evals.live import LiveRun
 
     try:
-        corpus, questions = rag.load_set(args.eval_set or rag.DEFAULT_SET)
+        root = args.eval_set or rag.DEFAULT_SET
+        corpus, questions = rag.load_set(root)
+        selection = rag.question_selection(questions, builtin=root.resolve() == rag.DEFAULT_SET)
         retriever = rag.load_retriever(args.retriever, corpus)
         judge = frameworks.judge_config(args.judge_model, embedding_model=args.embedding_model) if args.judge_model else None
         if judge and not args.framework_python:
@@ -307,14 +307,14 @@ def _ragas(args: argparse.Namespace) -> int:
             return 2
 
         async def go(tel: Any) -> dict[str, Any]:
-            live = LiveRun(tel, suite=rag.SUITE, subject=args.retriever, split="memory-rag") if tel is not None else None
+            live = LiveRun(tel, suite=rag.SUITE, subject=args.retriever, split="memory-rag", selection=selection) if tel is not None else None
             judge_gateway = None
             if args.judge_gateway:
                 from agentruntime_learning.evals.judging import gateway_from_env
 
                 judge_gateway = gateway_from_env()
             return await rag.run(retriever, corpus, questions, args.out, top_k=args.top_k, python=args.framework_python or None, judge=judge, live=live,
-                                 judge_gateway=judge_gateway, judge_profile=args.judge_profile)
+                                 judge_gateway=judge_gateway, judge_profile=args.judge_profile, builtin_dataset=root.resolve() == rag.DEFAULT_SET)
 
         summary = asyncio.run(_with_telemetry(go))
     except (ValueError, OSError, RuntimeError, ImportError, AttributeError) as exc:

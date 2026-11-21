@@ -220,6 +220,7 @@ class ContextReport:
     runs: list[dict[str, dict[str, float]]] = field(default_factory=list)
     """每次的 metrics，保留单次结果。"""
     ranges: dict[str, dict[str, tuple[float, float]]] = field(default_factory=dict)
+    selection_info: dict[str, Any] = field(default_factory=dict)
     """策略 → 指标 → (各次的最小值, 最大值)。"""
 
     def summary(self) -> str:
@@ -256,6 +257,7 @@ class ContextReport:
             "split": self.split,
             "subject": self.subject,
             "repeat": len(self.runs),
+            "selection_info": self.selection_info,
             "metrics": self.metrics,
             "ranges": {s: {name: list(bounds) for name, bounds in r.items()} for s, r in self.ranges.items()},
             "runs": self.runs,
@@ -277,11 +279,13 @@ async def run_context_eval(
     if repeat < 1:
         raise ValueError(f"repeat 至少是 1，得到 {repeat}")
     selected = [s for s in samples if s.split == split]
+    selection = {"dataset": "context", "split": split, "source": "context report", "method": "predefined_split",
+                 "population_count": len(samples), "selected_count": len(selected)}
     runs: list[dict[str, dict[str, float]]] = []
     rows: list[dict[str, Any]] = []
     for run in range(1, repeat + 1):
         live = LiveRun(telemetry, suite=SUITE, subject=subject.name, split=split)
-        await live.planned(len(STRATEGIES) * len(selected))
+        await live.planned(len(STRATEGIES) * len(selected), selection=selection)
         metrics, run_rows = await _run_once(selected, subject, split=split, work_dir=Path(work_dir), run=run, live=live)
         for strategy in STRATEGIES:
             for name in LIVE_SCORES:
@@ -293,7 +297,8 @@ async def run_context_eval(
     ranges = {s: {name: (min(r[s][name] for r in runs), max(r[s][name] for r in runs)) for name in runs[0][s]} for s in STRATEGIES}
     full, masked = medians["full"], medians["mask_only"]
     gate = full["probe_pass_rate"] >= masked["probe_pass_rate"] and full["repeat_rate"] <= masked["repeat_rate"]
-    return ContextReport(split=split, subject=subject.name, metrics=medians, gate_passed=gate, samples=rows, runs=runs, ranges=ranges)
+    return ContextReport(split=split, subject=subject.name, metrics=medians, gate_passed=gate, samples=rows, runs=runs, ranges=ranges,
+                         selection_info=selection)
 
 
 async def _run_once(

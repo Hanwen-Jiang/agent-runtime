@@ -53,6 +53,7 @@ from agentruntime_core.providers.telemetry import Span, Telemetry
 
 from agentruntime_learning.evals.cases import Checkpoint, EvalSet, TaskCase
 from agentruntime_learning.evals.live import LiveRun
+from agentruntime_learning.evals.public_cohorts import digest
 from agentruntime_learning.evals.model import PlannerInput, ReviewerInput, Subject
 from agentruntime_learning.evals.rubric import RubricJudge
 from agentruntime_learning.evals.scoring import DecisionScore, Failure, score_planner, score_reviewer
@@ -409,7 +410,11 @@ async def _run_eval(
     models_before = _model_calls(subject)
     fallbacks = _Fallbacks()
     case_telemetry = telemetry if split != "holdout" else None  # 留出集只给汇总，不发逐条的 span
-    await live.planned(len(es.task_cases) + len(es.reviewer_samples))
+    selected_count = len(es.task_cases) + len(es.reviewer_samples)
+    await live.planned(selected_count, selection={
+        "dataset": eval_set.name, "method": "predefined_split", "selected_count": selected_count,
+        "population_count": len(eval_set.task_cases) + len(eval_set.reviewer_samples),
+    })
 
     items: list[_ItemResult] = []
     plan_scores: dict[str, DecisionScore] = {}
@@ -531,6 +536,8 @@ def _build(eval_set: EvalSet, es: EvalSet, subject: Subject, split: str, items: 
     labels = [*es.task_cases, *es.reviewer_samples]
     data: dict[str, Any] = {
         "eval_set": {"name": eval_set.name, "version": eval_set.version},
+        "selection": {"method": "predefined_split", "population_count": len(eval_set.task_cases) + len(eval_set.reviewer_samples),
+                      "selected_count": len(labels), "cohort_sha256": digest(sorted(i.id for i in labels))},
         "subject": subject.name,
         "split": split,
         "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f+0000"),

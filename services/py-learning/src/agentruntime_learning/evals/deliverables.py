@@ -107,6 +107,39 @@ def fixture_files(root: Path = DEFAULT_SET) -> list[dict[str, str]]:
     return files
 
 
+def recorded_selection(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    """Read public counts without exposing custom case IDs or changing legacy provenance."""
+    size = len(manifest["instance_ids"])
+    raw = manifest.get("selection_info")
+    if not isinstance(raw, dict) or raw.get("dataset") not in ("deliverables", "supplied-deliverables"):
+        return {"dataset": "deliverables", "method": "unrecorded", "selected_count": size, "source": "run.json"}
+    method, population = raw.get("method"), raw.get("population_count")
+    if (method not in ("supplied_cases", "explicit_ids") or raw.get("selected_count") != size
+            or type(population) is not int or population < size or (method == "supplied_cases" and population != size)):
+        raise sb.ResumeMismatch("DeepEval selection metadata disagrees with the frozen run")
+    return {"dataset": raw["dataset"], "method": method, "population_count": population, "selected_count": size, "source": "run.json"}
+
+
+def select_cases(cases: list[Case], wanted: Sequence[str], *, root: Path, manifest: Mapping[str, Any] | None) -> tuple[list[Case], dict[str, Any]]:
+    """Resume the original manifest even if additional cases are now available."""
+    by_id = {c.instance_id: c for c in cases}
+    if manifest is not None and not wanted:
+        if any(cid not in by_id for cid in manifest["instance_ids"]):
+            raise sb.ResumeMismatch("a frozen DeepEval case is missing from the supplied input")
+        return [by_id[cid] for cid in manifest["instance_ids"]], recorded_selection(manifest)
+    if set(wanted) - by_id.keys():
+        raise ValueError("未知 DeepEval case id")
+    requested = set(wanted)
+    selected = [c for c in cases if not requested or c.instance_id in requested]
+    if manifest is not None:
+        if [c.instance_id for c in selected] != manifest["instance_ids"]:
+            raise sb.ResumeMismatch("DeepEval case selection differs from the frozen run")
+        return selected, recorded_selection(manifest)
+    return selected, {"dataset": "deliverables" if root.resolve() == DEFAULT_SET else "supplied-deliverables",
+                      "method": "explicit_ids" if requested else "supplied_cases", "population_count": len(cases),
+                      "selected_count": len(selected), "source": "run.json"}
+
+
 def workspace_id(run_id: str, case: str) -> str:
     digest = hashlib.sha256(f"{run_id}\x00{case}".encode()).hexdigest()[:10]
     return f"dlv-{case[:40].strip('-')}-{digest}"
@@ -167,7 +200,7 @@ def _tool_evidence_context(rec: Mapping[str, Any]) -> list[str]:
 
 def run(
     runtime: sb.Runtime, cases: Sequence[Case], out_dir: Path, settings: sb.Settings, *, root: Path = DEFAULT_SET, live: Any = None,
-    frozen: Mapping[str, Any] | None = None,
+    frozen: Mapping[str, Any] | None = None, selection: Mapping[str, Any] | None = None,
 ) -> sb.RunSummary:
     """跑选中的用例，写 run.json 与 records/（records 里有 deliverable）；同一个输出目录再跑是续跑。"""
     out_dir = Path(out_dir)
@@ -189,7 +222,10 @@ def run(
     else:
         if any((out_dir / "records").glob("*.json")) or (out_dir / "scores").exists():
             raise sb.ResumeMismatch("output contains artifacts without a run manifest; use a new directory")
+        info = selection if selection is not None else {"dataset": "supplied-deliverables", "method": "supplied_cases",
+                                                       "population_count": len(ids), "selected_count": len(ids)}
         sb._write_text(path, json.dumps({"benchmark": "deliverables", "run_id": settings.run_id, "model_name": settings.model_name, "instance_ids": ids,
+                                         "selection_info": recorded_selection({"selection_info": info, "instance_ids": ids}),
                                          "identity": identity, "unconfirmed": [c.instance_id for c in cases if not c.confirmed]}, ensure_ascii=False, indent=2) + "\n")
     runner = _Runner(runtime, list(cases), out_dir, settings, live)  # type: ignore[arg-type]
     runner.files = files
@@ -365,6 +401,7 @@ def score(
         for row in bridge("deepeval", python, todo, judge=judge):
             sb._write_text(scores_dir / f"{row['id']}.json", json.dumps({**row, "judge_model": judge.model, "judge": "bridge"}, ensure_ascii=False, indent=2) + "\n")
     summary = summarize({p.stem: json.loads(p.read_text("utf-8")) for p in scores_dir.glob("*.json") if p.stem in ids}, len(cases))
+    summary["selection_info"] = recorded_selection(run_doc)
     summary["evidence"] = acceptance.evidence_summary(run_doc["instance_ids"], records)
     summary["subject_ledger"] = subject_ledger
     if (scores_dir / "budget-state.json").exists():
@@ -428,6 +465,7 @@ def report(out_dir: Path, *, compare: Path | None = None) -> dict[str, Any]:
            "selected": len(run_doc["instance_ids"]), "ran": sum(1 for i in run_doc["instance_ids"] if (records.get(i) or {}).get("state") == "finished"),
            "cost_usd": cost, "scores": summary, "unconfirmed": run_doc.get("unconfirmed") or []}
     rep["identity"] = run_doc.get("identity")
+    rep["selection_info"] = recorded_selection(run_doc)
     rep["evidence"] = acceptance.evidence_summary(run_doc["instance_ids"], records)
     missing_cost = [cid for cid in run_doc["instance_ids"] if (records.get(cid) or {}).get("task_id") and records[cid].get("cost_usd") is None]
     judge_cost = (judgments or {}).get("cost_usd")

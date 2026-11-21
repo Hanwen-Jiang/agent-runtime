@@ -1,0 +1,40 @@
+{
+  "k": 60,
+  "candidates": [
+    1,
+    2,
+    8
+  ],
+  "selected_source_cap": 8,
+  "dev": {
+    "1": {
+      "n": 40,
+      "hits": 32,
+      "recall_at_8": 0.29833333333333334,
+      "mrr_at_8": 0.555625,
+      "estimated_p95_ms": 234.95768080465496
+    },
+    "2": {
+      "n": 40,
+      "hits": 31,
+      "recall_at_8": 0.29333333333333333,
+      "mrr_at_8": 0.5536011904761905,
+      "estimated_p95_ms": 234.95768080465496
+    },
+    "8": {
+      "n": 40,
+      "hits": 32,
+      "recall_at_8": 0.29833333333333334,
+      "mrr_at_8": 0.5647916666666667,
+      "estimated_p95_ms": 234.95768080465496
+    }
+  },
+  "dev_hybrid": {
+    "n": 40,
+    "hits": 32,
+    "recall_at_8": 0.28583333333333333,
+    "mrr_at_8": 0.5554464285714286,
+    "estimated_p95_ms": 215.32252011820674
+  },
+  "tie_break": "keep hybrid hit count and sequential proxy P95<=2s, maximize macro recall then MRR then smaller cap; if no eligible cap use hybrid"
+}

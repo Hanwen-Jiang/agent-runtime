@@ -51,6 +51,16 @@ def enforce(
     for candidate in cell["candidates"]:
         cid = candidate["candidate"]
         mine = by_candidate.get(cid, [])
+        # Counts and a cohort fingerprint can be published even for private/holdout
+        # items; never copy individual item IDs or traces to the public score file.
+        cohorts: dict[str, list[str]] = {}
+        for name, item in sorted(item_sets.get(cid, set())):
+            cohorts.setdefault(name, []).append(item)
+        candidate["observed_cohorts"] = {
+            name: {"count": len(ids), "sha256": hashlib.sha256(json.dumps(
+                ids, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()}
+            for name, ids in cohorts.items()
+        }
         reasons = []
         if cid in mismatched:
             reasons.append("different_item_sets")

@@ -1,0 +1,7 @@
+{
+  "frozen_utc": "2026-11-21T10:46:16.422561+00:00",
+  "candidate": "symbols_top16",
+  "selection": "pick the stronger of two prespecified shortlist sizes on original six development questions. Neither beats round1 on the primary metric; run the fixed candidate on the old twelve as regression and new ten only once for diagnosis.",
+  "script_sha256": "dfae3cc13aeed5d62e4df059297740af2cabeac21cbdde028561863364722957",
+  "fresh_cohort_sha256": "f46ec22f1d2efbd4470d3a5107cc2a27d599dd6fed6917eee159e1b6c850f968"
+}

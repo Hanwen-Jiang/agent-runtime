@@ -12,6 +12,8 @@ import re
 from datetime import datetime
 from typing import Any
 
+from agentruntime_learning.evals.public_cohorts import longbench_selection
+
 SCHEMA = "longbench-context-optimization-v1"
 PROTOCOL = "longbench-context-evidence-v1"
 RETRIEVAL_PROTOCOL = "longbench-context-retrieval-v2"
@@ -235,6 +237,9 @@ def project_context_optimization(raw: bytes) -> dict[str, Any]:
             "title_zh": "LongBench v2 · " + ("原文证据聚焦 v3" if focus else "原文检索优化" if retrieval else "证据摘要优化") + " · " + split_zh,
             "title_en": "LongBench v2 · " + ("Source-evidence focus v3" if focus else "Source-retrieval optimization" if retrieval else "Evidence-summary optimization") + " · " + split_en,
             "comparison_id": identity, "runtime_revision": revision, **hashes, "protocol": protocol,
+            "selection_info": longbench_selection(report, split,
+                report.get("excluded_count") if split == "validation" and validation_frozen
+                and type(report.get("excluded_count")) is int and 0 <= report["excluded_count"] <= 1_000_000 else None),
             "dataset_name": dataset, "dataset_version": version, "model_profile": model,
             "baseline_run_id": run_ids['baseline'], "candidate_run_id": run_ids['candidate'],
             "baseline_variant": "source_retrieval" if focus else "evidence_summary" if retrieval else "baseline_full",

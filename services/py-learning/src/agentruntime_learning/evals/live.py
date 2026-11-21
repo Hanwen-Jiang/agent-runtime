@@ -56,7 +56,8 @@ def new_run_id(subject: str, now: datetime | None = None) -> str:
 class LiveRun:
     """一次评测运行在一个进程里的实时指标。"""
 
-    def __init__(self, telemetry: Telemetry | None, *, suite: str, subject: str, split: str, run_id: str | None = None, model: str = "") -> None:
+    def __init__(self, telemetry: Telemetry | None, *, suite: str, subject: str, split: str, run_id: str | None = None,
+                 model: str = "", selection: Mapping[str, Any] | None = None) -> None:
         self.telemetry = telemetry
         self.suite = suite
         self.subject = subject
@@ -64,6 +65,7 @@ class LiveRun:
         self.run_id = run_id or new_run_id(subject)
         self.process = secrets.token_hex(4)
         self.model = model
+        self.selection = selection
 
     @property
     def per_case(self) -> bool:
@@ -86,8 +88,20 @@ class LiveRun:
         except Exception as exc:  # noqa: BLE001 — 指标发不出去不影响评测
             logger.warning("评测指标 %s 没发出去（%s）", name, type(exc).__name__)
 
-    async def planned(self, total: int, *, carried: int = 0, carried_cost_usd: float = 0.0) -> None:
-        await self._send("count", PLANNED, max(0, total), self.attributes())
+    async def planned(self, total: int, *, carried: int = 0, carried_cost_usd: float = 0.0,
+                      selection: Mapping[str, Any] | None = None) -> None:
+        attrs = self.attributes()
+        if selection is None:
+            selection = self.selection
+        # Counters include repeated strategy evaluations. Publish distinct case
+        # counts separately and keep manifests/individual IDs out of telemetry.
+        if selection:
+            for field, label in (("dataset", "dataset"), ("method", "method"),
+                                 ("population_count", "population"), ("selected_count", "count"),
+                                 ("eligible_count", "eligible"), ("excluded_count", "excluded"), ("seed", "seed")):
+                if selection.get(field) is not None:
+                    attrs["eval.selection_" + label] = selection[field]
+        await self._send("count", PLANNED, max(0, total), attrs)
         if carried:
             await self._send("count", CARRIED, carried, self.attributes())
         if carried_cost_usd:

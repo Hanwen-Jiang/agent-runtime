@@ -23,6 +23,7 @@ from agentruntime_worker.activities.types import ToolLoopStep
 from agentruntime_worker.reviewer import prompts
 from agentruntime_worker.reviewer.rules import Caps, Decision, Thresholds, enforce, floor
 from agentruntime_worker.reviewer.signals import ledger
+from agentruntime_worker.workflows.verification import VerificationRecord
 
 from .reviewer_support import CATALOG, atomic, cont, done, goal, ok, rounds, stage, task_state
 from .stage_harness import StageHarness, harness  # noqa: F401 — harness 是 fixture
@@ -60,6 +61,23 @@ def test_done_without_running_anything_after_the_change_is_not_done() -> None:
     assert d.verdict["verdict"] == "continue"
     assert d.verdict["reason_code"] == "rule_done_unverified"
     assert d.raised
+
+
+@pytest.mark.parametrize(("argv", "observation", "expected"), [
+    (["pytest", "-q"], {"exit_code": 5}, "continue"),
+    (["python", "-m", "pytest", "--co", "tests"], {"exit_code": 0}, "continue"),
+    (["pytest", "--", "--co"], {"exit_code": 0}, "done"),  # after --, a positional path
+    (["/venv/bin/python3.11", "-m", "unittest"], {"exit_code": 0, "stderr": "Ran 0 tests in 0.000s\n\nOK\n"}, "continue"),
+    (["go", "test", "./..."], {"timed_out": True, "exit_code": None}, "continue"),
+    (["pytest"], {"exit_code": 1, "stderr": "1 failed"}, "done"),  # unrelated failures remain the reviewer's decision
+    (["python", "business_check.py"], {"exit_code": 5}, "done"),  # command-specific result, not unittest/pytest
+])
+def test_first_done_after_code_edit_uses_usable_command_evidence(argv, observation, expected):
+    rec = VerificationRecord()
+    rec.offered({"repo_edit": "write_reversible"})
+    rec.called("repo_edit", "write_reversible", {"path": "business.py"}, {"ok": True})
+    rec.called("shell_run", "write_reversible", {"argv": argv}, observation)
+    assert decide(done("report"), rec.as_dict()).verdict["verdict"] == expected
 
 
 def test_done_without_any_change_is_done_once_the_model_accepted_it() -> None:

@@ -1,0 +1,72 @@
+{
+  "captured_at": "2026-11-21T11:38:38Z",
+  "namespace": "k8s.io",
+  "probe_tenant": "swebench",
+  "missing_original_tags": true,
+  "before_image_error": "ImagePullBackOff / GHCR anonymous 403 for goal-f1388e13 sandbox-agent",
+  "prepull_desired": 1,
+  "prepull_ready": 1,
+  "restored": [
+    {
+      "tag": "ghcr.io/agentruntime/sandbox-agent:goal-f1388e13",
+      "index_digest": "sha256:435c1a6e346a5c6233a0cdea659c61a8742b7a73283872783c2512872f8291ec",
+      "cri_image_id": "sha256:08b126d7330c67c7b930365d1eb2cfa7e906cb827beb31beadfd16e5b5a172d4",
+      "cri_pinned": true
+    },
+    {
+      "tag": "ghcr.io/agentruntime/sandbox-go:goal-f1388e13",
+      "index_digest": "sha256:22156616dfa2ede069f446d9c297ea57da9fbfc6036e184fde8559f0d62a28b1",
+      "cri_image_id": "sha256:2812730a91ed3e261283ab613b237cb2ef297c052621320e1c59221ec9b5923f",
+      "cri_pinned": true
+    },
+    {
+      "tag": "ghcr.io/agentruntime/sandbox-node:goal-f1388e13",
+      "index_digest": "sha256:388fdd2087cfc5e551966c5170a02cefcdee648712cd5a0807b549727435e12a",
+      "cri_image_id": "sha256:6ceeada07bf0c5532eb701a5761b43163f6b2e95b22c9d7b26a497a3fd9d8de3",
+      "cri_pinned": true
+    },
+    {
+      "tag": "ghcr.io/agentruntime/sandbox-python:goal-f1388e13",
+      "index_digest": "sha256:349a234d612837a042bd7f62c4dea657111c87819e23f2141bec36754db9dd0b",
+      "cri_image_id": "sha256:a95e019304d2d19c1a5f2030f507c07a787ff63d2974aab388b98e80835e0ebf",
+      "cri_pinned": true
+    },
+    {
+      "tag": "ghcr.io/agentruntime/sandbox-universal:goal-f1388e13",
+      "index_digest": "sha256:f22e682760604845605791219c00e4edbd6a8e196cfc3f9416b9a3c0545dadfc",
+      "cri_image_id": "sha256:da8c2de93e4e89eff02b71bf588648615e8424ca4a89820052f653075e08ad06",
+      "cri_pinned": true
+    }
+  ],
+  "per_task_runtime_images": [
+    {
+      "instance": "sphinx-doc__sphinx-9367",
+      "tag": "127.0.0.1:30500/envs/swebench/env:16974e4ea1cdceb6d49551aa251ce675",
+      "cri_image_id": "sha256:f54b8b29942908f99f10774a9b2c64f2767ba096ad2c341faf4889fcc630891f",
+      "repo_digests": [
+        "127.0.0.1:30500/envs/swebench/env@sha256:04a8e3cb1ebd30fd62a2371644b40e90b0691363a2dc6cc57d9491337f03e3a7"
+      ]
+    },
+    {
+      "instance": "sphinx-doc__sphinx-8056",
+      "tag": "127.0.0.1:30500/envs/swebench/env:49859aadcc2e569be6a08e0f1a010fee",
+      "cri_image_id": "sha256:3b136e69cdb74a33d58ebd6c1fd9d24d059f4167633001f234947953530e34d0",
+      "repo_digests": [
+        "127.0.0.1:30500/envs/swebench/env@sha256:6a1890ecf779af4375c64a31a02a0d370f08019adda5967f1efdff6b473c9d60"
+      ]
+    }
+  ],
+  "formal_build_confirmations": [
+    {
+      "tenant": "swebench",
+      "instance": "sphinx-doc__sphinx-9367",
+      "environment_key_prefix": "16974e4ea1cd",
+      "build_job": "envb-16974e4ea1cdceb6-af934e",
+      "buildkit_exit": 0,
+      "buildkit_started_at": "2026-11-21T11:37:25Z",
+      "buildkit_finished_at": "2026-11-21T11:43:29Z",
+      "sandbox_service_reported_at": "2026-11-21T11:44:12.739Z",
+      "sandbox_service_state": "ready"
+    }
+  ]
+}

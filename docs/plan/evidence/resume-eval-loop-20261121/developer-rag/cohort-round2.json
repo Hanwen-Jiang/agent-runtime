@@ -1,0 +1,101 @@
+{
+  "frozen_at_utc": "2026-11-21T10:45:10.342229+00:00",
+  "source": "assistant authored single implementation anchors, no human review",
+  "repository_revisions": {
+    "agent-runtime": "da58416909fc54f02519de95706df01d9bbd1701",
+    "coding-agent": "0cd2c890d214a53a3768568b7d80103eb0fd7341"
+  },
+  "primary_metric": "evidence_hit_at_8",
+  "questions": [
+    {
+      "id": "h1",
+      "group": "unix metadata file locking",
+      "question": "Linux 上两个 coding-web 进程同时更新本地元数据时，是哪段代码拿到操作系统级互斥锁？",
+      "repository": "coding-agent",
+      "gold_file": "internal/server/metadata_lock_unix.go",
+      "evidence_line": 13,
+      "anchor": "func lockMetadataFile("
+    },
+    {
+      "id": "h2",
+      "group": "artifact downloads",
+      "question": "用户从页面下载会话产物时，哪个 HTTP 处理函数检查请求并提供下载响应？",
+      "repository": "coding-agent",
+      "gold_file": "internal/server/artifacts.go",
+      "evidence_line": 67,
+      "anchor": "func (s *Server) handleArtifactDownload"
+    },
+    {
+      "id": "h3",
+      "group": "alert admission",
+      "question": "上游通过 Alertmanager 推来多条告警时，哪些状态的告警会被接收为任务触发器？",
+      "repository": "coding-agent",
+      "gold_file": "internal/entry/alert/kind.go",
+      "evidence_line": 48,
+      "anchor": "func (Kind) Ingest("
+    },
+    {
+      "id": "h4",
+      "group": "repository enumeration",
+      "question": "获取已关联 Git 托管账号可访问的仓库列表时，哪段代码为不同平台读取分页结果？",
+      "repository": "coding-agent",
+      "gold_file": "internal/server/providers.go",
+      "evidence_line": 146,
+      "anchor": "func (p *Provider) repoPage("
+    },
+    {
+      "id": "h5",
+      "group": "temporal external payload",
+      "question": "较大的 Temporal payload 怎样在进入历史前经租户编解码器编码为引用？",
+      "repository": "agent-runtime",
+      "gold_file": "libs/go-core/adapters/temporal/claimcheck/claimcheck.go",
+      "evidence_line": 159,
+      "anchor": "func (t *TenantCodec) Encode("
+    },
+    {
+      "id": "h6",
+      "group": "package mirror cache lookup",
+      "question": "包镜像接到一个上游 URL 后，在哪里检查它是否已有可复用的本地 blob key？",
+      "repository": "agent-runtime",
+      "gold_file": "services/go-pkg-mirror/internal/cache/blobs.go",
+      "evidence_line": 181,
+      "anchor": "func (b *Blobs) Lookup("
+    },
+    {
+      "id": "h7",
+      "group": "quality gate checks",
+      "question": "给定成组评测指标，哪段 Python 逻辑按评测套件门槛生成通过或失败的检查项？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-learning/src/agentruntime_learning/evals/gates.py",
+      "evidence_line": 58,
+      "anchor": "def evaluate_gate("
+    },
+    {
+      "id": "h8",
+      "group": "retrieval metric scoring",
+      "question": "检索评测拿到返回 ID 与参考 ID 后，怎样计算命中率、召回率和第一个正确结果的倒数排名？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-learning/src/agentruntime_learning/evals/rag.py",
+      "evidence_line": 115,
+      "anchor": "def retrieval_metrics("
+    },
+    {
+      "id": "h9",
+      "group": "judge billing logs",
+      "question": "裁判打分任务怎样从本地 JSONL 用量记录汇总模型调用和费用？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-learning/src/agentruntime_learning/evals/judging.py",
+      "evidence_line": 123,
+      "anchor": "def summarize_log("
+    },
+    {
+      "id": "h10",
+      "group": "evaluation progress after process restarts",
+      "question": "运行时的评测进度看板如何通过 VictoriaMetrics 的计数区分续跑带来的历史进度和当前进程已处理量？",
+      "repository": "agent-runtime",
+      "gold_file": "services/py-learning/src/agentruntime_learning/evals/dashboard_server.py",
+      "evidence_line": 121,
+      "anchor": "def combine("
+    }
+  ]
+}
