@@ -1,0 +1,85 @@
+{
+  "id": "engineering-20261107-sandbox-warmpool",
+  "kind": "engineering-comparison",
+  "evaluation_type": "ablation",
+  "evaluation_scope": "component",
+  "title_zh": "沙箱启动速度 · Firecracker 预热池",
+  "title_en": "Sandbox startup latency · Firecracker warm pool",
+  "baseline_label": "冷启动 · Cold boot",
+  "candidate_label": "预热池 · Warm pool",
+  "evaluated_on": "2026-11-07",
+  "sample_count": 20,
+  "completed_count": 20,
+  "collection_complete": true,
+  "baseline_completed": 20,
+  "candidate_completed": 20,
+  "quality_valid": true,
+  "cost_known": true,
+  "actual_cost_usd": 0,
+  "known_cost_usd": 0,
+  "metrics": [
+    {
+      "key": "first_cmd_p95",
+      "label_zh": "首条命令完成 P95",
+      "label_en": "First command P95",
+      "unit": "seconds",
+      "baseline": 1.2278638388961554,
+      "candidate": 0.052358060027472675
+    },
+    {
+      "key": "first_cmd_p50",
+      "label_zh": "首条命令完成 P50",
+      "label_en": "First command P50",
+      "unit": "seconds",
+      "baseline": 1.0252873069839552,
+      "candidate": 0.02452952996827662
+    },
+    {
+      "key": "create_p95",
+      "label_zh": "实例创建 API P95",
+      "label_en": "Create API P95",
+      "unit": "seconds",
+      "baseline": 1.1911785019328818,
+      "candidate": 0.005021307966671884
+    }
+  ],
+  "limitations_zh": [
+    "共享生产宿主上逐次实测，并发为 1，预热池常驻 2 台空闲 VM；P95 由 1.228 s 降至 0.052 s（降幅 95.7%），未计入提前建池与常驻资源开销。"
+  ],
+  "limitations_en": [
+    "Measured sequentially (concurrency 1) on a shared host with 2 pre-warmed VMs; P95 dropped from 1.228 s to 0.052 s (-95.7%), excluding background pool refill cost."
+  ],
+  "source_sha256": "90b7434677881fd4d7baa8bbfee9d7c7ea63aa5cbf7d97ec1532c42b6644497f",
+  "selection_info": {
+    "dataset": "Firecracker sandbox startup",
+    "method": "explicit_ids",
+    "split": "validation",
+    "source": "cold/samples.jsonl + warm/samples.jsonl",
+    "selected_count": 20,
+    "method_detail_zh": "固定同规格 Firecracker microVM（1 vCPU、256 MiB 内存、256 MiB 磁盘、Python 基础镜像），冷启动与预热池各逐次测量 20 次（失败 0 次），计时从创建请求发出到首条真实 shell 命令完成。",
+    "method_detail_en": "Fixed Firecracker microVM spec (1 vCPU, 256 MiB RAM, 256 MiB scratch, Python image), 20 sequential runs each (0 failures), timed from create request to first shell command completion.",
+    "selection_ids": [
+      "fc-startup-01",
+      "fc-startup-02",
+      "fc-startup-03",
+      "fc-startup-04",
+      "fc-startup-05",
+      "fc-startup-06",
+      "fc-startup-07",
+      "fc-startup-08",
+      "fc-startup-09",
+      "fc-startup-10",
+      "fc-startup-11",
+      "fc-startup-12",
+      "fc-startup-13",
+      "fc-startup-14",
+      "fc-startup-15",
+      "fc-startup-16",
+      "fc-startup-17",
+      "fc-startup-18",
+      "fc-startup-19",
+      "fc-startup-20"
+    ],
+    "cohort_sha256": "90b7434677881fd4d7baa8bbfee9d7c7ea63aa5cbf7d97ec1532c42b6644497f"
+  }
+}

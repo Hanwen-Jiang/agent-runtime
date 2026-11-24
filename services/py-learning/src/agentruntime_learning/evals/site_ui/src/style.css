@@ -4,6 +4,7 @@
 @import "@heroui-pro/react/css/components/line-chart.css";
 @import "@heroui-pro/react/css/components/chart-tooltip.css";
 @import "./src/result-analytics.css";
+@import "./src/swe-campaign.css";
 @source "./src/**/*.{jsx,js}";
 
 .suite-with-selection { display: flex; align-items: center; gap: .35rem; }
@@ -1337,4 +1338,236 @@ code {
 }
 .table-scroll details summary {
   color: var(--accent);
+}
+
+/* Redesigned executive overview & visual engineering cards */
+.overview-redesign {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.headline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.headline-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.headline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+.headline-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.headline-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  text-decoration: none;
+}
+.headline-link:hover {
+  text-decoration: underline;
+}
+.headline-body h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+.headline-numbers {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.headline-numbers .num-before {
+  font-size: 16px;
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.headline-numbers .num-arrow {
+  color: var(--muted);
+}
+.headline-numbers .num-after {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.headline-delta {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.mini-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.mini-bar-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.mini-track, .exp-track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+.mini-fill, .exp-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.mini-fill.base, .exp-fill.base {
+  background: var(--muted);
+  opacity: 0.45;
+}
+.mini-fill.best, .exp-fill.best {
+  background: var(--accent);
+}
+.mini-fill.fast, .exp-fill.fast {
+  background: #16a34a;
+}
+.headline-summary {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.quick-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.quick-nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.quick-nav-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.quick-nav-card strong {
+  font-size: 14px;
+}
+.quick-nav-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  flex: 1;
+}
+.quick-nav-cta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+}
+.track-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.exp-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0;
+}
+.exp-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.exp-bar-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.exp-bar-values {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.exp-bar-arrow {
+  color: var(--muted);
+}
+.exp-delta {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.exp-delta.good {
+  background: color-mix(in srgb, #16a34a 14%, transparent);
+  color: #15803d;
+}
+.exp-delta.warn {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: var(--warning);
+}
+.exp-bar-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.experiment-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.audit-drawer {
+  margin-top: 10px;
+  border-top: 1px solid var(--separator);
+  padding-top: 8px;
+  font-size: 12px;
+}
+.audit-drawer > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 500;
+  user-select: none;
+}
+.audit-drawer dl {
+  margin-top: 10px;
+}
+@media (max-width: 820px) {
+  .headline-grid,
+  .quick-nav-grid {
+    grid-template-columns: 1fr;
+  }
 }

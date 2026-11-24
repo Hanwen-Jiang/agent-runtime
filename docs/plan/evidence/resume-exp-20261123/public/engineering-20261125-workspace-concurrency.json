@@ -1,0 +1,76 @@
+{
+  "id": "engineering-20261125-workspace-concurrency",
+  "kind": "engineering-comparison",
+  "evaluation_type": "ablation",
+  "evaluation_scope": "component",
+  "title_zh": "高并发工作区接口 · 200 并发压测",
+  "title_en": "High-concurrency workspace API · 200 concurrent clients",
+  "baseline_label": "优化前 · Baseline",
+  "candidate_label": "高并发优化 · Candidate",
+  "evaluated_on": "2026-11-25",
+  "sample_count": 3,
+  "completed_count": 3,
+  "collection_complete": true,
+  "baseline_completed": 3,
+  "candidate_completed": 3,
+  "quality_valid": true,
+  "cost_known": true,
+  "actual_cost_usd": 0,
+  "known_cost_usd": 0,
+  "metrics": [
+    {
+      "key": "overall_qps",
+      "label_zh": "综合吞吐 QPS（4副本·200并发）",
+      "label_en": "Overall QPS (4 replicas · 200 concurrency)",
+      "unit": "number",
+      "baseline": 61476.0,
+      "candidate": 190230.3
+    },
+    {
+      "key": "overall_p50",
+      "label_zh": "综合中位延迟 P50",
+      "label_en": "Overall P50 latency",
+      "unit": "seconds",
+      "baseline": 0.0028164285714285713,
+      "candidate": 8.442857142857142e-05
+    },
+    {
+      "key": "running_qps",
+      "label_zh": "运行态轮询 QPS（6000 请求）",
+      "label_en": "Running poll QPS (6k reqs)",
+      "unit": "number",
+      "baseline": 78198.9,
+      "candidate": 353454.0
+    },
+    {
+      "key": "completed_qps",
+      "label_zh": "完成态读取 QPS（6000 请求）",
+      "label_en": "Completed poll QPS (6k reqs)",
+      "unit": "number",
+      "baseline": 90783.1,
+      "candidate": 479624.3
+    }
+  ],
+  "limitations_zh": [
+    "本机 Go httptest + 真实处理器与磁盘卷压测，无外部网络往返；14,000 请求 100% 成功，2,000 次重复提交仅触发 1 次下游创建，综合吞吐由 6.15 万提升至 19.02 万 req/s（3.09×），P50 由 2.82ms 降至 0.084ms。"
+  ],
+  "limitations_en": [
+    "Local Go handler + shared disk benchmark without external network hops; 14,000/14,000 succeeded with exactly 1 downstream create across 2,000 retries; throughput jumped from 61.5k to 190.2k req/s (3.09x), P50 dropped from 2.82ms to 0.084ms."
+  ],
+  "source_sha256": "6ebd9b8a771a2f01066c57d5347917299270cbc60c1e9d2876e6b0a9a27f026c",
+  "selection_info": {
+    "dataset": "Coding Agent high-concurrency benchmark",
+    "method": "explicit_ids",
+    "split": "validation",
+    "source": "baseline.json + candidate.json",
+    "selected_count": 3,
+    "method_detail_zh": "4 个 Go Server 副本共享卷、200 并发客户端共发起 14,000 次请求（2,000 次热点同键重复提交 + 6,000 次运行态轮询 + 6,000 次完成态读取），对比加锁优化前与 RWMutex + singleflight + 终态缓存 + 跨副本退避优化后的吞吐与延迟。",
+    "method_detail_en": "4 Go replicas on a shared volume with 200 concurrent clients issuing 14,000 requests (2k hot duplicate submits + 6k running polls + 6k completed polls), comparing serialized mutex vs RWMutex + singleflight + immutable terminal cache + lock backoff.",
+    "selection_ids": [
+      "hot_duplicate_submit_200",
+      "running_status_poll_storm_200",
+      "completed_status_poll_storm_200"
+    ],
+    "cohort_sha256": "6ebd9b8a771a2f01066c57d5347917299270cbc60c1e9d2876e6b0a9a27f026c"
+  }
+}

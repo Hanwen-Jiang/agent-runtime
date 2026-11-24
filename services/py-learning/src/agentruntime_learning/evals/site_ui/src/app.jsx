@@ -1,3 +1,5 @@
+import { RuntimeSubject, RuntimeRouting } from "./runtime-subject.jsx";
+import { matchesRunSearch, runtimeEvidence, subjectLabel } from "./runtime-identity.js";
 import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { Button, Card, Chip, Input, Skeleton } from "@heroui/react";
@@ -7,9 +9,13 @@ import { SelectionInfo } from "./selection-info.jsx";
 import { archivedSelections } from "./selection-info.js";
 import { ResultAnalytics } from "./result-analytics.jsx";
 import { reportRuns } from "./report-runs.js";
+import { SweCampaign } from "./swe-campaign.jsx";
+import { campaignMatches, campaignMemberIds, separateCampaignRuns } from "./swe-campaigns.js";
 import { EVALUATION_TYPES, evaluationType, evaluationScope, runtimeRevision, matchesEvaluationType, filterEvaluationArchive } from "./evaluation-info.js";
 import { resultFragmentTarget, afterResultLayout } from "./fragment-navigation.js";
 import { readResultLocation, resultLocation } from "./result-location.js";
+import { OverviewShowcase } from "./overview.jsx";
+import { ExperimentsView } from "./experiments-view.jsx";
 
 const text = (v) =>
   v == null ? "" : typeof v === "string" ? v : JSON.stringify(v, null, 2);
@@ -245,8 +251,8 @@ function App() {
           </a>
           <nav aria-label={t("主导航", "Main navigation")}>
             {[
-              ["home", "/", t("主页", "Overview")],
-              ["results", "/results", t("评测结果", "Results")],
+              ["home", "/", t("总览", "Overview")],
+              ["results", "/results", t("专项评测", "Evaluations")],
               ["datasets", "/datasets", t("数据集与框架", "Datasets")],
             ].map(([key, url, label]) => (
               <a
@@ -378,216 +384,20 @@ function Totals(site) {
   return all;
 }
 function Home(p) {
-  const { t, tr, site, live, archive, lang } = p;
+  const { t, tr, site, lang } = p;
   const total = Totals(site);
-  const rows = reportRuns(live, archive, p.benchmarks);
-  const best = bestResults(rows, archive?.reports, p.benchmarks?.exclusions);
-  const cats = {};
-  for (const d of site?.datasets || [])
-    cats[d.eval_category] = (cats[d.eval_category] || 0) + d.counts.total;
-  const last = [
-    rows[0]?.updated_at,
-    ...(archive?.reports?.experiments || []).map((r) => r.completed_at),
-  ]
-    .filter((value) => value && Number.isFinite(Date.parse(value)))
-    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
   return (
-    <>
-      <div className="update-line">
-        <span className="status-dot" />
-        {last
-          ? `${t("最近评测", "Latest evaluation")} ${date(last, lang)}`
-          : live?.unavailable || live?.source === "none"
-            ? t("评测数据暂不可用", "Evaluation data unavailable")
-            : live
-              ? t("暂无评测运行", "No evaluation runs yet")
-              : t("评测结果加载中", "Loading evaluation results")}
-        {site?.sync?.synced_at && (
-          <span>
-            {t("题库更新", "Catalog updated")} {date(site.sync.synced_at, lang)}
-          </span>
-        )}
-      </div>
-      <Experiments {...p} compact />
-      <div className="overview-grid">
-        <Card className="overview-panel">
-          <Card.Header className="panel-head">
-            <Card.Title>
-              {t("最佳评测结果", "Best evaluation results")}
-            </Card.Title>
-            <a href="/results">{t("全部结果", "All results")} →</a>
-          </Card.Header>
-          <Card.Content>
-            {!live ? (
-              <Loading />
-            ) : (
-              <>
-                <div id="run-stats" className="stats three">
-                  <Stat
-                    value={
-                      live?.unavailable || live?.source === "none"
-                        ? "—"
-                        : rows.filter((r) => r.status === "running").length
-                    }
-                    label={t("正在运行", "Running")}
-                  />
-                  <Stat
-                    value={
-                      live?.unavailable || live?.source === "none"
-                        ? "—"
-                        : rows.filter((r) => r.status === "finished").length
-                    }
-                    label={t("最近完成", "Recently completed")}
-                  />
-                  <Stat
-                    value={
-                      archive?.source !== "none" &&
-                      Array.isArray(archive?.reports?.runs)
-                        ? archive.reports.runs.length
-                        : "—"
-                    }
-                    label={t("归档报告", "Archived reports")}
-                  />
-                </div>
-                <div className="suite-list">
-                  {best.length ? (
-                    best.map(({ run: r, score }) => {
-                      return (
-                        <div key={`${r.suite}/${r.split}`} className="suite-with-selection"><a
-                          href={
-                            r.archive
-                              ? `/results?view=archive&q=${encodeURIComponent(r.archive_query)}#runs`
-                              : `/results?q=${encodeURIComponent(r.run_id)}`
-                          }
-                          className="suite-row"
-                        >
-                          <span>
-                            <strong>{r.suite}</strong>
-                            <small
-                              title={`${r.model || r.subject} · ${r.split}`}
-                            >
-                              {r.model || r.subject} · {r.split}
-                              {r.archive
-                                ? ` · ${t("历史归档", "Archive")}`
-                                : ""}
-                            </small>
-                          </span>
-                          <span className="score">
-                            {score
-                              ? scoreValue(...score)
-                              : `${r.done} / ${r.planned}`}
-                            <small>
-                              {score
-                                ? metricName[score[0]]?.[
-                                    lang === "zh" ? 0 : 1
-                                  ] || score[0]
-                                : t("已完成", "Completed")}
-                            </small>
-                          </span>
-                        </a><SelectionInfo row={r} t={t} /></div>
-                      );
-                    })
-                  ) : (
-                    <Empty>{t("暂无评测运行", "No evaluation runs yet")}</Empty>
-                  )}
-                </div>
-              </>
-            )}
-          </Card.Content>
-          <Card.Footer className="muted small">
-            {t(
-              "综合已公开运行与历史归档，按任务和数据切分选择主指标最高的一次，不含无效结果。",
-              "Best primary metric per task and split across published runs and archives; invalid results are excluded.",
-            )}
-          </Card.Footer>
-        </Card>
-        <Card className="overview-panel">
-          <Card.Header className="panel-head">
-            <Card.Title>
-              {t("数据集与框架", "Datasets & frameworks")}
-            </Card.Title>
-            <a href="/datasets">{t("全部题目", "All questions")} →</a>
-          </Card.Header>
-          <Card.Content>
-            {!site ? (
-              <Loading />
-            ) : (
-              <>
-                <div className="catalog-total">
-                  <b>{site?.unavailable ? "—" : number(total.total)}</b>
-                  <span>
-                    {t("道题目", "questions")} · {site.datasets.length}{" "}
-                    {t("个数据集", "datasets")} · {site.frameworks.length}{" "}
-                    {t("套框架", "frameworks")}
-                  </span>
-                </div>
-                <div
-                  className="source-bar"
-                  role="img"
-                  aria-label={["original", "authored", "adapted"]
-                    .map((k) => `${tr(site.source_types?.[k])} ${total[k]}`)
-                    .join(", ")}
-                >
-                  {["original", "authored", "adapted"].map((k) => (
-                    <span
-                      key={k}
-                      className={k}
-                      style={{
-                        width: `${total.total ? (total[k] / total.total) * 100 : 0}%`,
-                      }}
-                    />
-                  ))}
-                </div>
-                <div className="legend">
-                  {["original", "authored", "adapted"].map((k) => (
-                    <span key={k}>
-                      <i className={k} />
-                      {tr(site.source_types?.[k])} {total[k]}
-                    </span>
-                  ))}
-                </div>
-                <div id="set-stats" className="stats three">
-                  <Stat
-                    value={site?.unavailable ? "—" : total.shown}
-                    label={t("公开题目", "Public questions")}
-                  />
-                  <Stat
-                    value={site?.unavailable ? "—" : total.holdout_hidden}
-                    label={t("留出集", "Held out")}
-                  />
-                  <Stat
-                    value={site?.unavailable ? "—" : total.draft}
-                    label={t("待人审", "Awaiting review")}
-                  />
-                </div>
-                <div className="category-chips">
-                  {Object.entries(cats)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([k, v]) => (
-                      <a
-                        href={`/datasets?category=${encodeURIComponent(k)}`}
-                        key={k}
-                      >
-                        <Badge>
-                          {tr(site.categories?.[k])}{" "}
-                          <span className="mono">{v}</span>
-                        </Badge>
-                      </a>
-                    ))}
-                </div>
-              </>
-            )}
-          </Card.Content>
-        </Card>
-      </div>
-      <div className="section-heading">
-        <h2>{t("评测方法", "Evaluation methods")}</h2>
-        <a href="/datasets">
-          {t("查看框架与适用范围", "Frameworks and scope")} →
-        </a>
-      </div>
-      <Frameworks {...p} compact />
-    </>
+    <OverviewShowcase
+      t={t}
+      lang={lang}
+      site={site}
+      total={total}
+      number={number}
+      tr={tr}
+      Badge={Badge}
+      Frameworks={Frameworks}
+      props={p}
+    />
   );
 }
 const fwKinds = [
@@ -686,160 +496,43 @@ function Frameworks({ site, t, tr, compact = false }) {
 function EvaluationIdentity({ row, t }) {
   const type = evaluationType(row), scope = evaluationScope(row);
   const revision = runtimeRevision(row);
+  const identity = runtimeEvidence(row);
   return <>
     <dt>{t("评测类型", "Evaluation type")}</dt><dd>{t(...EVALUATION_TYPES[type])}</dd>
     <dt>{t("执行范围", "Execution scope")}</dt><dd>{scope === "component" ? t("组件评测", "Component evaluation") : scope === "end_to_end" ? t("端到端评测", "End-to-end evaluation") : t("未记录", "Unrecorded")}</dd>
-    {type !== "model" && <><dt>{t("Runtime 版本", "Runtime revision")}</dt><dd>{revision || t("未记录", "Unrecorded")}</dd></>}
+    {identity && <><dt>{t("被测系统","Evaluated system")}</dt><dd><RuntimeSubject row={row} t={t}/></dd></>}
+    <RuntimeRouting row={row} t={t}/>
+    {type !== "model" && (row.runtime_tree && !revision
+      ? <><dt>{t("Runtime 源码树", "Runtime Git tree")}</dt><dd>{row.runtime_tree}</dd></>
+      : <><dt>{t("Runtime 版本", "Runtime revision")}</dt><dd>{identity?.version || revision || t("未记录", "Unrecorded")}</dd></>)}
     {row.comparison_id && <><dt>{t("对照实验", "Comparison")}</dt><dd>{row.comparison_id}</dd></>}
   </>;
 }
 
-function Experiments({ archive, t, lang, compact = false }) {
-  const experiments = [...(archive?.reports?.experiments || [])].sort(
-    (a, b) =>
-      (Date.parse(b.completed_at || b.updated_at || b.evaluated_on) || 0) -
-      (Date.parse(a.completed_at || a.updated_at || a.evaluated_on) || 0),
-  );
-  if (!experiments.length) return null;
-  const metricValue = (value, unit) => {
-    if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-    if (["ratio", "fraction", "rate"].includes(unit)) return pct(value);
-    if (unit === "usd") return dollars(value);
-    if (unit === "score")
-      return value.toLocaleString(lang === "zh" ? "zh-CN" : "en-GB", {
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4,
-      });
-    return `${number(value)}${unit === "seconds" ? " s" : ""}`;
-  };
+function Experiments(props) {
   return (
-    <section
-      className="experiments"
-      aria-label={t("最新实验", "Latest experiments")}
-    >
-      <div className="section-heading">
-        <h2>{t("最新实验", "Latest experiments")}</h2>
-        {compact && (
-          <a href="/results#experiments">
-            {t("查看完整指标", "All metrics")} →
-          </a>
-        )}
-      </div>
-      <div className="experiment-grid" id={compact ? undefined : "experiments"}>
-        {experiments.map((experiment) => {
-          const limitations = experiment[`limitations_${lang}`] || [];
-          const columns = experiment.kind === "context-cohort-comparison" && Array.isArray(experiment.variants) ? experiment.variants : null;
-          const incomplete = experiment.kind === "context-ablation" && experiment.collection_complete !== true;
-          const liveSource = experiment.source_mode === "runtime_records" && typeof experiment.source_revision === "string" && experiment.source_revision.length > 0;
-          return (
-            <article key={experiment.id} id={`experiment-${experiment.id}`} className="experiment-card">
-              <div className="experiment-heading">
-                <h3>{experiment[`title_${lang}`] || experiment.id} <SelectionInfo row={experiment} t={t} /></h3>
-                <Badge>{t(...EVALUATION_TYPES[evaluationType(experiment)])}</Badge>
-                {incomplete ? <Badge color="warning">{experiment.status === "blocked" ? t("已暂停 · 等待处理", "Blocked · awaiting resolution") : t("实验进行中", "Experiment running")}</Badge> : experiment.kind === "context-ablation" && experiment.quality_valid !== true && <Badge color="warning">{experiment.quality_valid === false ? t("评分有效性未通过", "Score validity failed") : t("评分有效性未确认", "Score validity unconfirmed")}</Badge>}
-              </div>
-              {incomplete && <p className="notice" role="status">{t("实验尚未完成，以下仅为暂定观测，不作为完整结论或提升证据。", "The experiment is incomplete. Values below are provisional, not full-experiment conclusions or improvement evidence.")}</p>}
-              {!compact && <dl>
-                <EvaluationIdentity row={experiment} t={t} />
-                {experiment.model_profile && <><dt>{t("固定模型", "Pinned model")}</dt><dd>{experiment.model_profile}</dd></>}
-                {experiment.dataset_name && <><dt>{t("数据集", "Dataset")}</dt><dd>{experiment.dataset_name} · {experiment.dataset_version}</dd></>}
-                {experiment.repeats && <><dt>{t("每臂重复次数", "Repeats per arm")}</dt><dd>{experiment.repeats}</dd></>}
-                {Number.isFinite(experiment.answer_context_budget_tokens) && <><dt>{t("最终答题上下文预算", "Final-answer context budget")}</dt><dd>{number(experiment.answer_context_budget_tokens)} tokens</dd></>}
-                {experiment.baseline_run_id && <><dt>{t("基线运行", "Baseline run")}</dt><dd>{experiment.baseline_run_id}</dd></>}
-                {experiment.candidate_run_id && <><dt>{t("候选运行", "Candidate run")}</dt><dd>{experiment.candidate_run_id}</dd></>}
-                {experiment.protocol && <><dt>{t("评测协议", "Protocol")}</dt><dd>{experiment.protocol}</dd></>}
-                {experiment.blocked_reason && <><dt>{t("暂停原因", "Blocked reason")}</dt><dd>{experiment.blocked_reason === "gateway_model_usage_pending" ? t("模型调用用量待网关对账", "Model-call usage awaits gateway reconciliation") : experiment.blocked_reason}</dd></>}
-              </dl>}
-              {!compact && !incomplete && experiment.quality_valid === true && Number.isFinite(experiment.paired_accuracy_delta) && <dl>
-                <dt>{t("配对准确率差", "Paired accuracy difference")}</dt><dd>{number(experiment.paired_accuracy_delta * 100)} {t("个百分点", "percentage points")}</dd>
-                <dt>{t("95% 区间", "95% interval")}</dt><dd>{number(experiment.paired_ci95_low * 100)} – {number(experiment.paired_ci95_high * 100)} {t("个百分点", "percentage points")}</dd>
-                <dt>{t("新增答对 / 退步", "Gained / lost")}</dt><dd>{number(experiment.paired_gained)} / {number(experiment.paired_lost)}</dd>
-                <dt>{t("精确 McNemar 双侧 p 值", "Exact two-sided McNemar p")}</dt><dd>{number(experiment.paired_mcnemar_p)}</dd>
-              </dl>}
-              {liveSource && <div className="experiment-meta" aria-label={t("数据来源与更新", "Data source and refresh")}>
-                <span>{t("根据运行记录自动汇总", "Automatically aggregated from run records")}</span>
-                <span>{t("最近检查", "Last checked")}: {experiment.checked_at ? date(experiment.checked_at, lang) : t("未记录", "Unrecorded")}</span>
-                <span>{t("源记录更新", "Source records updated")}: {experiment.data_updated_at ? date(experiment.data_updated_at, lang) : t("未记录", "Unrecorded")}</span>
-              </div>}
-              <div className="experiment-meta">
-                {!liveSource && <span>
-                  {experiment.completed_at
-                    ? date(experiment.completed_at, lang)
-                    : experiment.updated_at ? `${t("更新于", "Updated")} ${date(experiment.updated_at, lang)}` : experiment.evaluated_on ||
-                      t("实验日期未记录", "Evaluation date not recorded")}
-                </span>}
-                <span>
-                  {number(experiment.completed_count)} /{" "}
-                  {number(experiment.sample_count)}{" "}
-                  {experiment.kind === "context-ablation" ? t("题完成配对", "paired questions completed") : t("记录完成", "records completed")}
-                </span>
-                <span>
-                  {experiment.cost_known
-                    ? dollars(experiment.actual_cost_usd)
-                    : t("完整费用未知", "Total cost unknown")}
-                </span>
-              </div>
-              {(experiment.metrics || []).length > 0 && (
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>{incomplete ? t("暂定观测（非完整结论）", "Provisional observations") : t("指标", "Metric")}</th>
-                        {columns ? columns.map((column) => <th key={column.id}>
-                          {column[`label_${lang}`] || column.id}
-                          <small className="muted">{column.status === "not_started" ? t("待运行", "Not started") : column.status === "running" ? t("进行中", "Running") : t("已有结果", "Recorded")}</small>
-                        </th>) : <>
-                          <th>{experiment.baseline_label || t("基线", "Baseline")}</th>
-                          <th>{experiment.candidate_label || t("候选方案", "Candidate")}</th>
-                        </>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {experiment.metrics.map((metric) => (
-                        <tr key={metric.key}>
-                          <td>{metric[`label_${lang}`] || metric.key}</td>
-                          {columns ? columns.map((column, index) => <td key={column.id}>{metricValue(metric.values?.[index], metric.unit)}</td>) : <>
-                            <td>{metricValue(metric.baseline, metric.unit)}</td>
-                            <td>{metricValue(metric.candidate, metric.unit)}</td>
-                          </>}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {!compact && limitations.length > 0 && (
-                <ul className="experiment-limitations">
-                  {limitations.map((limitation, index) => (
-                    <li key={index}>{limitation}</li>
-                  ))}
-                </ul>
-              )}
-              {!compact &&
-                !experiment.cost_known &&
-                typeof experiment.known_cost_usd === "number" && (
-                  <p className="small muted">
-                    {t("已知费用下界", "Known cost lower bound")}:{" "}
-                    {dollars(experiment.known_cost_usd)}
-                  </p>
-                )}
-              {!compact && Number.isFinite(experiment.pending_reserved_usd) && <p className="small muted">
-                {t("待对账预留金额（非已结算费用）", "Pending reservation (not settled cost)")}: {dollars(experiment.pending_reserved_usd)}
-              </p>}
-              {!compact && experiment.reported_on && (
-                <small>
-                  {t("汇总日期", "Report date")}: {experiment.reported_on}
-                </small>
-              )}
-            </article>
-          );
-        })}
-      </div>
-    </section>
+    <ExperimentsView
+      {...props}
+      date={date}
+      number={number}
+      pct={pct}
+      dollars={dollars}
+      Badge={Badge}
+      EvaluationIdentity={EvaluationIdentity}
+      includePublished={!props.type || props.type === "ablation"}
+    />
   );
 }
 
 function Status({ r, t }) {
+  if (r.source === "swe_progress" && r.status === "paused") return <Badge color="warning">{t("供应商额度中断 · 已暂停", "Provider quota interruption · Paused")}</Badge>;
+  if (r.source === "swe_progress" && r.status === "awaiting_grade") return <Badge>{t("等待官方判分归档", "Awaiting official grading report")}</Badge>;
+  if (r.source === "swe_progress" && r.status === "running") return <Badge>{t("补跑中", "Recovery running")}</Badge>;
+  if (r.status === "incomplete") return <Badge color="warning">{t("尚未完成","Incomplete")}</Badge>;
+  if (r.provider_quota_interrupted_count > 0)
+    return <Badge color="warning">{r.graded_count === 0 ? t("供应商额度中断","Provider quota interruption") : t("供应商额度中断 · 部分评分", "Provider quota interruption · Partially graded")}</Badge>;
+  if (r.source === "benchmark_artifacts" && r.suite === "swebench" && r.graded_count === 0 && r.finished)
+    return <Badge color="warning">{t("运行结束 · 缺少判分","Run ended · Grading missing")}</Badge>;
   return (
     <Badge
       color={
@@ -877,7 +570,7 @@ function Results(p) {
   });
   const live = p.live ? { ...p.live, runs: (p.live.runs || []).filter((row) => matchesEvaluationType(row, type)) } : p.live;
   const archive = filterEvaluationArchive(p.archive, type);
-  const benchmarks = p.benchmarks ? { ...p.benchmarks, runs: (p.benchmarks.runs || []).filter((row) => matchesEvaluationType(row, type)),
+  const benchmarks = p.benchmarks ? { ...p.benchmarks, campaigns: (!type || type === "runtime") ? p.benchmarks.campaigns : [], runs: (p.benchmarks.runs || []).filter((row) => matchesEvaluationType(row, type)),
     exclusions: (p.benchmarks.exclusions || []).filter((row) => matchesEvaluationType(row, type)) } : p.benchmarks;
   const filteredProps = { ...p, live, archive, benchmarks };
   useLayoutEffect(() => {
@@ -953,33 +646,56 @@ function Results(p) {
     setRecordLocation(next);
   }
   const rows = reportRuns(live, archive, benchmarks);
-  const filtered = rows.filter(
+  const campaigns = !type || type === "runtime" ? benchmarks?.campaigns || [] : [];
+  const standalone = separateCampaignRuns(live, archive, benchmarks);
+  const memberIds = campaignMemberIds(campaigns);
+  const standaloneRows = rows.filter(r => r.suite !== "swebench" || !memberIds.has(r.run_id));
+  const memberRows = new Map(rows.filter(r=>r.suite === "swebench").map(r=>[r.run_id,r]));
+  const matchingCampaigns = campaigns.filter(c => campaignMatches(c, memberRows, {search, status: view === "recent" ? status : "", split}));
+  const campaignCards = matchingCampaigns.map(c=><SweCampaign key={c.campaign_id} campaign={c} rows={memberRows} search={search} t={t}
+    renderRun={(r,opened)=><Run key={r.run_id} r={r} {...p} opened={opened} />} />);
+  const filtered = standaloneRows.filter(
     (r) =>
       (!status ||
         (status === "invalid" ? r.valid === false : r.status === status)) &&
       (!split || r.split === split) &&
-      `${r.suite} ${r.model} ${r.subject} ${r.run_id} ${r.comparison_id}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+      matchesRunSearch(r, search),
   );
-  const reports = archive?.reports || {};
+  const reports = standalone.archive?.reports || {};
+  const archiveBenchmarks = (reports.benchmarks || []).map(row => {
+    const official = memberRows.get(row.run_id);
+    return {suite:"swebench", ...row, ...(official?.source === "benchmark_artifacts" ? official : {})};
+  }).filter(row=>matchesRunSearch(row,search) && (!split || !row.split || row.split === split));
   const history = sortRuns(reports.runs || []).filter(
     (r) =>
       (!split || r.split === split) &&
-      `${r.label_zh} ${r.label_en} ${r.group} ${r.subject} ${r.model} ${r.run_id} ${r.comparison_id}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+      matchesRunSearch({suite:"task-loop", ...r}, search),
   );
   const running = rows.filter((r) => r.status === "running");
+  const standaloneRunning = standaloneRows.filter((r) => r.status === "running");
   return (
     <>
-      <div className="filterbar">
-        <Select label={t("评测类型", "Evaluation type")} value={type} onChange={changeType}
-          options={[["", t("全部类型", "All evaluation types")], ...Object.entries(EVALUATION_TYPES).map(([key, labels]) => [key, t(...labels)])]} />
-        <span className="muted">{t("模型基准比较模型；Runtime 评测标注代码版本；消融固定模型并比较策略。", "Model benchmarks compare models; Runtime evaluations identify code revisions; ablations fix models and compare strategies.")}</span>
+      <div className="track-tabs" role="tablist" aria-label={t("评测专题切换", "Evaluation tracks")}>
+        {[
+          ["", t("全部专题", "All tracks")],
+          ["runtime", t("代码与运行时基准", "Runtime & Coding")],
+          ["ablation", t("工程性能与消融对照", "Engineering & Ablations")],
+          ["model", t("模型能力矩阵", "Model Capability Matrix")],
+        ].map(([key, label]) => (
+          <Button
+            key={key || "all"}
+            size="sm"
+            variant={type === key ? "primary" : "ghost"}
+            onPress={() => changeType(key)}
+            role="tab"
+            aria-selected={type === key}
+          >
+            {label}
+          </Button>
+        ))}
       </div>
       <ResultAnalytics {...filteredProps} capability={capability.data} benchmarks={benchmarks} showCapability={!type || type === "model"} capabilityError={capability.error} />
-      <Experiments {...filteredProps} />
+      <Experiments {...filteredProps} type={type} />
       <div className="stats result-stats">
         <Stat
           value={
@@ -1014,13 +730,13 @@ function Results(p) {
           label={t("最近运行费用", "Recent run cost")}
         />
       </div>
-      {running.length > 0 && (
+      {standaloneRunning.length > 0 && (
         <section className="active-runs">
           <div className="section-heading">
             <h2>{t("运行中", "Running now")}</h2>
-            <Badge color="accent">{running.length}</Badge>
+            <Badge color="accent">{standaloneRunning.length}</Badge>
           </div>
-          {running.map((r) => (
+          {standaloneRunning.map((r) => (
             <div className="live-progress" key={r.run_id}>
               <div>
                 <strong>{r.suite} <SelectionInfo row={r} t={t} /></strong>
@@ -1030,7 +746,7 @@ function Results(p) {
               </div>
               <progress max={r.planned || 1} value={r.done} />
               <small>
-                {r.subject} · {dollars(r.cost_usd)}
+                <RuntimeSubject row={r} t={t} fallback={r.subject}/> · {dollars(r.cost_usd)}
               </small>
             </div>
           ))}
@@ -1048,7 +764,7 @@ function Results(p) {
           variant={view === "recent" ? "primary" : "ghost"}
           onPress={() => changeView("recent")}
         >
-          {t("最近运行", "Recent runs")} {rows.length}
+          {t("最近记录", "Recent records")} {standaloneRows.length + campaigns.length}
         </Button>
         <Button
           data-view="archive"
@@ -1056,7 +772,7 @@ function Results(p) {
           variant={view === "archive" ? "primary" : "ghost"}
           onPress={() => changeView("archive")}
         >
-          {t("全部报告", "All reports")} {(reports.runs || []).length}
+          {t("全部报告", "All reports")} {(reports.runs || []).length + campaigns.length}
         </Button>
       </div>
       <div className="filterbar">
@@ -1093,6 +809,8 @@ function Results(p) {
               ["", t("全部状态", "All statuses")],
               ["finished", t("已完成", "Completed")],
               ["partial", t("部分判分", "Partially graded")],
+              ["paused", t("额度中断", "Quota interruption")],
+              ["awaiting_grade", t("待判分归档", "Awaiting grading report")],
               ["running", t("运行中", "Running")],
               ["stalled", t("长时间未更新", "Stalled")],
               ["invalid", t("无效", "Invalid")],
@@ -1107,12 +825,12 @@ function Results(p) {
         <span>
           {view === "recent"
             ? t(
-                `${filtered.length} 次运行 · 自动汇集进度与报告`,
-                `${filtered.length} runs · Live progress and reports`,
+                `${filtered.length + matchingCampaigns.length} 条记录 · 自动汇集进度与报告`,
+                `${filtered.length + matchingCampaigns.length} records · Live progress and reports`,
               )
             : t(
-                `${history.length} 份报告 · 每 10 秒自动更新`,
-                `${history.length} reports · Refreshes every 10 seconds`,
+                `${history.length + matchingCampaigns.length} 份报告 · 每 10 秒自动更新`,
+                `${history.length + matchingCampaigns.length} reports · Refreshes every 10 seconds`,
               )}
         </span>
         <span>
@@ -1143,8 +861,9 @@ function Results(p) {
       {view === "recent" ? (
         !live ? (
           <Loading />
-        ) : filtered.length ? (
+        ) : filtered.length || campaignCards.length ? (
           <div className="run-list">
+            {campaignCards}
             {filtered.map((r) => (
               <Run key={r.run_id} r={r} {...p} audit={benchmarks?.exclusions?.find((a) => a.suite === r.suite && a.run_id === r.run_id)} />
             ))}
@@ -1156,6 +875,7 @@ function Results(p) {
         <Loading />
       ) : (
         <>
+          {campaignCards}
           <div className="table-scroll">
             <table id="runs">
               <thead>
@@ -1178,7 +898,7 @@ function Results(p) {
                   <tr key={i}>
                     <td>
                       <details>
-                        <summary>{r[`label_${lang}`] || r.group}{r.variant ? ` · ${r.variant === "candidate" ? t("候选版", "Candidate") : t("基线版", "Baseline")}` : ""}</summary>
+                        <summary><RuntimeSubject row={{suite:"task-loop",...r}} t={t} fallback={r[`label_${lang}`] || r.group}/> · {r[`label_${lang}`] || r.group}{r.variant ? ` · ${r.variant === "candidate" ? t("候选版", "Candidate") : t("基线版", "Baseline")}` : ""}</summary>
                         <dl>
                           <EvaluationIdentity row={{ suite: "task-loop", ...r }} t={t} />
                           <dt>{t("任务通过", "Tasks passed")}</dt>
@@ -1193,8 +913,7 @@ function Results(p) {
                           <dd>{pct(r.rounds)}</dd>
                           <dt>{t("Reviewer 样本", "Reviewer samples")}</dt>
                           <dd>{r.reviewer_samples ?? "—"}</dd>
-                          <dt>{t("实际模型", "Actual model")}</dt>
-                          <dd>{r.model || "—"}</dd>
+                          {r.run_id && <><dt>{t("运行标识","Run ID")}</dt><dd>{r.run_id}</dd></>}
                           {r.labels_draft > 0 && <><dt>{t("标注状态", "Label status")}</dt><dd>{t(`${r.labels_draft} 道草稿回归题`, `${r.labels_draft} draft regression cases`)}</dd></>}
                         </dl>
                       </details>
@@ -1218,26 +937,27 @@ function Results(p) {
               </tbody>
             </table>
           </div>
-          {!history.length && (
+          {!history.length && !campaignCards.length && (
             <Empty>
               {t("没有符合条件的归档报告", "No matching archived reports")}
             </Empty>
           )}
-          {(reports.benchmarks || []).length > 0 && (
+          {archiveBenchmarks.length > 0 && (
             <>
               <div className="section-heading">
                 <h2>{t("代码任务归档", "Coding benchmarks")}</h2>
               </div>
               <div className="archive-grid">
-                {reports.benchmarks.map((r, i) => (
+                {archiveBenchmarks.map((r, i) => (
                   <Card key={r.run_id || i}>
                     <Card.Header>
-                      <Card.Title>{r.model || r.run_id} <SelectionInfo row={r} t={t} /></Card.Title>
+                      <Card.Title><RuntimeSubject row={r} t={t}/> <SelectionInfo row={r} t={t} /></Card.Title>
                     </Card.Header>
                     <Card.Content>
-                      <b className="large-score">{pct(r.rate)}</b>
+                      <b className="large-score">{r.graded_count === 0 ? "—" : pct(r.rate)}</b>
                       <p>
-                        {r.resolved} / {r.selected} {t("题已解决", "resolved")}{" "}
+                        {r.graded_count === 0 ? t("暂无官方判定","No official verdicts") : `${r.resolved} / ${r.selected} ${t("题已解决","resolved")}`}{" "}
+                        {Number.isInteger(r.graded_count) && ` · ${t("官方判分覆盖","Official grading coverage")} ${r.graded_count}/${r.selected} `}
                         · {dollars(r.cost_usd)}
                       </p>
                       <small className="muted">{r.run_id}</small>
@@ -1246,6 +966,7 @@ function Results(p) {
                           {t("查看判分详情", "Grading details")}
                         </summary>
                         <dl>
+                          <EvaluationIdentity row={r} t={t}/>
                           <dt>{t("完整度", "Completeness")}</dt>
                           <dd>
                             {r.complete
@@ -1315,8 +1036,9 @@ function Results(p) {
                       <tr key={i}>
                         <td>
                           <details>
-                            <summary>{r.group}</summary>
+                            <summary><RuntimeSubject row={{suite:"context",...r}} t={t}/> · {r.group}</summary>
                             <dl>
+                              <EvaluationIdentity row={{suite:"context",...r}} t={t}/>
                               <dt>{t("日期", "Date")}</dt>
                               <dd>{r.date || "—"}</dd>
                               <dt>{t("验收", "Gate")}</dt>
@@ -1384,7 +1106,7 @@ function ArchiveExtras({ reports, t, lang }) {
                 {reports.tuning.map((r) => (
                   <tr key={r.run_id}>
                     <td>
-                      <strong>{r[`short_${lang}`] || r.run_id} <SelectionInfo row={r} t={t} /></strong>
+                      <strong><RuntimeSubject row={{suite:"swebench",...r}} t={t}/> · {r[`short_${lang}`] || r.run_id} <SelectionInfo row={r} t={t} /></strong>
                       <small>
                         {r.same_problems
                           ? t("相同题目", "Same problems")
@@ -1475,24 +1197,35 @@ function TerminalBenchDetails({ r, t, lang }) {
   </section>;
 }
 
-function Run({ r, t, lang, audit }) {
+function Run({ r, t, lang, audit, opened }) {
   const terminalSummary = r.source === "terminalbench_artifacts";
+  const sweSummary = r.suite === "swebench" && r.source === "benchmark_artifacts";
   const runAudit = audit || (r.execution_valid === false ? r : null);
-  const score = scoreForRun(r.scores, r.suite);
+  const scores = sweSummary && r.graded_count === 0 ? {} : r.scores || {};
+  const score = scoreForRun(scores, r.suite);
   return (
-    <details className="run-item">
+    <details className="run-item" data-run-id={r.run_id} open={opened || undefined}>
       <summary>
         <div className="run-identity">
           <strong>{r.suite} <SelectionInfo row={r} t={t} /></strong>
-          <span>{r.model || r.subject || r.run_id}{r.variant ? ` · ${r.variant === "candidate" ? t("候选版", "Candidate") : t("基线版", "Baseline")}` : ""}</span>
+          <span><RuntimeSubject row={r} t={t}/>{r.variant ? ` · ${r.variant === "candidate" ? t("候选版", "Candidate") : t("基线版", "Baseline")}` : ""}</span>
         </div>
         <div className="run-meta">
           <Badge>{t(...EVALUATION_TYPES[evaluationType(r)])}</Badge>
           {runAudit ? <Badge>{t("异常批次", "Affected run")}</Badge> : <Status r={r} t={t} />}
           <span className="mono">
-            {terminalSummary ? `${r.graded_count} / ${r.selected} ${t("已判分", "graded")}` : `${r.done} / ${r.planned}`}
+            {r.source === "swe_progress" && Number.isInteger(r.graded_count) ? t(`已提交 ${r.submitted} / ${r.selected} · 已收回非空补丁 ${r.patches} · 已归档判分 ${r.graded_count} / ${r.selected}，其中 ${r.resolved} 题通过`,
+              `Submitted ${r.submitted} / ${r.selected} · ${r.patches} nonempty patches · ${r.graded_count} / ${r.selected} officially graded, ${r.resolved} resolved`) :
+              r.source === "swe_progress" ? t(`已提交 ${r.submitted} / ${r.selected} · 已收回非空补丁 ${r.patches} · 官方评分待归档`,
+              `Submitted ${r.submitted} / ${r.selected} · ${r.patches} nonempty patches collected · Awaiting official grading report`) :
+              sweSummary && r.graded_count === 0 ? t("暂无官方判定","No official verdicts") :
+              sweSummary ? `${r.resolved} / ${r.selected} ${t("题已解决", "resolved")}` :
+              terminalSummary ? `${r.graded_count} / ${r.selected} ${t("已判分", "graded")}` :
+              `${r.done} / ${r.planned} ${t("已处理", "processed")}`}
+            {sweSummary && Number.isInteger(r.graded_count) &&
+              ` · ${t("判分覆盖", "Grading coverage")} ${r.graded_count} / ${r.selected}`}
           </span>
-          <span className="run-date">{date(r.updated_at, lang)}</span>
+          <span className="run-date">{date(sweSummary ? r.created_at : r.updated_at, lang)}</span>
         </div>
         <div className="run-score">
           <strong>{score ? scoreValue(...score) : "—"}</strong>
@@ -1510,6 +1243,13 @@ function Run({ r, t, lang, audit }) {
           <EvaluationIdentity row={r} t={t} />
           <dt>{t("运行标识", "Run ID")}</dt>
           <dd>{r.run_id}</dd>
+          {sweSummary && <><dt>{t("成绩来源", "Score source")}</dt><dd>{t("官方评分器归档", "Official grader report")}</dd></>}
+          {sweSummary && Number.isInteger(r.empty_patch_count) && <>
+            <dt>{t("有通过或未通过判定", "Graded resolved or unresolved")}</dt><dd>{r.graded_count} / {r.selected}</dd>
+            <dt>{t("空补丁", "Empty patches")}</dt><dd>{r.empty_patch_count}</dd>
+            <dt>{t("执行错误 / 判分异常", "Run errors / grading exceptions")}</dt><dd>{r.errors} / {r.grading_errors}</dd>
+          </>}
+          {r.provider_quota_interrupted_count > 0 && <><dt>{t("供应商额度中断且无补丁", "No patch after provider quota interruption")}</dt><dd>{r.provider_quota_interrupted_count}</dd></>}
           <dt>{t("切分", "Split")}</dt>
           <dd>{r.split || "—"}</dd>
           <dt>{t("开始时间", "Started")}</dt>
@@ -1521,7 +1261,7 @@ function Run({ r, t, lang, audit }) {
           {r.labels_draft > 0 && <><dt>{t("标注状态", "Label status")}</dt><dd>{t(`${r.labels_draft} 道草稿回归题，尚未经人审`, `${r.labels_draft} draft regression cases, not yet human-reviewed`)}</dd></>}
         </dl>
         {terminalSummary ? <TerminalBenchDetails r={r} t={t} lang={lang} /> : <div className="metrics">
-          {Object.entries(r.scores || {}).map(([k, v]) => (
+          {Object.entries(scores).map(([k, v]) => (
             <Stat
               key={k}
               value={scoreValue(k, v)}
