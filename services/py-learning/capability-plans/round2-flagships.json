@@ -1,0 +1,45 @@
+{
+  "name": "round2-flagships",
+  "task_family": "general.unclassified",
+  "n": 40,
+  "r": 3,
+  "seed": 0,
+  "concurrency": 4,
+  "schedule": "round_robin",
+  "item_usd_limit": 0.5,
+  "cells": [
+    {
+      "role": "plan",
+      "tier": "medium",
+      "evals": [{"eval": "s09", "options": {"adapted": ["natural-plan", "travelplanner", "swebench"]}}],
+      "candidates": [
+        "a6api/deepseek-v4-pro@2026-11",
+        "a6api/qwen3.8-max@2026-11",
+        "a6api/gemini-4-neon@2026-11",
+        "a6api/kimi-k3.1-pro@2026-11"
+      ]
+    },
+    {
+      "role": "act",
+      "tier": "medium",
+      "evals": [{"eval": "bfcl", "n": 100, "r": 1}],
+      "candidates": [
+        "a6api/deepseek-v4-pro@2026-11",
+        "a6api/qwen3.8-max@2026-11",
+        "a6api/gemini-4-neon@2026-11",
+        "a6api/kimi-k3.1-pro@2026-11"
+      ]
+    },
+    {
+      "role": "judge",
+      "tier": "medium",
+      "evals": ["s10"],
+      "candidates": [
+        "a6api/deepseek-v4-pro@2026-11",
+        "a6api/qwen3.8-max@2026-11",
+        "a6api/gemini-4-neon@2026-11",
+        "a6api/kimi-k3.1-pro@2026-11"
+      ]
+    }
+  ]
+}
