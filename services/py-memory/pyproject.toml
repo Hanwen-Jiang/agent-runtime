@@ -20,6 +20,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ml = [
+    "torch>=2.5",
+    "transformers>=4.49",
+]
 test = [
     "agentruntime-core[conformance]",
     "pytest>=9.1",

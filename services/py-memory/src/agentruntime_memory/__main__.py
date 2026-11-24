@@ -29,7 +29,7 @@ from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_memory.identity import DevTokenAuthenticator
 from agentruntime_memory.server import start_server
 from agentruntime_memory.service import MemoryService
-from agentruntime_memory.wiring import GatewayClient, GatewayReranker, embedder, knowledge_rerank_top8_depth, rerank_mode, vector_store
+from agentruntime_memory.wiring import embedder, knowledge_rerank_top8_depth, knowledge_reranker, rerank_mode, vector_store
 from agentruntime_memory.retrieval import RetrievalEngine
 from agentruntime_memory.knowledge import CatalogAuthorizer, KnowledgeService
 
@@ -56,8 +56,7 @@ async def serve() -> None:
     keyring = RelationalKeyRing(relational, secrets)
     vectors = vector_store(os.environ, keyring)
     embeddings = embedder(os.environ)
-    rerank_address = os.environ.get("AR_MODEL_GATEWAY_ADDRESS", "")
-    reranker = GatewayReranker(GatewayClient(rerank_address)) if rerank_address and os.environ.get("AR_KNOWLEDGE_RERANK") == "1" else None
+    reranker = knowledge_reranker(os.environ)
     retrieval = RetrievalEngine(vectors=vectors, embedder=embeddings, relational=relational,
                                authorize=CatalogAuthorizer(relational), rerank=reranker,
                                rerank_top8_depth=knowledge_rerank_top8_depth(os.environ))

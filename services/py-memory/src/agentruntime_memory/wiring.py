@@ -20,6 +20,11 @@ from agentruntime_core.errors import InvalidError
 from agentruntime_core.dev.vector_store import InMemoryVectorStoreProvider
 
 from agentruntime_memory.embedding import Embedder, GatewayEmbedder, HashingEmbedder
+from agentruntime_memory.torch_models import (
+    TorchBiEncoderEmbedder,
+    TorchCrossEncoderReranker,
+    parse_positive_int,
+)
 
 EMBED_TIMEOUT_S = 30.0
 
@@ -97,11 +102,61 @@ def vector_store(env: Mapping[str, str], keys: Any) -> Any:
 
 
 def embedder(env: Mapping[str, str]) -> Embedder:
+    backend = env.get("AR_EMBEDDER_BACKEND", "").strip().lower()
     address, version = env.get("AR_MODEL_GATEWAY_ADDRESS", ""), env.get("AR_EMBEDDING_VERSION", "")
+    torch_model = env.get("AR_TORCH_EMBED_MODEL", "").strip()
+    if backend == "torch" or torch_model:
+        if address:
+            raise ConfigError("AR_EMBEDDER_BACKEND=torch 不能与 AR_MODEL_GATEWAY_ADDRESS 同时作为嵌入后端配置")
+        if not torch_model:
+            raise ConfigError("启用 AR_EMBEDDER_BACKEND=torch 时必须设置 AR_TORCH_EMBED_MODEL")
+        try:
+            batch_size = parse_positive_int(env, "AR_TORCH_BATCH_SIZE", 32, minimum=1, maximum=1024)
+            max_length = parse_positive_int(env, "AR_TORCH_MAX_LENGTH", 512, minimum=8, maximum=8192)
+            return TorchBiEncoderEmbedder(
+                torch_model,
+                version=version or f"torch/{torch_model}",
+                device=env.get("AR_TORCH_DEVICE", "auto"),
+                batch_size=batch_size,
+                max_length=max_length,
+                pooling=env.get("AR_TORCH_POOLING", "mean").strip().lower() or "mean",
+                local_files_only=env.get("AR_TORCH_LOCAL_ONLY") == "1",
+            )
+        except ValueError as exc:
+            raise ConfigError(str(exc)) from exc
+    if backend and backend not in ("gateway", "hashing"):
+        raise ConfigError("AR_EMBEDDER_BACKEND must be gateway, torch or hashing")
     if address and version:
         return GatewayEmbedder(GatewayClient(address), version=version)
     if address or version:
         raise ConfigError("AR_MODEL_GATEWAY_ADDRESS 与 AR_EMBEDDING_VERSION 要一起设")
     if env.get("AR_RELATIONAL_DSN"):
-        raise ConfigError("设了 AR_RELATIONAL_DSN 就要设 AR_MODEL_GATEWAY_ADDRESS 与 AR_EMBEDDING_VERSION：哈希嵌入只给开发用")
+        raise ConfigError("设了 AR_RELATIONAL_DSN 就要设 AR_MODEL_GATEWAY_ADDRESS 与 AR_EMBEDDING_VERSION（或 AR_EMBEDDER_BACKEND=torch）：哈希嵌入只给开发用")
     return HashingEmbedder()
+
+
+def knowledge_reranker(env: Mapping[str, str]) -> Any:
+    """Resolve optional document reranker: local PyTorch Cross-Encoder or Model Gateway."""
+    backend = env.get("AR_RERANKER_BACKEND", "").strip().lower()
+    torch_model = env.get("AR_TORCH_RERANK_MODEL", "").strip()
+    if backend == "torch" or torch_model:
+        if not torch_model:
+            raise ConfigError("启用 AR_RERANKER_BACKEND=torch 时必须设置 AR_TORCH_RERANK_MODEL")
+        try:
+            batch_size = parse_positive_int(env, "AR_TORCH_BATCH_SIZE", 32, minimum=1, maximum=1024)
+            max_length = parse_positive_int(env, "AR_TORCH_MAX_LENGTH", 512, minimum=8, maximum=8192)
+            return TorchCrossEncoderReranker(
+                torch_model,
+                device=env.get("AR_TORCH_DEVICE", "auto"),
+                batch_size=batch_size,
+                max_length=max_length,
+                local_files_only=env.get("AR_TORCH_LOCAL_ONLY") == "1",
+            )
+        except ValueError as exc:
+            raise ConfigError(str(exc)) from exc
+    if backend and backend not in ("gateway", "none"):
+        raise ConfigError("AR_RERANKER_BACKEND must be gateway, torch or none")
+    rerank_address = env.get("AR_MODEL_GATEWAY_ADDRESS", "")
+    if rerank_address and (backend == "gateway" or env.get("AR_KNOWLEDGE_RERANK") == "1"):
+        return GatewayReranker(GatewayClient(rerank_address))
+    return None
