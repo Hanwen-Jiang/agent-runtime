@@ -230,9 +230,7 @@ def run(
     runner = _Runner(runtime, list(cases), out_dir, settings, live)  # type: ignore[arg-type]
     runner.files = files
     runner.go()
-    if live is not None:
-        live.finished(model=settings.model_name)
-    return runner.summary()
+    return runner.finish_run()
 
 
 def bridge_cases(cases: Sequence[Case], records: Mapping[str, Mapping[str, Any]], *, done: set[str] = frozenset()) -> list[dict[str, Any]]:

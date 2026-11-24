@@ -1,5 +1,11 @@
 import { matchingSelection } from "./selection-info.js";
 
+export function finalSweReport(row) {
+  return row.source === "benchmark_artifacts" && row.suite === "swebench" &&
+    (row.complete === true || row.provider_quota_interrupted_count > 0 ||
+     (row.finished === true && Number.isInteger(row.graded_count) && row.graded_count >= 0));
+}
+
 // Completed artifacts and telemetry describe the same runs. Artifacts retain
 // final scores after telemetry expires and win over unfinished scrape samples.
 export function reportRuns(live, archive, benchmarks) {
@@ -26,7 +32,16 @@ export function reportRuns(live, archive, benchmarks) {
   // Explicit final TB summaries take precedence even when a simultaneous
   // live-feed refresh still carries a stale maximum or an unfinished score.
   for (const row of benchmarks?.runs || []) {
-    if (row.source === "terminalbench_artifacts" && row.run_id) rows.set(`${row.suite}:${row.run_id}`, row);
+    if ((row.source === "terminalbench_artifacts" || row.source === "swe_progress") && row.run_id) rows.set(`${row.suite}:${row.run_id}`, row);
+    else if (finalSweReport(row) && row.run_id) {
+      const key = `${row.suite}:${row.run_id}`, prior = rows.get(key);
+      rows.set(key, {
+        ...row, planned: row.selected, done: row.selected - (row.not_run || 0),
+        updated_at: row.updated_at || row.created_at,
+        valid: prior?.valid === false ? false : row.valid,
+        execution_valid: prior?.execution_valid === false ? false : row.execution_valid,
+      });
+    }
     else if (row.run_id && row.selection_info) {
       const key = `${row.suite}:${row.run_id}`, liveRow = rows.get(key);
       if (matchingSelection(liveRow, row.selection_info)) rows.set(key, { ...liveRow, selection_info: row.selection_info });

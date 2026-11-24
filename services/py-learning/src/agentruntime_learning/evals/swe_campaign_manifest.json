@@ -1,0 +1,152 @@
+{
+  "campaign_id": "swe-verified-mini50-20261121",
+  "title": "SWE-bench Verified Mini 50",
+  "ordered_ids_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+  "reference_url": "https://github.com/mariushobbhahn/SWEBench-verified-mini/blob/1ce432065d9ed226017ef1ac88b5f91818383c64/data/subsets/size_optimized_sample_ids.json",
+  "arms": {
+    "a": {
+      "initial_run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+      "initial_model": "runtime-a-gpt-6.2-sol-fixed",
+      "runtime_tree": "c095dc8a858f4acd798396dc898f1ea3c176e906",
+      "recovery_run_id": "mini50-quota-20261122-a",
+      "recovery_ids": [
+        "django__django-11964",
+        "django__django-12308",
+        "django__django-12708",
+        "sphinx-doc__sphinx-10323",
+        "sphinx-doc__sphinx-10435",
+        "sphinx-doc__sphinx-7590",
+        "sphinx-doc__sphinx-8269",
+        "sphinx-doc__sphinx-9230",
+        "sphinx-doc__sphinx-9461"
+      ],
+      "regrades": [],
+      "infra_run_id": "mini50-infra-20261123-a",
+      "infra_ids": [
+        "sphinx-doc__sphinx-7985",
+        "sphinx-doc__sphinx-8056",
+        "sphinx-doc__sphinx-9281",
+        "sphinx-doc__sphinx-9367"
+      ],
+      "recovery_model": "runtime-a-gpt-6.2-sol-quota-retry",
+      "recovery_archive_sha256": "6cc8dd57ba1ee06002b6c55f1d1e0824134c446dfe79bcdc64b32cac861ab05d",
+      "initial_report_sha256": "f1deb279f56d35c71dae8618bc9cdd4b850b8e6abd6ff0adaf0a98055e791a36",
+      "infra_model": "runtime-a-gpt-6.2-sol-infrastructure-retry"
+    },
+    "b": {
+      "initial_run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+      "initial_model": "runtime-b-gpt-6.2-sol-fixed",
+      "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+      "recovery_run_id": "mini50-quota-20261122-b",
+      "recovery_ids": [
+        "django__django-11964",
+        "django__django-12308",
+        "django__django-12708",
+        "sphinx-doc__sphinx-10323",
+        "sphinx-doc__sphinx-10435",
+        "sphinx-doc__sphinx-7590",
+        "sphinx-doc__sphinx-7985",
+        "sphinx-doc__sphinx-8269",
+        "sphinx-doc__sphinx-9230",
+        "sphinx-doc__sphinx-9461"
+      ],
+      "regrades": [
+        {
+          "file": "b-11885-regraded.json",
+          "sha256": "872199ebb061d087108cdee94196f7ade5be6a8f900ee502b17cf0fb08479043",
+          "completed_ids": [
+            "django__django-11885"
+          ],
+          "resolved_ids": [],
+          "unresolved_ids": [
+            "django__django-11885"
+          ]
+        },
+        {
+          "file": "b-12209-recovered-grader.json",
+          "sha256": "f8c32d26c6afd7349bf26ff88d4677c48a8d563df12b08d040071f46734c4beb",
+          "completed_ids": [
+            "django__django-12209"
+          ],
+          "resolved_ids": [
+            "django__django-12209"
+          ],
+          "unresolved_ids": []
+        }
+      ],
+      "infra_run_id": "mini50-infra-20261123-b",
+      "infra_ids": [
+        "sphinx-doc__sphinx-8056",
+        "sphinx-doc__sphinx-9281",
+        "sphinx-doc__sphinx-9367"
+      ],
+      "recovery_model": "runtime-b-gpt-6.2-sol-quota-retry",
+      "recovery_archive_sha256": "0ccb04b1549614ef5cb28c9604cfc0022d77cc5dcb295d82d46773b529a23ac1",
+      "initial_report_sha256": "04694401712aead925d70a82e31a397b8cbaa326d82d5f5e4e3b8128d75b2f38",
+      "infra_model": "runtime-b-gpt-6.2-sol-infrastructure-retry"
+    }
+  },
+  "diagnostics": [
+    {
+      "kind": "sphinx_workspace",
+      "run_ids": [
+        "sphinx-gpt62-b-20261121T1840Z"
+      ],
+      "ids": [
+        "sphinx-doc__sphinx-8056",
+        "sphinx-doc__sphinx-9367"
+      ],
+      "archives": {
+        "sphinx-gpt62-b-20261121T1840Z": "1178d0f286a0a4c3e8756bfce10f43bbe3657a747248153ac501b842ff51c9d0"
+      }
+    },
+    {
+      "kind": "routing_quota",
+      "run_ids": [
+        "route2-20261122-fixed",
+        "route2-20261122-native"
+      ],
+      "ids": [
+        "django__django-11490",
+        "sphinx-doc__sphinx-8721"
+      ],
+      "archives": {
+        "route2-20261122-fixed": "dd35fa853e9f8c7c1573fdc56a4e33d0ed3e7b8afb86663d17ceeb161309c87b",
+        "route2-20261122-native": "bd7d96a8a7b3821c4aa64435d639601cda23a0718d81ed37d47a9e5987975894"
+      }
+    },
+    {
+      "kind": "routing_funded",
+      "run_ids": [
+        "route2-funded-20261122-fixed",
+        "route2-funded-20261122-native"
+      ],
+      "ids": [
+        "django__django-11885",
+        "sphinx-doc__sphinx-8721"
+      ],
+      "archives": {
+        "route2-funded-20261122-fixed": "2058f769a51c7fd5389ce556d2f9ed86011f71bbf9906a91681882e016872527",
+        "route2-funded-20261122-native": "8617a5bdd3678647fcc902056bba0859ed50199e6ce287d5b8d0f6b4ab23fbfe"
+      }
+    },
+    {
+      "kind": "setup_attempts",
+      "run_ids": [
+        "resume-e2e-20261121T103412Z",
+        "resume-e2e-20261121T103412Z-authv2",
+        "resume-sphinx-evals-20261121T103856Z",
+        "sphinx-workspace-fix-20261121T113359Z",
+        "mini50-gpt62-arm-a-20261121T131913Z",
+        "mini50-gpt62-arm-b-20261121T131914Z",
+        "sphinx-gpt62-b-20261121T1425Z",
+        "sphinx-gpt62-b-20261121T1733Z",
+        "sphinx-gpt62-b-20261121T1750Z",
+        "sphinx-gpt62-b-20261121T1805Z",
+        "sphinx-gpt62-b-20261121T1815Z",
+        "sphinx-gpt62-b-20261121T1820Z",
+        "sphinx-gpt62-b-20261121T1830Z"
+      ]
+    }
+  ]
+}

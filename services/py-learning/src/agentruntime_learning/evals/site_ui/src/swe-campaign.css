@@ -1,0 +1,15 @@
+.swe-campaign {
+  margin: 1rem 0; padding: 1rem 1.15rem; border: 1px solid var(--border);
+  border-radius: .75rem; background: var(--surface); min-width: 0;
+}
+.swe-campaign > header { display: flex; align-items: start; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.swe-campaign h2 { font-size: 1.18rem; margin: 0 0 .2rem; }
+.swe-campaign h3 { margin: .85rem 0 .4rem; }
+.swe-campaign .table-scroll { margin-top: .7rem; }
+.swe-campaign summary { cursor: pointer; }
+.swe-campaign > details { margin-top: .75rem; }
+.swe-campaign-source { margin: .6rem 0; }
+.swe-campaign-source > strong { display: block; margin-bottom: .2rem; font-size: .85rem; color: var(--muted); }
+.swe-campaign-sources section + section { border-top: 1px solid var(--border); margin-top: 1rem; }
+.swe-campaign-cases td { min-width: 10rem; }
+.swe-campaign-cases th[scope=row] { overflow-wrap: anywhere; }

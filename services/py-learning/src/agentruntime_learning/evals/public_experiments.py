@@ -5,6 +5,8 @@ Raw source passages, question/answer content and model ledgers are never exposed
 """
 from __future__ import annotations
 
+from .public_engineering import project_engineering_card
+
 import hashlib
 import json
 import math
@@ -27,7 +29,7 @@ from agentruntime_learning.evals.live_context_focus import build_live_focus, PRO
 
 MAX_DOCUMENT_BYTES = 2 * 1024 * 1024
 MAX_RUN_DIRECTORIES = 128
-RUN_DIRECTORY = re.compile(r"^(longmemeval-recovered-|longmemeval-final-|n16-evreal-pinned-|paired-final-|memory-bm25-full-|longbench-context-)([0-9]{8}[a-zA-Z0-9_-]*)$")
+RUN_DIRECTORY = re.compile(r"^(engineering-|longmemeval-recovered-|longmemeval-final-|n16-evreal-pinned-|paired-final-|memory-bm25-full-|longbench-context-)([0-9]{8}[a-zA-Z0-9_-]*)$")
 MEMORY_FILES = ("lexical-summary.json", "live-summary.json", "comparison.json", "final-acceptance.json")
 PAIRED_FILES = ("paired-completion-final.json", "analysis-notes.json", "source-provenance.json")
 
@@ -342,6 +344,8 @@ class PublicExperimentSource:
         raise FileNotFoundError("experiment summary missing")
 
     def _bundle(self, name: str, prefix: str, suffix: str) -> dict[str, Any] | None:
+        if prefix == "engineering-":
+            return project_engineering_card(name, self._read)
         raw: dict[str, bytes] = {}
         if prefix == "longbench-context-":
             summary = self._read(name + "/public-summary.json")
@@ -486,6 +490,8 @@ class PublicExperimentSource:
                                 raise ValueError("too many experiment directories")
                 for name, prefix, suffix in sorted(candidates):
                     identity = ("longmemeval-" if prefix.startswith("longmemeval") else "memory-bm25-" if prefix == "memory-bm25-full-" else "longbench-context-" if prefix == "longbench-context-" else "paired-policy-") + suffix
+                    if prefix == "engineering-":
+                        identity = name
                     seen.add(identity)
                     try:
                         row = self._bundle(name, prefix, suffix)

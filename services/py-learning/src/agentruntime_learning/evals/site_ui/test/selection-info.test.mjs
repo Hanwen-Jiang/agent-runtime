@@ -47,6 +47,12 @@ test("new Mini 50 run IDs use the mini-50 batch label", () => {
   const info = selectionInfoForRow({ run_id: "mini50-gpt62-formal-a-20261121T1900Z", suite: "swebench", selected: 50 });
   assert.equal(info.batch_id, "mini-50");
   assert.equal(info.selected_count, 50);
+  const retry = selectionInfoForRow({run_id:"mini50-quota-20261122-a",suite:"swebench",source:"swe_progress",selected:9});
+  assert.equal(retry.selected_count,9);
+  assert.equal(retry.batch_id,undefined);
+  const ids = ["django__django-11885","sphinx-doc__sphinx-8721"];
+  const live = selectionInfoForRow({source:"swe_progress",selected:2,selection_info:{selection_ids:ids,method:"explicit_ids"}});
+  assert.deepEqual(live.selection_ids, ids);
 });
 
 test("unidentified historical rows do not inherit a fixed batch", () => {

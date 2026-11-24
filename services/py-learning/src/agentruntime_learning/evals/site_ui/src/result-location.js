@@ -16,8 +16,19 @@ export function resultLocation(href, { view, search }) {
 
 // Trend selection is independent of the run-record search. Keep explicit IDs
 // while data is loading; the view must not silently substitute another chart.
-export function readTrendLocation(href) {
+export function canonicalTrendLocation(href) {
   const url = new URL(href);
+  if (url.searchParams.get("metric") === "cumulative_resolved_rate" && (!url.searchParams.get("trend") || url.searchParams.get("trend") === "swebench")) {
+    url.searchParams.set("trend", "swebench");
+    url.searchParams.set("metric", "resolved_rate");
+    url.searchParams.set("batch", "mini-50");
+    url.hash = "trend-swebench";
+  }
+  return url;
+}
+
+export function readTrendLocation(href) {
+  const url = canonicalTrendLocation(href);
   const suite = url.searchParams.get("trend") || "";
   return { suite, metric: suite ? url.searchParams.get("metric") || "" : "", batch: url.searchParams.get("batch") || "" };
 }

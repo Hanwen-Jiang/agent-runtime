@@ -1,0 +1,22 @@
+{
+  "members": {
+    "capability-resume-20261123-core": {
+      "plan_sha256": "8492a2f1d790f027d60468ef37a9e517d1e0bc17159f2063b3cb202e5fd03cc8",
+      "evaluations_sha256": "ce658fd4552bcfed99d7422102ec93fc6df6b2a168b56391d4bfd60fc06ffed4",
+      "deployment_sha256": "323118ad731c06774a4f45243569501ea0737168ccfa548df7a3fa5b9de2e2e8"
+    },
+    "capability-resume-20261123-transform": {
+      "plan_sha256": "7ac4038234bdb593cd1b59f0428ae49fc86a3b888410aa92adb7b8826cba6c71",
+      "evaluations_sha256": "ba23c9ef6c350107222f09d391ec72ba892e874a740a29180cfd0882b0182d09",
+      "deployment_sha256": "019e19ebf1132de2b7817611fc5d54e3eef923f803b2b12dfabcc4ef1b6c87de"
+    },
+    "capability-resume-20261123-judge-v2": {
+      "plan_sha256": "58643f4e1cbf0fed42842e5420e8eaa21d0ab7a784cd35521e8d1643233a61f7",
+      "evaluations_sha256": "925ba2b467bad0d11bdfe5f228d05b2d33328d39f362357e17e406dcdd5d6d30",
+      "deployment_sha256": "019e19ebf1132de2b7817611fc5d54e3eef923f803b2b12dfabcc4ef1b6c87de"
+    }
+  },
+  "runtime_freeze_sha256": "cd405c1bb1cc2e6eccbd77e4177eec82a15f2f649ec1bbb1504257937349a94c",
+  "profiles_sha256": "1ee3a5e1012676918c9aed85edb840dc4f18c022952cdc28fd070e8029d4ecf0",
+  "registry_sha256": "38221cb1029f784c9fcc9f0180eab773baaed3538573cfe846f007e7b80d548f"
+}

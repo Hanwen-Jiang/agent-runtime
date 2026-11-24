@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readResultLocation, readTrendLocation, resultLocation, trendLocation } from "../src/result-location.js";
+import { canonicalTrendLocation, readResultLocation, readTrendLocation, resultLocation, trendLocation } from "../src/result-location.js";
 
 test("shared links restore explicit views and default unknown views to recent", () => {
   assert.deepEqual(readResultLocation("https://evals.example/results?view=archive&q=KiMi#run-records"), { view: "archive", search: "KiMi" });
@@ -27,4 +27,14 @@ test("trend links round trip a batch restriction while preserving page filters",
   assert.equal(url.searchParams.get("keep"), "yes");
   assert.equal(url.searchParams.get("batch"), "init-50");
   assert.equal(url.hash, "#trend-swebench");
+});
+
+test("a retired Mini 50 metric restores the original SWE-bench metric and batch", () => {
+  const old = "https://evals.example/results?type=runtime&trend=swebench&metric=cumulative_resolved_rate#trend-swebench";
+  const canonical = canonicalTrendLocation(old);
+  assert.equal(canonical.searchParams.get("type"), "runtime");
+  assert.equal(canonical.searchParams.get("metric"), "resolved_rate");
+  assert.equal(canonical.searchParams.get("batch"), "mini-50");
+  assert.deepEqual(readTrendLocation(old), readTrendLocation(canonical.href));
+  assert.equal(canonicalTrendLocation(canonical.href).href, canonical.href);
 });

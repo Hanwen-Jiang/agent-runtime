@@ -96,6 +96,13 @@ test("only completed benchmark archives contribute scores", () => {
   assert.equal(best.run.run_id, "complete");
 });
 
+test("older archive for a SWE run cannot supersede its final artifact with a higher rate", () => {
+  const run = {suite:"swebench", run_id:"same", split:"verified", source:"benchmark_artifacts",
+    status:"finished", scores:{resolved_rate:.52}, planned:50};
+  const [best] = bestResults([run], {benchmarks:[{run_id:"same", selected:50, complete:true, rate:.70}]});
+  assert.deepEqual(best.run, run);
+});
+
 test('reviewed infrastructure exclusions are not selected as best but valid zero remains',()=>{
  const rows=[{run_id:'infra',suite:'terminal-bench',split:'2.0',status:'finished',scores:{resolved_rate:.25}},{run_id:'measured',suite:'terminal-bench',split:'2.0',status:'finished',scores:{resolved_rate:0}}];
  const [best]=bestResults(rows,{},[{suite:'terminal-bench',run_id:'infra',execution_valid:false}]);

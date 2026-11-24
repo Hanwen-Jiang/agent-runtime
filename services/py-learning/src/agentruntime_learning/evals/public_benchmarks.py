@@ -8,6 +8,8 @@ import re
 import stat
 import threading
 import time
+from .public_swe_progress import PREFIX as PROGRESS_PREFIX, PUBLIC_SWE_REPOS, VERIFIED_EXPORT, read_progress, recovery_identity
+from .public_swe_campaigns import public_case_grades, swe_campaigns
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,14 +20,6 @@ MAX_DIRECTORIES = 128
 MAX_AUDIT_BYTES = 256 * 1024
 MAX_AUDIT_RUNS = 256
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$')
-# Identity of the archived 500-task Verified export (not every file named verified.jsonl).
-VERIFIED_EXPORT = '2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52'
-PUBLIC_SWE_REPOS = frozenset({
-    'astropy/astropy', 'django/django', 'matplotlib/matplotlib', 'mwaskom/seaborn',
-    'pallets/flask', 'psf/requests', 'pydata/xarray', 'pylint-dev/pylint',
-    'pytest-dev/pytest', 'scikit-learn/scikit-learn', 'sphinx-doc/sphinx', 'sympy/sympy',
-})
-
 
 def _digest(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
@@ -35,6 +29,30 @@ def _number(value: Any) -> float | None:
     if type(value) not in (float, int) or not math.isfinite(value):
         return None
     return float(value)
+
+
+def _provider_quota_failure(record: dict, case_id: str, status: str) -> bool:
+    task = record.get('task_id')
+    if (record.get('instance_id') != case_id or not isinstance(task, str) or not task
+            or record.get('task_finished') is not True or record.get('status') != status or record.get('patch') != ''):
+        return False
+    failure = record.get('provider_failure')
+    if (isinstance(failure, dict) and failure.get('source') == 'temporal_activity_failure'
+            and failure.get('task_id') == task and failure.get('code') == 'insufficient_user_quota'
+            and type(failure.get('event_id')) is int and failure['event_id'] > 0):
+        return True
+    if status != 'aborted':
+        return False
+    try:
+        delivery = json.loads(record.get('deliverable') or '{}')
+    except (ValueError, TypeError):
+        return False
+    codes = delivery.get('codes') if isinstance(delivery, dict) else None
+    nodes = codes.get('nodes') if isinstance(codes, dict) else None
+    return isinstance(nodes, list) and any(
+        isinstance(node, dict) and isinstance(node.get('error'), str)
+        and re.search(r'\binsufficient_user_quota:\s*模型供应商返回\s*40[23]\b', node['error'])
+        for node in nodes)
 
 
 def _count(value: Any) -> int | None:
@@ -126,7 +144,10 @@ def project_benchmark(run: dict[str, Any], report: dict[str, Any], digest: str) 
         raise ValueError('invalid benchmark outcome identities')
     terminal = sum(by_id.get(i,{}).get('state') in ('finished','error') for i in ids)
     not_run, errors, ran = (_count(report.get(k)) for k in ('not_run','errors','ran'))
-    complete = terminal == selected and not_run == 0 and ran is not None and errors is not None and ran + errors == selected
+    finished = terminal == selected and not_run == 0 and ran is not None and errors is not None and ran + errors == selected
+    graded_count = sum(r.get('grading') in ('resolved','unresolved') for r in by_id.values())
+    graded_complete = graded_count == selected
+    complete = finished and graded_complete
     graded = report.get('graded') is True
     if not graded or resolved is None:
         return None
@@ -170,8 +191,11 @@ def project_benchmark(run: dict[str, Any], report: dict[str, Any], digest: str) 
     cohort_hash = _digest(sorted(ids))
     return {'run_id':run_id,'suite':'swebench','split':split,'model':model,'subject':'agent-runtime' if model.startswith('agent-runtime') else model,
             'created_at':at,'started_at':at,'selected':selected,'sample_count':selected,'resolved':resolved,'rate':rate,'complete':complete,
-            'finished':complete,'status':'finished' if complete else 'incomplete','graded_complete':report.get('graded_complete') is True,
-            'graded_count':sum(r.get('state')=='finished' for r in by_id.values()),'errors':errors,'not_run':not_run,
+            'finished':finished,'status':'finished' if complete else 'partial' if finished else 'incomplete',
+            'graded_complete':graded_complete,'graded_count':graded_count,
+            'empty_patch_count':sum(r.get('grading')=='empty_patch' for r in by_id.values()),
+            'grading_errors':sum(r.get('grading') in ('infra_failure','ambiguous_failure','error') for r in by_id.values()),
+            'errors':errors,'not_run':not_run,
             'cohort_sha256':cohort_hash,'protocol':protocol,'protocol_sha256':protocol_hash,'dataset_sha256':dataset_hash,
             'selection_info':project_swe_selection(selection, ids, by_id, split, dataset_hash, cohort_hash),
             'source_sha256':digest,'source':'benchmark_artifacts','cost_usd':cost if cost is not None and cost>=0 else None,
@@ -189,13 +213,16 @@ class PublicBenchmarkSource:
         self._cached:bytes|None=None
         self._good:dict[str,dict[str,Any]]={}
 
-    def _read(self, directory: str, name: str) -> bytes:
+    def _read(self, directory: str, name: str, *, records: bool = False) -> bytes:
         assert self.root is not None
         fd=os.open(self.root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         try:
             child=os.open(directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd)
             os.close(fd);fd=child
-            handle=os.open(name,os.O_RDONLY|os.O_NOFOLLOW,dir_fd=fd)
+            if records:
+                child=os.open('records', os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW, dir_fd=fd)
+                os.close(fd);fd=child
+            handle=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
             with os.fdopen(handle,'rb') as stream:
                 info=os.fstat(stream.fileno())
                 if not stat.S_ISREG(info.st_mode) or info.st_size>MAX_BYTES:
@@ -215,6 +242,10 @@ class PublicBenchmarkSource:
             with os.scandir(fd) as entries:
                 for entry in entries:
                     if NAME.fullmatch(entry.name) and not entry.is_symlink() and entry.is_dir(follow_symlinks=False):
+                        # Dedicated evaluators keep raw task records private and publish separate summaries.
+                        if not entry.name.startswith(PROGRESS_PREFIX) and not os.access(entry.name, os.R_OK | os.X_OK, dir_fd=fd):
+                            self._good.pop(entry.name, None)
+                            continue
                         names.append(entry.name)
                         if len(names)>MAX_DIRECTORIES:
                             raise ValueError('too many benchmark directories')
@@ -276,26 +307,80 @@ class PublicBenchmarkSource:
                     pass
                 except (OSError,ValueError):
                     errors.add('benchmark_artifacts_unavailable')
+            progress = {}
             for name in names:
                 try:
+                    if name.startswith(PROGRESS_PREFIX):
+                        try:
+                            snapshot = read_progress(json.loads(self._read(name, 'public-progress.json')), name)
+                            progress[snapshot['run_id']] = snapshot
+                        except FileNotFoundError:
+                            pass
                     a,b=self._read(name,'run.json'),self._read(name,'report.json')
                     run,report=json.loads(a),json.loads(b)
                     if not isinstance(run,dict) or not isinstance(report,dict):
                         raise ValueError('invalid benchmark documents')
                     projected=project_benchmark(run,report,hashlib.sha256(a+b'\0'+b).hexdigest())
                     if projected is not None:
+                        interruptions = 0
+                        for row in report['instances']:
+                            case_id = row['instance_id']
+                            if (row.get('grading') != 'empty_patch' or row.get('status') not in ('aborted','cancelled')
+                                    or not NAME.fullmatch(case_id)):
+                                continue
+                            try:
+                                record = json.loads(self._read(name, case_id + '.json', records=True))
+                                interruptions += isinstance(record, dict) and _provider_quota_failure(record, case_id, row['status'])
+                            except FileNotFoundError:
+                                pass
+                            except (OSError, ValueError):
+                                errors.add('benchmark_failure_evidence_unavailable')
+                        if interruptions:
+                            projected.update(provider_quota_interrupted_count=interruptions, complete=False,
+                                             graded_complete=False, status='partial')
+                        try:
+                            protocol = json.loads(self._read(name, 'paired-protocol.json'))
+                        except FileNotFoundError:
+                            protocol = None
+                        except (OSError, ValueError):
+                            errors.add('paired_protocol_unavailable')
+                            protocol = None
+                        if (isinstance(protocol, dict) and protocol.get('run_id') == projected['run_id']
+                                and protocol.get('model_label') == projected['model']
+                                and isinstance(protocol.get('runtime_tree'), str)
+                                and re.fullmatch(r'[0-9a-f]{40}', protocol['runtime_tree'])):
+                            projected['runtime_tree'] = protocol['runtime_tree']
+                        grades = public_case_grades(projected,report)
+                        if grades:
+                            projected["case_verdicts"] = grades
+                            projected["report_sha256"] = hashlib.sha256(b).hexdigest()
+                            if "recovery_source" not in projected and run.get("selection",{}).get("source_mini_run"):
+                                try:
+                                    observed = (run.get('recovery_protocol') if name.startswith(PROGRESS_PREFIX)
+                                                else json.loads(self._read(name,'recovery-protocol.json')))
+                                    identity = recovery_identity(run, observed)
+                                    if identity:
+                                        projected.update(identity)
+                                    else:
+                                        projected['recovery_source_status'] = 'invalid_protocol'
+                                except (OSError, TypeError, ValueError):
+                                    projected['recovery_source_status'] = 'unreadable_protocol'
                         self._good[name]=projected
                 except FileNotFoundError:
                     if name in self._good:errors.add('benchmark_summary_missing')
                 except (OSError,ValueError,TypeError,KeyError,OverflowError):
                     errors.add('benchmark_summary_invalid')
             if set(self._good)-set(names):errors.add('benchmark_summary_missing')
-            # Prefer the complete copy if a resumed directory shares an ID.
+            # Prefer final archives, then official issue coverage, over an older partial copy.
+            def archive_rank(row):
+                return row['complete'], row['finished'], row['graded_count'], row['created_at']
             unique={}
             for row in self._good.values():
                 key=row['run_id'];prior=unique.get(key)
-                if prior is None or (row['complete'],row['created_at'])>(prior['complete'],prior['created_at']):unique[key]=row
-            runs=sorted(unique.values(),key=lambda r:datetime.fromisoformat(r['created_at'].replace('Z','+00:00')).timestamp())
+                if prior is None or archive_rank(row) > archive_rank(prior):unique[key]=row
+            for rid, snapshot in progress.items():
+                unique.setdefault(rid, snapshot)
+            runs=sorted(unique.values(),key=lambda r:datetime.fromisoformat(r['started_at'].replace('Z','+00:00')).timestamp())
             audit_by_id={(row['suite'],row['run_id']):row for row in exclusions}
             runs=[{**row,**{key:value for key,value in audit_by_id.get((row['suite'],row['run_id']),{}).items() if key!='source_sha256'},
                    **({'audit_source_sha256':audit_by_id[(row['suite'],row['run_id'])]['source_sha256']} if (row['suite'],row['run_id']) in audit_by_id else {})} for row in runs]
@@ -304,6 +389,7 @@ class PublicBenchmarkSource:
             # run is not in the benchmark archive root. It carries no score.
             runs += [{**row,'source':'run_audit'} for row in exclusions if (row['suite'],row['run_id']) not in present]
             value={'source':'artifacts' if runs or exclusions else 'none','status':'stale' if (runs or exclusions) and errors else 'ready' if runs or exclusions else 'unavailable' if errors else 'empty',
-                   'stale':bool(errors),'checked_at':datetime.now(UTC).isoformat(),'runs':runs,'exclusions':exclusions,'errors':sorted(errors)}
+                   'stale':bool(errors),'checked_at':datetime.now(UTC).isoformat(),'runs':runs,'exclusions':exclusions,'errors':sorted(errors),
+                   'campaigns':swe_campaigns(runs)}
             self._cached=json.dumps(value,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode();self._at=now
             return self._cached

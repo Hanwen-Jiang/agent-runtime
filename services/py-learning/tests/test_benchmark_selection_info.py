@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from agentruntime_learning.benchmarks.__main__ import _run_cohort
-from agentruntime_learning.evals.public_benchmarks import VERIFIED_EXPORT, project_benchmark
+from agentruntime_learning.evals.public_benchmarks import PublicBenchmarkSource, VERIFIED_EXPORT, project_benchmark
 from agentruntime_learning.evals.public_terminalbench import PublicTerminalBenchSource
 
 
@@ -31,6 +31,68 @@ def _swe(selection, ids):
     report = {"benchmark": "swe-bench", "run_id": "run-1", "model_name": "m", "selected": len(ids),
               "resolved": 0, "resolve_rate": 0, "graded": True, "instances": rows}
     return project_benchmark(run, report, "a" * 64)["selection_info"]
+
+
+def test_swe_official_counts_and_frozen_tree_from_matching_run(tmp_path):
+    path = tmp_path / "attempt"
+    path.mkdir()
+    labels = ["resolved", "unresolved", "empty_patch", "run_error", "error"]
+    rows = [{"instance_id": f"test-{i}", "grading": label, "state": "error" if label == "run_error" else "finished"}
+            for i, label in enumerate(labels)]
+    run = {"run_id": "experiment", "benchmark": "swe-bench", "created_at": "2026-01-01T00:00:00Z",
+           "instance_ids": [row["instance_id"] for row in rows],
+           "settings": {"hints": False, "environment": "official", "model_name": "model"}}
+    report = {"run_id": "experiment", "benchmark": "swe-bench", "instances": rows, "graded": True,
+              "selected": 5, "resolved": 1, "resolve_rate": .2, "ran": 4, "not_run": 0, "errors": 1, "model_name": "model"}
+    (path / "run.json").write_text(json.dumps(run))
+    (path / "report.json").write_text(json.dumps(report))
+    def read_row():
+        return json.loads(PublicBenchmarkSource(tmp_path).get())["runs"][0]
+    source = read_row()
+    assert (source["graded_count"], source["empty_patch_count"], source["grading_errors"], source["errors"]) == (2, 1, 1, 1)
+    assert source["scores"]["resolved_rate"] == .2 and "runtime_tree" not in source
+    protocol = {"run_id": "experiment", "model_label": "model", "runtime_tree": "d" * 40}
+    (path / "paired-protocol.json").write_text(json.dumps(protocol))
+    assert read_row()["runtime_tree"] == protocol["runtime_tree"]
+    (path / "paired-protocol.json").write_text(json.dumps({**protocol, "run_id": "other"}))
+    assert "runtime_tree" not in read_row()
+
+
+def test_quota_interruption_requires_task_evidence_and_retains_official_denominator(tmp_path):
+    path = tmp_path / "pilot"
+    records = path / "records"
+    records.mkdir(parents=True)
+    ids = [f"org__repo-{i}" for i in range(1,6)]
+    statuses = ["aborted", "cancelled", "aborted", "aborted", "done"]
+    rows = [{"instance_id": i, "state": "finished", "status": s,
+             "grading": "resolved" if s == "done" else "empty_patch"} for i,s in zip(ids,statuses)]
+    run = {"run_id": "pilot", "benchmark": "swe-bench", "created_at": "2026-01-01T00:00:00Z",
+           "instance_ids": ids, "settings": {"hints": False, "environment": "official", "model_name": "m"}}
+    report = {"run_id": "pilot", "benchmark": "swe-bench", "instances": rows, "graded": True, "graded_complete": True,
+              "selected": 5, "resolved": 1, "resolve_rate": .2, "ran": 5, "not_run": 0, "errors": 0, "model_name": "m"}
+    (path / "run.json").write_text(json.dumps(run))
+    (path / "report.json").write_text(json.dumps(report))
+    evidence = {"codes":{"nodes":[{"error":"tool_loop: insufficient_user_quota: 模型供应商返回 403：当前可用额度不足。"}]}}
+    for i,(case_id,status) in enumerate(zip(ids,statuses)):
+        record = {"instance_id":case_id,"status":status,"task_finished":True,"task_id":f"t-{i}","patch":""}
+        if i == 1:
+            record["provider_failure"] = {"code":"insufficient_user_quota","event_id":21,"source":"temporal_activity_failure","task_id":"t-1"}
+        elif i == 2:
+            record["deliverable"] = "insufficient_user_quota: 模型供应商返回 403"
+        else:
+            record["deliverable"] = json.dumps(evidence)
+        output = records / (case_id + ".json")
+        if i == 3:
+            outside = tmp_path / "foreign.json"
+            outside.write_text(json.dumps(record))
+            output.symlink_to(outside)
+        else:
+            output.write_text(json.dumps(record))
+    raw = PublicBenchmarkSource(tmp_path).get()
+    row = json.loads(raw)["runs"][0]
+    assert row["status"] == "partial" and not row["complete"] and not row["graded_complete"]
+    assert (row["provider_quota_interrupted_count"],row["resolved"],row["selected"],row["graded_count"]) == (2,1,5,1)
+    assert "insufficient_user_quota" not in raw.decode()
 
 
 def test_swe_stratified_archive_explains_the_pool_and_relates_every_public_id():

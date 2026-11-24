@@ -30,6 +30,8 @@ const INIT_50_IDS = [
   "sympy__sympy-15809", "sympy__sympy-17630", "sympy__sympy-23413", "sympy__sympy-24562",
 ];
 
+const MINI_50_COHORT = "92fc6b6b100c4f07caedda76d36e39aabb9ab266435c35de90597bdd3d29efff";
+
 export const PUBLIC_BATCHES = Object.freeze({
   "init-50": Object.freeze({
     batch_id: "init-50",
@@ -68,7 +70,7 @@ export const PUBLIC_BATCHES = Object.freeze({
     dataset: "LongMemEval_S", split: "development", selected_count: 50, method: "frozen_cohort",
   }),
   "mini-50": Object.freeze({
-    batch_id: "mini-50", label_zh: "mini-50 · 新 50 题方案", label_en: "mini-50 · new 50-case scheme",
+    batch_id: "mini-50", label_zh: "mini-50 · 公开 Verified Mini 50", label_en: "mini-50 · Public Verified Mini 50",
     dataset: "SWE-bench Verified", split: "verified", selected_count: 50, method: "unrecorded",
     method_detail_zh: "新 Mini 50 方案；题单方法等待运行清单发布。",
     method_detail_en: "New Mini 50 scheme; the selection manifest is pending publication.",
@@ -78,14 +80,21 @@ export const PUBLIC_BATCHES = Object.freeze({
 export function batchForRow(row = {}) {
   const info = row.selection_info || {};
   const cohort = row.cohort_sha256 || info.cohort_sha256;
-  if (/^mini50[-_]/i.test(row.run_id || row.id || "")) return "mini-50";
+  if (cohort === MINI_50_COHORT || ((row.selected ?? info.selected_count) === 50 && /^mini50[-_]/i.test(row.run_id || row.id || ""))) return "mini-50";
   return Object.values(PUBLIC_BATCHES).find((batch) => cohort && batch.cohort_sha256 && batch.cohort_sha256 === cohort)?.batch_id || info.batch_id || row.batch_id || null;
 }
 
 export function selectionInfoForRow(row = {}) {
+  if (row.source === "swe_progress") return row.selection_info || {dataset:"SWE-bench Verified", method:"explicit_ids", selected_count:row.selected};
   const batchID = batchForRow(row);
   const known = batchID ? PUBLIC_BATCHES[batchID] : null;
   if (!known) return row.selection_info || {};
+  if (batchID === "mini-50" && (row.cohort_sha256 || row.selection_info?.cohort_sha256) === MINI_50_COHORT) {
+    return { ...known, ...row.selection_info, batch_id: batchID,
+      method: "explicit_ids", method_detail_zh: "社区公开 Verified Mini 50 固定题单，Django 和 Sphinx 各 25 道。",
+      method_detail_en: "Public Verified Mini 50 manifest, with 25 Django and 25 Sphinx issues.",
+      reference_url: "https://github.com/mariushobbhahn/SWEBench-verified-mini/blob/1ce432065d9ed226017ef1ac88b5f91818383c64/data/subsets/size_optimized_sample_ids.json" };
+  }
   return { ...known, ...(row.selection_info || {}), batch_id: batchID };
 }
 

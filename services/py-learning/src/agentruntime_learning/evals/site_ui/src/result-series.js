@@ -1,3 +1,6 @@
+import { isReferenceRun } from "./runtime-identity.js";
+import { finalSweReport } from "./report-runs.js";
+import { campaignHref, separateCampaignRuns } from "./swe-campaigns.js";
 // Pure, deterministic data preparation for results charts. No wall-clock dates,
 // inferred zeroes, carry-forward points, or cross-model capability time series.
 import { batchForRow, selectionInfoForRow } from "./selection-info.js";
@@ -104,15 +107,10 @@ function groupBase(row, metric, spec) {
     note_zh: "同品类、切分、模型与样本规模的运行记录；题目集合未完整记录，数值变化不等于同题因果提升。",
     note_en: "Runs share category, split, model and sample size. Cohort identity is not fully recorded; changes do not establish a same-task causal improvement.", points: [] };
 }
-function referenceRun(row) {
-  if (row.reference === true || row.is_reference === true) return true;
-  const reference = /^(?:gold[-_]?smoke|oracle)(?:[-_\d]|$)/i;
-  return [row.model, row.subject, row.run_id].some((value) => typeof value === "string" && reference.test(value));
-}
 // Invalidity from an audited source wins even when a second feed still carries
 // an older score. A normal, actually graded zero remains a valid observation.
 export function isChartEligibleRun(row) {
-  return !referenceRun(row) && !(row.source === "terminalbench_artifacts" &&
+  return !(finalSweReport(row) && row.graded_count === 0) && !(row.provider_quota_interrupted_count > 0) && !isReferenceRun(row) && !(row.source === "terminalbench_artifacts" &&
     (row.complete !== true || row.graded_complete !== true || row.infra_failed > 0 || row.grading_errors > 0)) && row.valid !== false && row.quality_valid !== false && row.execution_valid !== false &&
     row.grading_complete !== false && !(typeof row.invalid_reason === "string" && row.invalid_reason.trim());
 }
@@ -180,6 +178,11 @@ function finishGroups(groups, time = true, includeSingle = false) {
  * a capability run are a matrix, not time points. Raw declines are preserved.
  */
 export function buildTrendGroups(live, archive, benchmarks, { includeSingle = false } = {}) {
+  const originals = new Map(list(benchmarks?.runs).map(row => [row.run_id, row]));
+  const campaignArms = list(benchmarks?.campaigns).flatMap(campaign =>
+    campaign.arms.filter(arm => originals.has(arm.initial_run_id) && arm.graded_count > 0).map(arm =>
+      ({row: originals.get(arm.initial_run_id), campaign, arm})));
+  ({live, archive, benchmarks} = separateCampaignRuns(live, archive, benchmarks));
   const vetoed = new Set([
     ...list(benchmarks?.runs).map((r)=>({...r,suite:r.suite||"swebench"})),
     ...list(benchmarks?.exclusions),
@@ -187,16 +190,20 @@ export function buildTrendGroups(live, archive, benchmarks, { includeSingle = fa
     ...list(reportsOf(archive).benchmarks).map((r)=>({...r,suite:r.suite||"swebench"})),
   ].filter((r)=>r.run_id&&!isChartEligibleRun(r)).map((r)=>`${r.suite}\0${r.run_id}`));
   const benchmarkInput = [...list(benchmarks?.runs), ...(benchmarks?.source === "artifacts" ? FIXED_TERMINAL_RUNS.filter((fixed) => !list(benchmarks?.runs).some((row) => row.run_id === fixed.run_id)) : [])];
-  const benchmarkRows = benchmarkInput.filter((r) => isChartEligibleRun(r) && r.complete === true && positiveCount(r.selected) && (r.suite === "terminal-bench" || /^[a-f0-9]{64}$/.test(r.cohort_sha256 || ""))).flatMap((r) => {
+  const standaloneInputs = benchmarkInput.filter((r) => isChartEligibleRun(r) && (r.complete === true || finalSweReport(r)) && positiveCount(r.selected) && (r.suite === "terminal-bench" || /^[a-f0-9]{64}$/.test(r.cohort_sha256 || ""))).map(row => ({row}));
+  const benchmarkRows = [...standaloneInputs, ...campaignArms].flatMap(({row:r, campaign, arm}) => {
     const time = firstStamp(r); if (!time || !r.run_id) return [];
+    const armLabel = arm?.arm.toUpperCase();
+    const resolved = arm ? arm.cumulative_resolved / campaign.selected : r.rate;
     return [{ ...time, selection_record: { ...r, selection_info: selectionInfoForRow(r) }, selection_info: selectionInfoForRow(r), batch_id: batchForRow(r), id:r.run_id, suite:r.suite || "swebench", split:r.split || "verified", n:r.selected,
       family:"agent-runtime|cohort:"+r.cohort_sha256, subject:"Agent Runtime", cohort_verified:true,
-      protocol:r.protocol_sha256 || r.protocol || "official-workspace-patch-v1", scores:{resolved_rate:r.rate},
-      label:`${r.model || "Agent Runtime"} · ${r.run_id}`, source:"benchmark-artifacts", href:runLink(r.run_id) }];
+      protocol:r.protocol_sha256 || r.protocol || "official-workspace-patch-v1", scores:{resolved_rate:resolved},
+      graded_count:arm ? arm.graded_count : r.graded_count, resolved_count:arm ? arm.cumulative_resolved : r.resolved, arm:armLabel, label:arm ? `Runtime ${armLabel} · ${arm.cumulative_resolved}/${campaign.selected}` : `${r.model || "Agent Runtime"} · ${r.run_id}`,
+      source:"benchmark-artifacts", href:campaign ? campaignHref(campaign) : runLink(r.run_id) }];
   });
-  const terminalIDs = new Set(list(benchmarks?.runs).filter((row) => row.source === "terminalbench_artifacts").map((row) => `${row.suite}\0${row.run_id}`));
+  const officialIds = new Set(list(benchmarks?.runs).filter((row) => row.source === "terminalbench_artifacts" || finalSweReport(row)).map((row) => `${row.suite}\0${row.run_id}`));
   const telemetry = Array.isArray(live) ? live : live?.runs;
-  const filteredLive = list(telemetry).filter((row) => !terminalIDs.has(`${row.suite}\0${row.run_id}`));
+  const filteredLive = list(telemetry).filter((row) => !officialIds.has(`${row.suite}\0${row.run_id}`));
   const rows = [...benchmarkRows, ...liveRows(filteredLive), ...archiveRows(reportsOf(archive))].filter((row)=>!vetoed.has(`${row.suite}\0${row.id}`));
   const groups = new Map(), seenRunMetrics = new Set(), seenObservations = new Map();
   for (const row of rows) {
@@ -214,7 +221,7 @@ export function buildTrendGroups(live, archive, benchmarks, { includeSingle = fa
       if (seenRunMetrics.has(runKey) || (seenObservations.has(observation) && seenObservations.get(observation) !== row.source)) continue;
       seenRunMetrics.add(runKey); seenObservations.set(observation, row.source);
       if (!groups.has(group.id)) groups.set(group.id, group);
-      groups.get(group.id).points.push({ selection_record: row.selection_record, selection_info: row.selection_info, batch_id: row.batch_id || group.batch_id, id: row.id, at: row.at, value, label: row.label, label_zh: row.label_zh || row.label,
+      groups.get(group.id).points.push({ selection_record: row.selection_record, selection_info: row.selection_info, batch_id: row.batch_id || group.batch_id, id: row.id, arm:row.arm, graded_count:row.graded_count, resolved_count:row.resolved_count, at: row.at, value, label: row.label, label_zh: row.label_zh || row.label,
         label_en: row.label_en || row.label, sample_count: metricRow.n, source: row.source, href: row.href, date_precision: row.date_precision });
     }
   }
@@ -297,7 +304,7 @@ export function buildComparisonGroups(_live, archive, includeFixed = false) {
       }),
     });
   }
-  const tuning = list(reports.tuning).filter((r) => !referenceRun(r) && r.same_problems === true && r.valid !== false && positiveCount(r.selected) && finite(r.rate) && r.rate >= 0 && r.rate <= 1);
+  const tuning = list(reports.tuning).filter((r) => !isReferenceRun(r) && r.same_problems === true && r.valid !== false && positiveCount(r.selected) && finite(r.rate) && r.rate >= 0 && r.rate <= 1);
   const tuningSizes = new Set(tuning.map((r) => r.selected));
   for (const n of tuningSizes) {
     const rows = tuning.filter((r) => r.selected === n);
@@ -406,11 +413,12 @@ const CATEGORY_ORDER = ["longbench-context", "longmemeval", "terminal-bench", "t
 
 /** One card per category; comparable cohorts remain separate lines in that card. */
 export function buildCategoryCharts(live, archive, benchmarks) {
+  const standalone = separateCampaignRuns(live, archive, benchmarks);
   const timelines = buildTrendGroups(live, archive, benchmarks, { includeSingle: true });
   const dated = new Set(timelines.flatMap((group) => group.points.map((point) => `${group.suite}\0${group.metric}\0${point.id}`)));
   // The dated artifact feed already contains these tuning runs. Do not display
   // their older archive projection again as a separate comparison series.
-  const comparisons = buildComparisonGroups(live, archive, Boolean(archive?.source === "archive" || archive?.experiment_source)).filter((group) =>
+  const comparisons = buildComparisonGroups(standalone.live, standalone.archive, Boolean(archive?.source === "archive" || archive?.experiment_source)).filter((group) =>
     !group.points.every((point) => dated.has(`${group.suite}\0${group.metric}\0${point.id}`)));
   const categories = new Map();
   for (const group of [...timelines, ...comparisons]) {

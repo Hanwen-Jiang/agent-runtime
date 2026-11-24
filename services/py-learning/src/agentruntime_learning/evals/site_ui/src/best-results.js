@@ -36,6 +36,7 @@ export function archiveCandidates(reports = {}) {
     )
       continue;
     rows.push({
+      original_record: {suite:"task-loop", ...r},
       selection_info: r.selection_info,
       run_id: `archive:${r.group}:${r.created_at}`,
       suite: "task-loop",
@@ -60,6 +61,7 @@ export function archiveCandidates(reports = {}) {
     )
       continue;
     rows.push({
+      original_record: {suite:"swebench", ...r},
       selection_info: r.selection_info,
       run_id: r.run_id,
       suite: "swebench",
@@ -79,7 +81,9 @@ export function archiveCandidates(reports = {}) {
 export function bestResults(runs = [], reports = {}, exclusions = []) {
   const excluded = new Set((exclusions || []).map((r) => `${r.suite}\0${r.run_id}`));
   const groups = new Map();
-  for (const run of [...runs, ...archiveCandidates(reports)]) {
+  const official = new Set(runs.filter(r => r.source === "benchmark_artifacts").map(r => `${r.suite}\0${r.run_id}`));
+  const archive = archiveCandidates(reports).filter(r => !official.has(`${r.suite}\0${r.run_id}`));
+  for (const run of [...runs, ...archive]) {
     if (run.status !== "finished" || run.valid === false || run.execution_valid === false || excluded.has(`${run.suite}\0${run.run_id}`)) continue;
     if (run.source === "terminalbench_artifacts" && (run.complete !== true || run.graded_complete !== true || run.infra_failed > 0 || run.grading_errors > 0)) continue;
     const group = `${run.suite}\0${run.split || ""}`;

@@ -36,3 +36,43 @@ test("final Terminal-Bench summary replaces telemetry values including unknown c
   assert.equal(rows.length,1);assert.deepEqual(rows[0],summary);
   assert.equal(rows[0].scores.resolved_rate,.5);assert.equal(rows[0].cost_usd,null);assert.equal(rows[0].not_run,18);
 });
+
+test("finished SWE artifact supplies the official score when the last scrape counted 35 processed", () => {
+  const id = "mini50-gpt62-formal-a-20261121T1900Z";
+  const stale = { suite:"swebench", run_id:id, planned:50, done:35, status:"finished",
+    scores:{}, outcomes:{error:4,failed:10,submitted:14}, cost_usd:31.059832 };
+  const final = { suite:"swebench", run_id:id, source:"benchmark_artifacts", complete:true, selected:50,
+    status:"finished", resolved:26, scores:{resolved:26,resolved_rate:.52}, cost_usd:41.782292,
+    graded_count:37, errors:2, empty_patch_count:11 };
+  for (const liveRows of [[stale], []]) {
+    const rows = reportRuns({runs:liveRows}, {}, {runs:[final]});
+    assert.equal(rows.length, 1);
+    assert.deepEqual(rows[0].scores, final.scores);
+    assert.equal(rows[0].cost_usd, final.cost_usd);
+    assert.equal(rows[0].outcomes, undefined);
+    assert.equal(rows[0].graded_count, 37);
+  }
+  assert.equal(reportRuns({runs:[stale]}, {}, {runs:[{...final,complete:false}]})[0].done, 35);
+  const interrupted = {...final, complete:false, status:"partial", provider_quota_interrupted_count:9};
+  const [partial] = reportRuns({runs:[stale]}, {}, {runs:[interrupted]});
+  assert.equal(partial.status,"partial");
+  assert.equal(partial.provider_quota_interrupted_count,9);
+  assert.equal(partial.scores.resolved_rate,.52);
+});
+
+test("an ended SWE report supersedes stale telemetry even when official grading is partial", () => {
+  const id="routing-recovery";
+  const stale={suite:"swebench",run_id:id,status:"finished",scores:{resolved_rate:1},done:2};
+  for(const graded of [0,1]) {
+    const report={suite:"swebench",source:"benchmark_artifacts",run_id:id,finished:true,status:"partial",
+      complete:false,graded_complete:false,graded_count:graded,selected:2,resolved:graded,scores:{resolved_rate:graded/2}};
+    for(const live of [{runs:[stale]},{runs:[]}]) {
+      const rows=reportRuns(live,{}, {runs:[report]});
+      assert.equal(rows.length,1);
+      assert.equal(rows[0].source,"benchmark_artifacts");
+      assert.equal(rows[0].status,"partial");
+      assert.equal(rows[0].graded_count,graded);
+      assert.equal(rows[0].scores.resolved_rate,graded/2);
+    }
+  }
+});

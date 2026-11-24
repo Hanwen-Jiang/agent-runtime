@@ -1,0 +1,587 @@
+{
+  "deepeval": {
+    "routing": "unknown",
+    "source": "原运行记录未提供可核验的路由或推理档"
+  },
+  "deepeval-b": {
+    "routing": "unknown",
+    "source": "原运行记录未提供可核验的路由或推理档"
+  },
+  "ev-swe-13989": {
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号",
+    "version": "rev24",
+    "versionKind": "reported-release"
+  },
+  "ev-tb-one": {
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号",
+    "version": "rev24",
+    "versionKind": "reported-release"
+  },
+  "ev-tb2-one": {
+    "models": [
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+    "version": "rev27",
+    "versionKind": "reported-release"
+  },
+  "ev-tb2-one-b": {
+    "models": [
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+    "version": "rev28",
+    "versionKind": "reported-release"
+  },
+  "ev-tb2-one-c": {
+    "models": [
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+    "version": "rev29",
+    "versionKind": "reported-release"
+  },
+  "ev-tb40-tb40-a": {
+    "models": [
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+    "version": "rev29",
+    "versionKind": "reported-release"
+  },
+  "ev-tb40-tb40-b": {
+    "models": [
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+    "version": "rev29",
+    "versionKind": "reported-release"
+  },
+  "gpt55-base50": {
+    "routing": "unknown",
+    "source": "values-rev12/13.yaml；同一 worker 镜像，途中由第12版切换至第13版",
+    "version": "52174d9",
+    "versionKind": "worker-image"
+  },
+  "gpt55-smoke5": {
+    "routing": "automatic",
+    "source": "eval-observability-and-runtime-fixes.md#11.11；第11版实际镜像/角色白名单",
+    "version": "52174d9",
+    "versionKind": "worker-image"
+  },
+  "gpt55-smoke5-again": {
+    "routing": "unknown",
+    "source": "values-rev13.yaml；run.json；eval-observability-and-runtime-fixes.md#11.11",
+    "version": "52174d9",
+    "versionKind": "worker-image"
+  },
+  "gpt55-smoke5-official": {
+    "routing": "unknown",
+    "source": "values-rev12.yaml；run.json；eval-observability-and-runtime-fixes.md#11.11",
+    "version": "52174d9",
+    "versionKind": "worker-image"
+  },
+  "gpt55-tune1": {
+    "routing": "unknown",
+    "source": "rev16.log、values-rev16.yaml、run.json；Worker 镜像",
+    "version": "f43a19f",
+    "versionKind": "worker-image"
+  },
+  "gpt55-tune2": {
+    "routing": "unknown",
+    "source": "rev17.log、values-rev17.yaml、run.json；Worker 镜像",
+    "version": "f43a19f",
+    "versionKind": "worker-image"
+  },
+  "init50-gpt62-tuned-20261123": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json；swe-tuning-20261123/freeze.json + usage.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "e3646dd0",
+    "versionKind": "git-tree"
+  },
+  "longbench-context-20261110-fixed-40": {
+    "routing": "fixed",
+    "source": "fixed-experiments.js 已归档的40题固定模型对照",
+    "version": "d28c308f",
+    "versionKind": "git-commit"
+  },
+  "mini50-gpt62-arm-a-20261121T131913Z": {
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json",
+    "version": "c095dc8a",
+    "versionKind": "git-tree"
+  },
+  "mini50-gpt62-arm-b-20261121T131914Z": {
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "mini50-gpt62-formal-a-20261121T1900Z": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json；swe-mini50-20261121/final/mini50-a-model-audit.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "c095dc8a",
+    "versionKind": "git-tree"
+  },
+  "mini50-gpt62-formal-b-20261121T1930Z": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json；swe-mini50-20261121/final/mini50-b-model-audit.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "mini50-infra-20261123-a": {
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+    "version": "c095dc8a",
+    "versionKind": "git-tree"
+  },
+  "mini50-infra-20261123-b": {
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "mini50-quota-20261122-a": {
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+    "version": "c095dc8a",
+    "versionKind": "git-tree"
+  },
+  "mini50-quota-20261122-b": {
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "mini50-tuned-c-gpt62-20261123": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json；swe-tuning-20261123/freeze.json + usage.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "e3646dd0",
+    "versionKind": "git-tree"
+  },
+  "resume-e2e-20261121T103412Z": {
+    "routing": "unknown",
+    "source": "原运行记录未提供可核验的路由或推理档"
+  },
+  "resume-e2e-20261121T103412Z-authv2": {
+    "routing": "unknown",
+    "source": "原运行记录未提供可核验的路由或推理档"
+  },
+  "resume-sphinx-evals-20261121T103856Z": {
+    "routing": "unknown",
+    "source": "原运行记录未提供可核验的路由或推理档"
+  },
+  "reviewer-20261110-baseline-legacy-dev-r1": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "1713439e",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-baseline-legacy-dev-r2": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "1713439e",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-baseline-legacy-dev-r3": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "1713439e",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-baseline-legacy-holdout-r1": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "1713439e",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-baseline-regression-dev-r1": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "1713439e",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-baseline-regression-dev-r2": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "1713439e",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-baseline-regression-dev-r3": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "1713439e",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-candidate-legacy-dev-r1": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "a7f8b12f",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-candidate-legacy-dev-r2": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "a7f8b12f",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-candidate-legacy-dev-r3": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "a7f8b12f",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-candidate-legacy-holdout-r1": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "a7f8b12f",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-candidate-regression-dev-r1": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "a7f8b12f",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-candidate-regression-dev-r2": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "a7f8b12f",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "reviewer-20261110-candidate-regression-dev-r3": {
+    "models": [
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+    "version": "a7f8b12f",
+    "versionKind": "reviewer-source-snapshot"
+  },
+  "route2-20261122-fixed": {
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "route-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "route2-20261122-native": {
+    "effort": "low",
+    "efforts": [
+      "low"
+    ],
+    "models": [
+      "a6api/gpt-6-luna@2026-11"
+    ],
+    "routing": "automatic",
+    "source": "route-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "route2-funded-20261122-fixed": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "routing": "fixed",
+    "source": "route-protocol.json；swe-mini50-20261121/routing-pilot/funded/comparison.json + fixed/route-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "route2-funded-20261122-native": {
+    "effort": "mixed",
+    "efforts": [
+      "low",
+      "medium"
+    ],
+    "models": [
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "automatic",
+    "source": "route-protocol.json；swe-mini50-20261121/routing-pilot/funded/comparison.json + native/route-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sol-rev18": {
+    "routing": "automatic",
+    "source": "cloud-deploy.md 第18版租户选档、agent-optimization-interview.md 版本对照",
+    "version": "rev18",
+    "versionKind": "release"
+  },
+  "sphinx-gpt62-b-20261121T1425Z": {
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-gpt62-b-20261121T1733Z": {
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-gpt62-b-20261121T1750Z": {
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-gpt62-b-20261121T1805Z": {
+    "models": [
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "requestedRouting": "fixed",
+    "routing": "mixed",
+    "source": "paired-protocol.json；冻结配置要求固定，但已结算模型与配置不符；按原 Task ID 核对的非嵌入生成账本",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-gpt62-b-20261121T1815Z": {
+    "models": [
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "requestedRouting": "fixed",
+    "routing": "mixed",
+    "source": "paired-protocol.json；冻结配置要求固定，但已结算模型与配置不符；按原 Task ID 核对的非嵌入生成账本",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-gpt62-b-20261121T1820Z": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-gpt62-b-20261121T1830Z": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-gpt62-b-20261121T1840Z": {
+    "effort": "medium",
+    "efforts": [
+      "medium"
+    ],
+    "models": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "requestedEffort": "medium",
+    "routing": "fixed",
+    "source": "paired-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+    "version": "014d63df",
+    "versionKind": "git-tree"
+  },
+  "sphinx-workspace-fix-20261121T113359Z": {
+    "models": [
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+    "version": "rev45",
+    "versionKind": "reported-release"
+  },
+  "t18-rev19": {
+    "routing": "automatic",
+    "source": "cloud-deploy.md 第19版多因素选档与 swebench 白名单；run.json",
+    "version": "rev19",
+    "versionKind": "release"
+  },
+  "t18-tbench-smoke5": {
+    "routing": "unknown",
+    "source": "原运行 run.json 声明的 Runtime 发布号",
+    "version": "rev21",
+    "versionKind": "reported-release"
+  },
+  "tb20-fc-20261109": {
+    "models": [
+      "a6api/claude-haiku-5-5@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "automatic",
+    "source": "冻结 provenance.model_routing=dynamic_catalog；按原 Task ID 核对的非嵌入生成账本",
+    "version": "96af4cfa",
+    "versionKind": "git-commit"
+  },
+  "tb20-fc-clean-20261110": {
+    "models": [
+      "a6api/claude-haiku-5-5@2026-10",
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "automatic",
+    "source": "冻结 provenance.model_routing=dynamic_catalog；按原 Task ID 核对的非嵌入生成账本",
+    "version": "96af4cfa",
+    "versionKind": "git-commit"
+  },
+  "tb20-fc-complete-20261110": {
+    "models": [
+      "a6api/claude-haiku-5-5@2026-10",
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "automatic",
+    "source": "冻结 provenance.model_routing=dynamic_catalog；按原 Task ID 核对的非嵌入生成账本",
+    "version": "96af4cfa",
+    "versionKind": "git-commit"
+  },
+  "tb20-official-round1-20261110": {
+    "models": [
+      "a6api/claude-haiku-5-5@2026-10",
+      "a6api/deepseek-v4-flash@2026-10",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/gpt-6.1-sol@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11"
+    ],
+    "routing": "unknown",
+    "source": "原运行 frozen.json 的执行 Worker 镜像；按原 Task ID 核对的非嵌入生成账本",
+    "version": "cancel-race-20261110",
+    "versionKind": "worker-image"
+  }
+}
