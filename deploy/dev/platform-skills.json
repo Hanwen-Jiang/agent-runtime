@@ -4,32 +4,80 @@
       "kind": "skill",
       "name": "explore-repo",
       "document": {
-        "description": "Get oriented in an unfamiliar repository before changing it: find the entry points, build and test commands, conventions and the files that matter for the task. Use at the start of any coding task in a repo you have not seen in this session.",
-        "instructions": "# Explore an unfamiliar repository\n\nGoal: in a few cheap steps, know enough to change the code safely. Do not read everything.\n\n1. **Top level first.** `repo_list` the root. Read the README and any CONTRIBUTING / AGENTS / CLAUDE / docs index file if present (skim, first ~150 lines).\n2. **Find how it builds and tests.** Look for `package.json` (scripts), `pyproject.toml` / `setup.cfg` / `tox.ini` / `pytest.ini`, `go.mod`, `Cargo.toml`, `Makefile`, `justfile`, `.github/workflows/*`. Write down the exact test and lint commands the project itself uses; prefer them over generic ones.\n3. **Locate the code for this task.** Use `repo_grep` for names from the user's request (error messages, function names, routes, config keys). Open only the files that match, and only the relevant ranges (`start_line`, `max_lines`).\n4. **Learn the local conventions** from 1-2 neighbouring files: naming, error handling, logging, test layout and fixtures. New code should look like the code around it.\n5. **Check the current state.** If a test command exists and is fast, run it once before changing anything so you know which failures already existed.\n\nOutput of this step (keep it short, in the user's language): the files you will touch, the commands you will use to verify, and any risk you noticed. Then do the task.\n\nAvoid: reading lock files, generated code, vendored dependencies and large data files; listing the whole tree recursively."
+        "description": "大型或陌生代码库考古：按结构定位模块、入口、调用链、数据契约与现成测试后再动手。",
+        "instructions": "目标：用最少只读步数摸清架构与关键路径，不盲目通读整文件。\n\n步骤：\n1. 先并发探索全局：`repo_glob` 查顶层目录与关键后缀，`repo_git(subcommand=\"status\")` 与 `repo_git(subcommand=\"log\", args=[\"-n\", \"10\", \"--oneline\"])` 了解近期演化。\n2. 精准搜索符号：`repo_grep` 支持 `glob` 与 `context_lines`，定位类/函数定义及其全部调用点。\n3. 先看轮廓再读细节：先用 `file_inspect` 看文件行数、语言和顶层符号，再用 `repo_read(with_line_numbers=True, start_line=..., end_line=...)` 只读目标区间。\n4. 产出调用链摘要：明确记录模块边界、相关单测命令与潜在影响面，禁止猜测未阅读的文件内容。"
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "coding-engineering",
+      "document": {
+        "description": "全栈工程研发规范（SWE-bench 对齐）：需求拆解、模块化设计、低冗余实现、类型边界与测试验证闭环。",
+        "instructions": "目标：交付可直接合入的高质量工程代码，避免重复逻辑与局部补丁式堆砌。\n\n步骤：\n1. 用 `todo_write` 拆解 3~6 个清晰步骤，并先通过 `repo_glob` / `repo_grep` 复用仓库既有抽象与工具函数。\n2. 设计先于编码：确认数据流、错误码契约、并发安全与只读/写入权限边界（特别是多租户隔离与不变量）。\n3. 修改策略：单点替换用 `repo_edit`（多处同类替换可开 `replace_all=True`），跨文件或多 hunk 修改优先用原子 `apply_patch`。\n4. 质量门槛：提取共享 helper 消除重复代码，保持浅层嵌套与 early return，保留无关注释与 docstring。\n5. 核验闭环：改完立即运行相关单测、类型/lint 检查与 `repo_git(subcommand=\"diff\")`，只报告真实跑通的结果。"
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "bugfix-tdd",
+      "document": {
+        "description": "Bug 修复 TDD 闭环：先复现并定位根因，再写失败回归测试，做最小可逆修复后跑通全量验证。",
+        "instructions": "目标：证明 Bug 确实存在且修复彻底不回退。\n\n步骤：\n1. 读取完整报错栈、日志或输入用例，用 `repo_grep` / `repo_git(subcommand=\"log\")` 锁定直接触发点与近期变更。\n2. 最小复现：用 `shell_run` 跑出现有失败测试，或先新增精确复现该故障的回归测试并确认失败（红灯）。\n3. 根因修复：只针对真实根因修改，避免掩盖症状（禁止删断言、放宽异常捕获或硬编码绕过）。\n4. 绿灯验证：先重跑新回归测试，再跑所属包与上游调用方相关测试集合，并用 `repo_git(subcommand=\"diff\")` 核对改动纯度。"
       }
     },
     {
       "kind": "skill",
       "name": "write-tests",
       "document": {
-        "description": "Add or update automated tests for a code change so the change is verified, following the project's existing test framework and layout. Use when fixing a bug, adding a feature, or when the user asks for tests.",
-        "instructions": "# Write tests for a change\n\n1. **Use what the project already uses.** Find the existing test directory and framework (pytest, unittest, jest/vitest, go test, cargo test, etc.) and copy the style of the nearest existing test file: imports, fixtures, naming, assertion style. Do not add a new test framework or dependency.\n2. **Bug fix:** first write a test that reproduces the bug and fails on the current code. Run it and confirm it fails for the right reason. Then fix the code and confirm it passes.\n3. **New behaviour:** cover the main path, one or two edge cases (empty input, boundaries, error path) and anything the user explicitly mentioned. Prefer a few meaningful tests over many trivial ones.\n4. **Keep tests deterministic:** no real network, no sleeps for timing, no dependence on the current date or random order; use the project's existing fakes or fixtures.\n5. **Run them.** Run the new tests, then the surrounding test file or package, with the project's own command (see the README, Makefile or CI config). Report the exact command and the result.\n6. **Do not weaken existing tests** to make them pass. If an existing test fails because the old behaviour was intentionally changed, update it and say why in your answer.\n\nIn the final answer: which tests you added, what they check, the command you ran and whether everything passed. If something could not be run (missing tool, no network), say so plainly."
+        "description": "高质量测试工程：围绕业务契约覆盖正常路径、边界条件、并发/幂等与失败恢复路径。",
+        "instructions": "目标：编写能真正捕获回归的高信噪比测试。\n\n步骤：\n1. 模仿被测目录的现有测试框架、fixture 与命名约定，不跨文件耦合并发状态。\n2. 每项新能力至少覆盖：正常主流程、边界/空输入、越权或非法输入拒绝（DeniedError/InvalidError 等）、下游故障回退。\n3. 避免脆性断言：断言可观测状态变化与对外契约，而不是无关的私有字段或精确时间戳。\n4. 执行 `shell_run` 跑新测试与相邻回归测试，确保无 skipped/xfail 掩盖失败。"
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "refactor-safely",
+      "document": {
+        "description": "零破坏重构：分阶段提取抽象、保留兼容契约、核对全部引用方并持续跑回归测试。",
+        "instructions": "目标：在不改变外部可见行为的前提下消除坏味道或重构模块结构。\n\n步骤：\n1. 重构前基线：先运行受影响模块现有测试并记录基线状态。\n2. 盘点引用面：用 `repo_grep` 找出被重构符号的所有调用方、跨模块导出与序列化契约。\n3. 增量改造：先引入新 helper/抽象或适配层，再迁移调用方；多处同步调整优先使用 `apply_patch` 保持原子一致。\n4. 清理与复测：确认旧死代码清除干净，完整重跑相关测试，对比前后行为一致。"
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "docs-architecture",
+      "document": {
+        "description": "技术设计、API 契约与架构文档规范（DocEval 对齐）：事实严谨、结构清晰、附可渲染 Mermaid 图表与验收清单。",
+        "instructions": "目标：编写对后续工程师与 Agent 可直接落地的权威文档。\n\n步骤：\n1. 动笔前核实代码事实：文档中的每个文件路径、符号名、环境变量、HTTP/gRPC 字段都必须经 `repo_read`/`repo_grep` 实际核对。\n2. 结构组织：按「目标与非目标 -> 系统分层架构 -> 关键数据流/状态机 -> 契约清单 -> 风险与验收标准」编排。\n3. 图表规范：使用标准 Mermaid（`flowchart` / `sequenceDiagram` / `stateDiagram-v2`），含括号或特殊字符的节点标签加双引号，不使用 HTML 标签。\n4. 文档落地与交互：若用户要求导出文件，写完后再用 `deliver_file` 正式交付，并在正文中附可核验的检查依据。"
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "eval-authoring",
+      "document": {
+        "description": "编写评测基准 Case 与自动化判分器：面向 SWE/Doc/Tool-Use 维度构造可复现任务与客观打分标准。",
+        "instructions": "目标：建设能客观区分模型与 Skill 成熟度高低的确定性 Eval。\n\n步骤：\n1. 明确测什么能力维度（工具选用效率、盲读浪费率、修复通过率、边界拒答诚实度、文档结构完整度）。\n2. 构造隔离可复现的初始工作区或固定输入夹具，确保无外网随机性破坏可比性。\n3. 判分器必须多维客观：状态断言 + 单测通过 + 不变量检查（例如禁止修改无关文件或越权路径），尽量减少纯主观 LLM 裁判比例。\n4. 运行至少一次基线对比（开启 vs 关闭目标 Skill/Prompt），记录步数、耗时、成本与通过率差异。"
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "security-review",
+      "document": {
+        "description": "安全与边界审计：系统性排查 SSRF、路径穿越、命令注入、多租户越权、敏感凭据泄露与权限提升。",
+        "instructions": "目标：上线前阻断高危安全漏洞与越界逻辑。\n\n步骤：\n1. 逐项核查输入边界：\n   - 文件路径是否严格经过根目录 canonical resolve 并防符号链接出界；\n   - 命令执行是否禁用 shell 拼接并清空父进程敏感环境变量；\n   - 网络抓取（`web_fetch`/Webhook）是否禁用或逐跳重检重定向、封禁私网/环回/169.254 元数据 IP。\n2. 多租户与权限：每条查询/缓存/存储键是否携带 `tenant_id` 与 `workspace_id`，Tool `effect` 与 `effect_ceiling` 是否自洽。\n3. 日志与报错：确保 token、密钥、签名材料绝不出现在返回字段、OTel 属性或日志中。\n4. 给出按严重度分级的发现清单（文件路径、触发路径与最小修复方案）。"
       }
     },
     {
       "kind": "skill",
       "name": "commit-and-pr",
       "document": {
-        "description": "Finish a coding change cleanly: review the diff, write a clear commit message and a pull-request description a reviewer can act on. Use when the user asks to commit, push or open a PR, or when a change is ready to hand over.",
-        "instructions": "# Commit and prepare a pull request\n\n1. **Review the diff before committing.** Look at every changed file. Remove debugging output, commented-out code, unrelated formatting churn and accidental files (build output, `.env`, editor files). Never commit secrets or credentials.\n2. **Verify.** Run the project's tests and linters for the touched area (see the `write-tests` and `explore-repo` skills). Do not commit a known-broken state without saying so.\n3. **Commit message:**\n   - Subject line: imperative, at most ~72 characters, says what changes (e.g. `Fix crash when config file is empty`). Follow the repo's existing convention if it has one (e.g. `fix(scope): ...`).\n   - Body: why the change is needed, what was wrong, and anything non-obvious about the approach. Wrap at ~72 characters.\n4. **Pull request description** (in the user's language unless the repo is clearly English-only):\n   - **What**: one or two sentences.\n   - **Why**: the problem or request it addresses (link the issue if known).\n   - **How**: the main changes, as a short list.\n   - **Testing**: commands run and results; what was not tested.\n   - **Risks / follow-ups**: anything a reviewer should look at closely.\n5. **Push only when asked.** Committing locally is fine; pushing or opening a PR changes shared state, so do it when the user asked for it or the task clearly requires it.\n\nKeep the PR focused on one change; if you noticed unrelated problems, mention them instead of fixing them in the same PR."
+        "description": "Git 干净提交与 PR 交付规范：精准分离目标改动、避开无关脏文件、核查差异后再提交总结。",
+        "instructions": "目标：产出可回溯、原子、无杂质的 Git 提交记录。\n\n步骤：\n1. 用 `repo_git(subcommand=\"status\")` 与 `repo_git(subcommand=\"diff\")` 核对改动全集；若工作区已有无关历史脏改动，严禁一并 `git add -A`。\n2. 只暂存本任务涉及的明确文件路径，检查暂存区差异无遗漏调试代码、密钥或大体积临时产物。\n3. 提交前确认相关测试均已在最终改动后实际运行通过。\n4. PR/交付摘要需准确列出：变更动机、核心文件、实际执行的验证命令及真实输出、未覆盖边界。"
       }
     },
     {
       "kind": "skill",
       "name": "deliver-files",
       "document": {
-        "description": "Hand files to the user (reports, CSV/Excel exports, images, archives) with deliver_file so they can download them, and make sure the delivery really happened. Use whenever the user asks for a file, attachment, download or export.",
-        "instructions": "# Deliver files to the user\n\n1. **Create the file inside the workspace** (with `shell_run` or `repo_edit`), using a clear file name and the right extension (`report.md`, `results.csv`, `chart.png`, `bundle.zip`).\n2. **Check it before delivering:** it exists, is not empty, and opens as the expected format (for example `head -5 results.csv`, `python -c 'import json; json.load(open(\"data.json\"))'`, `unzip -l bundle.zip`).\n3. **Deliver with `deliver_file`.** The path is relative to the workspace root, with `/` separators and no `./` or `..` (write `out/report.md`, not `./out/report.md`). Optionally give a display `name`.\n4. **One call per file.** Limits: about 25 MB per file and 20 files per task; for many files, zip them first and deliver the archive.\n5. **Only claim what happened.** A file counts as delivered only if `deliver_file` succeeded. If it failed, read the error (`file_not_found`: check the path with `ls`; `invalid_delivery_path`: remove `./`; `delivery_file_too_large`: compress or split) and retry once with the fix; otherwise tell the user exactly what failed.\n\nIn the final answer, list each delivered file with one line on what it contains."
+        "description": "用户文件交付闭环：确认工作区最终产物完整、内容格式正确后经 deliver_file 正式提交。",
+        "instructions": "目标：确保用户拿到的交付文件真实存在、结构完整、非半成品。\n\n步骤：\n1. 写完目标文件后先用 `file_inspect` 或 `repo_read` 复核关键段落、编码与非空状态。\n2. 若产物是代码、报告、表格或压缩包，先做必要格式/语法校验。\n3. 必须调用 `deliver_file` 工具（参数 path 与文件说明）完成正式交付；仅把文件留在工作区目录、口头声明已完成都不算交付。"
       }
     }
   ]

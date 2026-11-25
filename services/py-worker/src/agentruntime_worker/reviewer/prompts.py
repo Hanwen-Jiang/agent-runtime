@@ -18,6 +18,7 @@ from typing import Any
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 
 from agentruntime_worker.planner import validate
+from agentruntime_worker.prompts import REVIEWER_IDENTITY
 from agentruntime_worker.reviewer.rules import HUMAN_REPLIES, Floor, ReviewCatalog
 from agentruntime_worker.reviewer.signals import Ledger
 
@@ -113,7 +114,7 @@ def review_view(task_state: Mapping[str, Any], stage: Mapping[str, Any], results
 def system_zone() -> list[mg.ChatMessage]:
     defs = validate.schema("defs")["$defs"]
     schemas = f"Verdict 的 JSON Schema：{_dump(validate.schema('verdict'))}\n其中引用的定义（defs.schema.json）：{_dump({k: defs[k] for k in _DEFS if k in defs})}"
-    return [mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=f"{_REVIEWER_RULES}\n\n{schemas}", cache_breakpoint=True)]
+    return [mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=f"{_REVIEWER_RULES}\n\n{REVIEWER_IDENTITY}\n\n{schemas}", cache_breakpoint=True)]
 
 
 def review_messages(view: dict[str, Any], *, ledger: Ledger, floor: Floor, catalog: ReviewCatalog | None, verification: Mapping[str, Any] | None = None) -> list[mg.ChatMessage]:

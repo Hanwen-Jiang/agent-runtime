@@ -16,8 +16,8 @@ from typing import Any
 
 # 交付文件的工具（N-18）：成功的调用记进 delivered（DLV-CHECK，docs/plan/all-plans-dag-2026-11-03.md）。
 DELIVER_TOOL = "deliver_file"
-# 这些工具的 effect 是写，但调用它们不等于改了文件：shell_run 可能只是在看；request_network 只是要联网；deliver_file 只是把文件交给用户。
-NOT_FILE_CHANGES = frozenset({"shell_run", "request_network", DELIVER_TOOL})
+# 这些工具的 effect 是写，但调用它们不等于改了文件：shell_run 可能只是在看；request_network 只是要联网；deliver_file 只是把文件交给用户；todo_write 只是更新任务步骤清单。
+NOT_FILE_CHANGES = frozenset({"shell_run", "request_network", "todo_write", DELIVER_TOOL})
 # 判 done 被这两条规则拦下时的 reason_code（reviewer/rules.py）。
 DONE_BLOCKED_CODES = frozenset({"rule_done_unverified", "rule_done_without_changes"})
 # 回答说交付了文件、这个 Task 却没交付过时的 reason_code（DLV-CHECK），另记次数。
@@ -26,7 +26,7 @@ UNDELIVERED_CODE = "rule_done_undelivered"
 JUDGE_BLOCKED_CODES = frozenset({"rule_judge_disowns", "rule_judge_off_topic"})
 WRITE_EFFECTS = frozenset({"write_reversible", "write_irreversible"})
 
-_READ_TOOLS = frozenset({"repo_read", "repo_list", "repo_grep", "context_read"})
+_READ_TOOLS = frozenset({"repo_read", "repo_list", "repo_glob", "repo_grep", "repo_git", "file_inspect", "context_read", "skill_read", "memory_search", "web_search"})
 _READ_COMMANDS = frozenset({"cat", "find", "grep", "head", "ls", "nl", "pwd", "rg", "tail", "wc"})
 _READ_GIT = frozenset({"blame", "diff", "grep", "log", "ls-files", "rev-parse", "show", "status"})
 

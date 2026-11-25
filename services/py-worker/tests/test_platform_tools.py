@@ -31,14 +31,31 @@ T1_OTHER_WORKSPACE = TenantContext(tenant_id="t1", user_id="u1", workspace_id="w
 T2 = TenantContext(tenant_id="t2", user_id="u2", workspace_id="w1")
 SECRET_ENV = "AR_TEST_WORKER_SECRET"
 
-WORKSPACE_TOOLS = {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run"}
+WORKSPACE_TOOLS = {
+    "repo_read",
+    "repo_list",
+    "repo_glob",
+    "repo_grep",
+    "repo_edit",
+    "apply_patch",
+    "repo_git",
+    "shell_run",
+    "todo_write",
+    "file_inspect",
+}
 EFFECTS = {
     "repo_read": Effect.READ,
     "repo_list": Effect.READ,
+    "repo_glob": Effect.READ,
     "repo_grep": Effect.READ,
     "repo_edit": Effect.WRITE_REVERSIBLE,
+    "apply_patch": Effect.WRITE_REVERSIBLE,
+    "repo_git": Effect.READ,
     "shell_run": Effect.WRITE_REVERSIBLE,
+    "todo_write": Effect.WRITE_REVERSIBLE,
+    "file_inspect": Effect.READ,
     "web_fetch": Effect.READ,
+    "web_search": Effect.READ,
 }
 
 
@@ -67,7 +84,7 @@ def driver(provider: LocalToolDriverProvider, tenant: TenantContext = T1) -> Too
 
 async def test_registered_tools_carry_effects_and_schemas(root: Path) -> None:
     provider, names = make(root, fetch_hosts=("*",))
-    assert set(names) == WORKSPACE_TOOLS | {"web_fetch"}
+    assert set(names) == WORKSPACE_TOOLS | {"web_fetch", "web_search"}
     specs = {s.name: s for s in await driver(provider).list_tools()}
     for name, effect in EFFECTS.items():
         spec = specs[name]
@@ -80,7 +97,7 @@ def test_tools_are_registered_only_when_configured(tmp_path: Path) -> None:
     provider = LocalToolDriverProvider()
     assert register_platform_tools(provider, PlatformToolsConfig()) == [], "没配置工作区与主机名单时一个也不登记"
     only_fetch = register_platform_tools(LocalToolDriverProvider(), PlatformToolsConfig(fetch_hosts=("example.com",)))
-    assert only_fetch == ["web_fetch"]
+    assert set(only_fetch) == {"web_fetch", "web_search"}
     only_workspace = register_platform_tools(LocalToolDriverProvider(), PlatformToolsConfig(workspace_root=tmp_path))
     assert set(only_workspace) == WORKSPACE_TOOLS
 

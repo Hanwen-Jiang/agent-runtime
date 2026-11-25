@@ -169,6 +169,7 @@ def register_platform_tools(
     grants: Any = None,
     policies: Any = None,
     credential_key: Any = None,
+    search_secret: Any = None,
 ) -> list[str]:
     """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read；
     shell_sandbox = sandbox 时 shell_run 经 Sandbox Service（sandboxes）借环境，每次运行记一个 runtime.sandbox span（给了 telemetry 时）。
@@ -181,7 +182,14 @@ def register_platform_tools(
     remote = config.shell_sandbox == "sandbox" and broker is not None and config.workspace_tools
     if config.workspace_root is not None or remote:
         root = Path(config.workspace_root) if config.workspace_root is not None else None
-        tools += _Workspaces(root, config, broker, telemetry, generations=generations).tools()
+        workspaces = _Workspaces(root, config, broker, telemetry, generations=generations)
+        tools += workspaces.tools()
+        from agentruntime_worker.tools.repo_ops import RepoOpsTools
+        from agentruntime_worker.tools.self_ops import FileInspector, TodoStore
+
+        tools += RepoOpsTools(workspaces).tools()
+        tools.append(TodoStore().tool())
+        tools.append(FileInspector(workspaces).tool())
     if (config.shell_sandbox == "sandbox" and broker is not None and grants is not None and policies is not None
             and (config.network_requests or config.hosted_backends)):
         from agentruntime_worker.tools.network import NetworkTool
@@ -191,7 +199,10 @@ def register_platform_tools(
             session_sandboxes=config.session_sandboxes,
         ).tool())
     if config.fetch_hosts:
-        tools.append(_Fetcher(config).tool())
+        from agentruntime_worker.tools.web import WebFetcher, WebSearchTool
+
+        tools.append(WebFetcher(config).tool())
+        tools.append(WebSearchTool(config, secret_getter=search_secret).tool())
     if objects is not None:
         tools.append(_ContextReader(objects, config, broker, attachments=attachments).tool())
     for spec, handler in tools:
@@ -379,10 +390,11 @@ class _Workspaces:
         c = self.config
         return [
             (
-                _spec("repo_read", Effect.READ, "读工作区里的文本文件；可以用 start_line、max_lines 只取一段", {
+                _spec("repo_read", Effect.READ, "读工作区里的文本文件；可以用 start_line、max_lines 只取一段，或开启 with_line_numbers 显示行号", {
                     "path": _PATH,
                     "start_line": {"type": "integer", "minimum": 1, "description": "从第几行开始（从 1 起）"},
                     "max_lines": {"type": "integer", "minimum": 1, "maximum": c.max_read_lines, "description": "最多取多少行"},
+                    "with_line_numbers": {"type": "boolean", "description": "是否在每行前附带 1-based 行号"},
                 }, ["path"], 30),
                 self.read,
             ),
@@ -394,15 +406,19 @@ class _Workspaces:
                 _spec("repo_grep", Effect.READ, "在工作区的文件里按正则搜索，返回文件、行号与那一行", {
                     "pattern": {"type": "string", "minLength": 1, "description": "Python 正则表达式"},
                     "path": {**_PATH, "description": "只在这个目录或文件里搜；不写为整个工作区"},
+                    "glob": {"type": "string", "minLength": 1, "description": "仅匹配该 glob 路径模式的文本文件，如 *.py 或 src/**/*.ts"},
+                    "context_lines": {"type": "integer", "minimum": 0, "maximum": 5, "description": "返回匹配行前后的上下文行数"},
+                    "case_sensitive": {"type": "boolean", "description": "是否区分大小写（默认 true）"},
                     "max_matches": {"type": "integer", "minimum": 1, "maximum": 1000},
                 }, ["pattern"], 60),
                 self.grep,
             ),
             (
-                _spec("repo_edit", Effect.WRITE_REVERSIBLE, "改工作区里的文件：给了 old 就把它唯一的一处替换成 new，否则用 new 写整个文件（可新建）", {
+                _spec("repo_edit", Effect.WRITE_REVERSIBLE, "改工作区里的文件：给了 old 就把匹配处替换成 new（默认要求唯一匹配，replace_all=true 可全部替换），否则用 new 写整个文件（可新建）", {
                     "path": _PATH,
-                    "old": {"type": "string", "minLength": 1, "description": "要替换的原文，必须在文件里恰好出现一次"},
+                    "old": {"type": "string", "minLength": 1, "description": "要替换的原文，默认必须在文件里恰好出现一次"},
                     "new": {"type": "string", "description": "替换后的文字，或整个文件的新内容"},
+                    "replace_all": {"type": "boolean", "description": "为 true 时替换文件中所有匹配的 old（默认 false）"},
                 }, ["path", "new"], 30),
                 self.edit,
             ),
@@ -557,7 +573,10 @@ class _Workspaces:
         start = int(args.get("start_line") or 1)
         count = int(args.get("max_lines") or 400)
         window = lines[start - 1 : start - 1 + count]
-        content = "".join(window)
+        if args.get("with_line_numbers"):
+            content = "".join(f"{idx:4d}: {line}" for idx, line in enumerate(window, start=start))
+        else:
+            content = "".join(window)
         truncated = start - 1 + count < len(lines)
         if len(content) > self.config.output_limit:
             content, truncated = content[: self.config.output_limit], True
@@ -598,7 +617,12 @@ class _Workspaces:
         return {"path": self._relative(root, target), "entries": entries}
 
     async def grep(self, invocation: ToolInvocation) -> Any:
+        import fnmatch
+
         args = invocation.arguments
+        glob_pat = str(args.get("glob") or "").strip()
+        ctx = max(0, min(int(args.get("context_lines") or 0), 5))
+        case_sensitive = bool(args.get("case_sensitive", True))
         if await self._archived(invocation):
             rel = self._env_path(args.get("path", "."), allow_root=True)
             limit = int(args.get("max_matches") or 100)
@@ -607,10 +631,16 @@ class _Workspaces:
                 return await box.grep(env_id, str(args["pattern"]), path=rel, max_matches=limit)
 
             matches, truncated = await self._in_env(invocation, writable=False, run=search)
-            return {"matches": [{"path": m.path, "line": m.line, "text": m.text} for m in matches], "truncated": truncated}
+            out_matches = [
+                {"path": m.path, "line": m.line, "text": m.text}
+                for m in matches
+                if not glob_pat or PurePosixPath(m.path).match(glob_pat) or fnmatch.fnmatch(m.path, glob_pat)
+            ]
+            return {"matches": out_matches, "truncated": truncated}
         root = await self._mounted(invocation)
+        flags = 0 if case_sensitive else re.IGNORECASE
         try:
-            pattern = re.compile(args["pattern"])
+            pattern = re.compile(args["pattern"], flags)
         except re.error as err:
             raise InvalidError("invalid_pattern", f"正则表达式不合法：{err}") from None
         target = self._resolve(root, args.get("path", "."))
@@ -620,12 +650,20 @@ class _Workspaces:
         for file in files:
             if not file.resolve().is_relative_to(root) or file.stat().st_size > 1024 * 1024:
                 continue
+            rel_posix = self._relative(root, file)
+            if glob_pat and not (PurePosixPath(rel_posix).match(glob_pat) or fnmatch.fnmatch(rel_posix, glob_pat)):
+                continue
             data = file.read_bytes()
             if b"\x00" in data[:1024]:
                 continue  # 二进制文件
-            for number, line in enumerate(data.decode("utf-8", errors="replace").splitlines(), start=1):
+            lines = data.decode("utf-8", errors="replace").splitlines()
+            for idx, line in enumerate(lines):
                 if pattern.search(line):
-                    matches.append({"path": self._relative(root, file), "line": number, "text": line[:500]})
+                    entry: dict[str, Any] = {"path": rel_posix, "line": idx + 1, "text": line[:500]}
+                    if ctx > 0:
+                        entry["context_before"] = [l[:300] for l in lines[max(0, idx - ctx) : idx]]
+                        entry["context_after"] = [l[:300] for l in lines[idx + 1 : idx + 1 + ctx]]
+                    matches.append(entry)
                     if len(matches) >= limit:
                         return {"matches": matches, "truncated": True}
         return {"matches": matches, "truncated": False}
@@ -665,7 +703,7 @@ class _Workspaces:
 
     @staticmethod
     def _edited(args: Any, old: bytes | None) -> bytes:
-        """repo_edit 的新内容：给了 old 就把它唯一的一处替换成 new（文件要存在），否则 new 是整个文件。"""
+        """repo_edit 的新内容：给了 old 就把匹配处替换成 new（replace_all=True 全替换，否则要求唯一），否则 new 是整个文件。"""
         new = str(args["new"])
         if "old" not in args:
             return new.encode("utf-8")
@@ -675,6 +713,8 @@ class _Workspaces:
         count = text.count(args["old"])
         if count == 0:
             raise InvalidError("edit_no_match", "文件里找不到 old")
+        if args.get("replace_all"):
+            return text.replace(args["old"], new).encode("utf-8")
         if count > 1:
             raise InvalidError("edit_ambiguous", f"old 在文件里出现了 {count} 次，要能唯一定位")
         return text.replace(args["old"], new, 1).encode("utf-8")

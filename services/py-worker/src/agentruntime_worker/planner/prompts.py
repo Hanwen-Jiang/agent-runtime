@@ -23,6 +23,7 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker.planner import validate
 from agentruntime_worker.planner.context import CatalogView, PlanningContext
 from agentruntime_worker.planner.triage import MESSAGE_KINDS, TriageDecision
+from agentruntime_worker.prompts import PLANNER_IDENTITY
 from agentruntime_worker.session.transcript import transcript_text
 
 # 提示里放多少之前的对话（字）：分诊是小模型、只要看懂指代，规划要知道用户在接着说什么（TMP 计划第 11.13 节）。
@@ -90,7 +91,7 @@ _PLANNING_PATTERNS = """规划写法：
 def system_zone(catalog: CatalogView, *, sub_agent_rules: bool = False) -> list[mg.ChatMessage]:
     schemas = "\n".join(f"{name} 的 JSON Schema：{_dump(validate.schema(name))}" for name in ("defs", "atomic_node", "goal_node", "stage", "task_plan"))
     rules = f"{_PLANNER_RULES}\n{_SUB_AGENT_RULES}" if sub_agent_rules else _PLANNER_RULES
-    text = f"{rules}\n\n{_PLANNING_PATTERNS}\n\n{schemas}\n\n{_catalog_text(catalog)}"
+    text = f"{rules}\n\n{PLANNER_IDENTITY}\n\n{_PLANNING_PATTERNS}\n\n{schemas}\n\n{_catalog_text(catalog)}"
     return [mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=text, cache_breakpoint=True)]
 
 

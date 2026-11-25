@@ -167,17 +167,24 @@ def workspace_operations(config: WorkerConfig) -> WorkspaceOperations | None:
     )
 
 
-async def _platform_secret(config: WorkerConfig, name: str) -> bytes | None:
+async def _platform_secret(config: WorkerConfig, name: str, *, scope: str = "sandbox") -> bytes | None:
     if config.secrets_file is None:
         return None
     from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
     from agentruntime_core.errors import NotFoundError
 
     try:
-        value = (await LocalFileSecretStoreProvider(config.secrets_file).bind_platform("sandbox").read(name)).reveal()
+        value = (await LocalFileSecretStoreProvider(config.secrets_file).bind_platform(scope).read(name)).reveal()
     except NotFoundError:
         return None
     return value.encode() if isinstance(value, str) else value
+
+
+async def _web_search_secret(config: WorkerConfig) -> bytes | None:
+    secret = await _platform_secret(config, "api-key", scope="web-search")
+    if secret is not None:
+        return secret
+    return await _platform_secret(config, "web-search/api-key", scope="sandbox")
 
 
 def context_objects(config: WorkerConfig) -> ObjectStoreProvider:
@@ -238,6 +245,7 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
             grants=GrantStore(_relational(config)) if config.sandbox_service_address else None,
             policies=tenant_policies(config),
             credential_key=lambda: _platform_secret(config, envcred.SECRET_NAME),
+            search_secret=lambda: _web_search_secret(config),
         )
         # 交付文件（N-18，F3）：读文件与 repo_read 同一条路（F3-SANDBOX：存档模式经 Sandbox Service 读环境里的文件，挂卷读本机目录），
         # 内容进 context_objects 的 ObjectStore，元数据进业务库（task-service 读同一处）。
@@ -252,6 +260,8 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
             )
         from agentruntime_worker.files.tools import register_file_tools
         register_file_tools(provider, config)
+        from agentruntime_worker.tools.self_ops import register_memory_search
+        register_memory_search(provider, config)
         if config.registry_address:
             # 用户 Skill（N-14）：正文在 Registry，固定的版本在业务库的 tasks.skill_pins。
             from agentruntime_worker.registry.client import GrpcRegistry
