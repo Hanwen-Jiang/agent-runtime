@@ -42,7 +42,7 @@ S-01 的验收样例。每个 schema 一个文件：`<schema>.examples.json`，�
 | Verdict `layer` | `execution`、`plan`、`shape`、`goal` | 附录 B.5 |
 | Verdict `signals` | `repetition`、`stall`、`budget_burn`、`plan_drift`、`context_health`、`parallel_anomaly`、`sample_divergence` | 附录 B.6 |
 | Verdict `progress_check` | `criteria_met`、`progress`、`looping`、`assumptions_hold`、`next_step` | 附录 B.6 的五个问题 |
-| Verdict `escalate.options` | `continue_as_is`、`replan_with_guidance`、`stop_and_wrap_up` | 设计书 4.11、附录 B.8 |
+| Verdict `escalate.options` | 模型按具体问题生成的非空选项（自动补 `stop_and_wrap_up`）；系统兜底为 `continue_as_is`、`replan_with_guidance`、`stop_and_wrap_up` | 设计书 4.11、附录 B.8 |
 | Verdict `repair.strategy` | `retry_with_error`、`change_method` | 附录 B.8 第 1、2 步 |
 | quality 参数 | revise：`judge`、`max_rounds`；ensemble：`n`、`aggregate`（`vote`/`judge`）、`judge`；search：`expand_k`、`max_depth`、`beam_width`、`scorer` | 附录 E.2 |
 | Task State `status`、Round `status` | Task：`queued`、`running`、`done`、`aborted`、`cancelled`、`failed`（与 proto 的 TaskStatus 一致）；Round：`planning`、`running`、`reviewing`、`completed` | 附录 B.1、B.9 |

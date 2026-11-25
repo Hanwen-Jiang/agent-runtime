@@ -23,11 +23,30 @@ from agentruntime_worker.reviewer.signals import HARD_SIGNALS, STEPS, Ledger, is
 from agentruntime_worker.workflows import stage_plan as sp
 
 HUMAN_REPLIES = ("continue_as_is", "replan_with_guidance", "stop_and_wrap_up")
+HUMAN_OPTION_MAX_LEN = 120
+HUMAN_OPTIONS_MAX = 6
 # Jev 的检查（docs/plan/feedback-2026-11-01.md N-09）：“不认自己的工具或之前的工作”的概率到这么高就拦；没有模型评审时，
 # “回答了用户问的事”的概率低到这么低就拦。2026-11-01 线上那条“我没有工具”的回复是 0.99。
 JUDGE_DISOWN_THRESHOLD = 0.8
 JUDGE_OFF_TOPIC_THRESHOLD = 0.2
-"""Reviewer 升级问人时限定的三种回复（设计书 4.11）。"""
+"""Reviewer 升级问人时的系统兜底回复集合（设计书 4.11）。"""
+
+
+def _human_options(raw: Any) -> list[str]:
+    """规整问人选项：清理空白/重复；若模型给出了与具体问题相关的选项则保留并补齐 stop_and_wrap_up，否则回落到系统兜底三项。"""
+    if not isinstance(raw, list | tuple):
+        return list(HUMAN_REPLIES)
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        text = str(item or "").strip()[:HUMAN_OPTION_MAX_LEN]
+        if text and text not in seen:
+            seen.add(text)
+            cleaned.append(text)
+    if not cleaned or all(opt in HUMAN_REPLIES for opt in cleaned):
+        return list(HUMAN_REPLIES)
+    custom = [opt for opt in cleaned if opt != "stop_and_wrap_up"][: HUMAN_OPTIONS_MAX - 1]
+    return [*custom, "stop_and_wrap_up"]
 
 JUDGING_ROLES = ("judge", "gate")
 
@@ -528,6 +547,8 @@ class _Rules:
                 esc["question"] = question
             elif old and old.get("target") == "human" and old.get("question"):
                 esc["question"] = old["question"]
+                if old.get("options"):
+                    esc["options"] = old["options"]
             if old and old.get("state_summary"):
                 esc["state_summary"] = old["state_summary"]
             self.human_details(esc, why)
@@ -555,7 +576,7 @@ class _Rules:
         if not esc.get("question"):
             text = "；".join(w for w in why if w) or "卡住了，需要人来决定下一步"
             esc["question"] = f"{text}。原样继续、带指导重规划，还是停止并用现有结果收尾？"
-        esc["options"] = list(HUMAN_REPLIES)
+        esc["options"] = _human_options(esc.get("options"))
         if not esc.get("state_summary"):
             esc["state_summary"] = self.summary()
 

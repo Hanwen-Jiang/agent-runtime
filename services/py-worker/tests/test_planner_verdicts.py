@@ -95,3 +95,28 @@ async def test_the_humans_guidance_reaches_the_planner() -> None:
     gateway = FakeGateway(plan=[plan_answer(level="replan")])
     await Planner(gateway).plan(request("订机票", round_seq=2, last_round=escalated("replan_with_guidance", "改订 3 号的航班")))
     assert "改订 3 号的航班" in prompt_text(gateway.calls("plan")[0])
+
+
+async def test_custom_escalation_option_routes_to_replan_and_reaches_planner() -> None:
+    last = escalated("保留旧版 Cookie 兼容")
+    assert decide(sig("new_task"), context=context(), last_round=last, confidence_threshold=THRESHOLD).level == "replan"
+    gateway = FakeGateway(plan=[plan_answer(level="replan")])
+    result = await Planner(gateway).plan(request("重构鉴权中间件", round_seq=2, last_round=last))
+    assert result.triage_level == "replan"
+    assert "保留旧版 Cookie 兼容" in prompt_text(gateway.calls("plan")[0])
+
+
+def test_human_node_validation_requires_concrete_options() -> None:
+    from agentruntime_worker.planner import validate
+
+    ctx = context()
+    base_node = {"id": "ask_scope", "kind": "atomic", "template": "clarify_scope@v1", "executor": "human", "effect": "none", "role": "gate"}
+    bad_stage = {"seq": 1, "goal": "确认分析范围", "exit_when": "已选择分析范围", "nodes": [{**base_node, "inputs": {"question": "包含退货运费吗？"}}]}
+    found = validate.problems(bad_stage, None, level="fast", context=ctx, keep_nodes=[])
+    assert any("inputs.options" in item for item in found)
+
+    good_stage = {
+        **bad_stage,
+        "nodes": [{**base_node, "inputs": {"question": "包含退货运费吗？", "options": ["包含退货运费", "只看商品退款"]}}],
+    }
+    assert validate.problems(good_stage, None, level="fast", context=ctx, keep_nodes=[]) == []

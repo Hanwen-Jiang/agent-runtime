@@ -311,6 +311,30 @@ def _role_problems(stage: dict[str, Any], context: PlanningContext) -> list[str]
     return found
 
 
+def _human_problems(stage: dict[str, Any]) -> list[str]:
+    """executor = human 的人工确认节点必须带具体问题与 1～6 个非空、不重复选项。"""
+    found: list[str] = []
+    for node in nodes(stage):
+        if node.get("kind") != "atomic" or node.get("executor") != "human":
+            continue
+        nid = node.get("id")
+        inputs = node.get("inputs")
+        if not isinstance(inputs, Mapping):
+            found.append(f"{nid} 由 human 执行，inputs 里要写 question 与 1～6 个具体 options")
+            continue
+        question = inputs.get("question")
+        if not isinstance(question, str) or not question.strip():
+            found.append(f"{nid} 由 human 执行，inputs.question 不能为空")
+        options = inputs.get("options")
+        if not isinstance(options, list) or not (1 <= len(options) <= 6):
+            found.append(f"{nid} 由 human 执行，inputs.options 要结合问题给出 1～6 个非空具体选项")
+            continue
+        cleaned = [opt.strip() for opt in options if isinstance(opt, str) and opt.strip()]
+        if len(cleaned) != len(options) or len(set(cleaned)) != len(cleaned):
+            found.append(f"{nid} 的 inputs.options 必须是不重复的非空字符串")
+    return found
+
+
 def problems(
     stage: Any,
     task_plan: Any,
@@ -336,6 +360,7 @@ def problems(
     found += _catalog_problems(stage, context)
     found += _effect_problems(stage, context)
     found += _role_problems(stage, context)
+    found += _human_problems(stage)
     if sub_agent_rules:
         found += _sub_agent_problems(stage, level)
     redone = sorted({str(n.get("id")) for n in nodes(stage)} & set(keep_nodes))

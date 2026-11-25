@@ -75,7 +75,7 @@
         "target": {"$ref": "defs.schema.json#/$defs/escalate_target"},
         "tier": {"$ref": "defs.schema.json#/$defs/tier"},
         "question": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
-        "options": {"type": "array", "minItems": 1, "items": {"$ref": "defs.schema.json#/$defs/human_reply"}, "uniqueItems": true},
+        "options": {"description": "问人时由模型按具体问题给出的选项；系统规则兜底或停止收尾可使用 human_reply 常量", "type": "array", "minItems": 1, "maxItems": 6, "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}, "uniqueItems": true},
         "state_summary": {"type": "string"}
       },
       "allOf": [

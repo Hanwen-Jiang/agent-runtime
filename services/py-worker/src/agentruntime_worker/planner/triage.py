@@ -104,8 +104,9 @@ def reviewer_decision(last_round: dict[str, Any] | None, *, context: PlanningCon
         return TriageDecision(level="replan", kind=kind, reasons=["上一轮 Reviewer 判定换方法：重新规划要修的部分，其余保留"])
     if name == "rollback":
         return TriageDecision(level="replan", kind=kind, reasons=["上一轮退回了检查点：从检查点的状态重做剩余部分"])
-    if name == "escalate" and reply == "replan_with_guidance":
-        return TriageDecision(level="replan", kind=kind, reasons=["人回复带指导重规划"])
+    if name == "escalate" and reply and reply not in ("continue_as_is", "stop_and_wrap_up"):
+        reason = "人回复带指导重规划" if reply == "replan_with_guidance" else f"人已选择「{reply}」，按该决定重规划剩余部分"
+        return TriageDecision(level="replan", kind=kind, reasons=[reason])
     if name == "reroute":
         ref = str((verdict.get("reroute") or {}).get("recipe", ""))
         recipe = next((r for r in context.recipes if r.recipe == ref), None)

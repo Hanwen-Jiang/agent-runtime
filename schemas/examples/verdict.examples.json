@@ -85,6 +85,22 @@
       }
     },
     {
+      "name": "escalate_human_model_options",
+      "source": "模型结合当前具体问题动态生成的确认选项（含 stop_and_wrap_up 停止选项）",
+      "notes": "",
+      "instance": {
+        "verdict": "escalate",
+        "reason": "两个分析口径结果差异较大，需要用户确认口径",
+        "layer": "goal",
+        "escalate": {
+          "target": "human",
+          "question": "华东退款分析是否计入退货运费？",
+          "options": ["包含退货运费一并分析", "只分析商品退款（不含运费）", "stop_and_wrap_up"],
+          "state_summary": "已完成取数与归因；物流破损占 46%。"
+        }
+      }
+    },
+    {
       "name": "escalate_tier",
       "source": "附录 B.8 第 6 步：换更强的 Tier；附录 H.4",
       "notes": "",
@@ -156,13 +172,13 @@
       }
     },
     {
-      "name": "escalate_human_free_text_option",
-      "description": "人的回复限定为三种（设计书 4.11）",
-      "violates": [{"path": "/escalate/options/1", "keyword": "enum"}],
+      "name": "escalate_human_empty_option",
+      "description": "问人选项不能为空字符串",
+      "violates": [{"path": "/escalate/options/1", "keyword": "minLength"}],
       "instance": {
         "verdict": "escalate",
         "reason": "卡住了",
-        "escalate": {"target": "human", "question": "怎么办？", "options": ["continue_as_is", "随你决定"]}
+        "escalate": {"target": "human", "question": "怎么办？", "options": ["包含退货运费", ""]}
       }
     },
     {

@@ -214,6 +214,27 @@ async def test_escalating_to_a_human_offers_three_replies_and_follows_the_answer
     assert last["human_reply"] == {"option": option, "guidance": "改订 3 号"}
 
 
+async def test_escalating_to_human_preserves_llm_generated_options_and_resumes(harness: StageHarness) -> None:
+    s = harness.script
+    s.plans["main"] = [stage(1, atomic("compare", role="fetch", effect="read"), deliver("summary", after=["compare"])), stage(2, deliver("ticket"))]
+    question = "发现两个可选方案：按含退货运费统计还是只看商品退款？"
+    model_options = ["包含退货运费一并统计", "只统计商品退款（不含运费）"]
+    expected_options = [*model_options, "stop_and_wrap_up"]
+    s.on_question = reply_with(harness, model_options[0], guidance="优先看华东仓")
+    s.reviewer = scripted(
+        out("escalate", "需要确认口径", escalate={"target": "human", "question": question, "options": model_options, "state_summary": "已完成原始订单汇总"}),
+        out("done", "按确认口径完成", done={"deliver_node": "ticket"}),
+    )
+    inp, result = await harness.run()
+    asked = [q for q in s.questions if q.task_id == inp.task_id]
+    assert len(asked) == 1
+    assert asked[0].options == expected_options and asked[0].text == question
+    assert result.status == enums_pb2.TASK_STATUS_DONE
+    last = s.plan_inputs[1].last_round
+    assert last["verdict"]["escalate"]["options"] == expected_options
+    assert last["human_reply"] == {"option": model_options[0], "guidance": "优先看华东仓"}
+
+
 async def test_an_unanswered_escalation_stops_and_wraps_up(harness: StageHarness) -> None:
     s = harness.script
     s.policy = StagePolicy(human_timeout_s=1)

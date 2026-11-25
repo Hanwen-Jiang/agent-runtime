@@ -322,6 +322,25 @@ def test_a_human_escalation_always_offers_exactly_the_three_replies() -> None:
     assert esc["target"] == "human" and esc["options"] == HUMAN_REPLIES and esc["question"] and esc["state_summary"]
 
 
+def test_human_escalation_preserves_model_options_and_appends_stop() -> None:
+    d, _, _ = decide(LINT_STAGE, LINT_FAIL, escalate_human("放宽 lint 规则还是拆小 PR？", options=["放宽该文件 E501 规则", "拆分为两个 PR", "放宽该文件 E501 规则", "  "]))
+    esc = d.verdict["escalate"]
+    assert esc["options"] == ["放宽该文件 E501 规则", "拆分为两个 PR", "stop_and_wrap_up"]
+    # 模型已经给出 stop_and_wrap_up 时不会重复追加，且保留自定义选项顺序。
+    d2, _, _ = decide(LINT_STAGE, LINT_FAIL, escalate_human("选择目标分支？", options=["main", "stop_and_wrap_up", "release/v2"]))
+    assert d2.verdict["escalate"]["options"] == ["main", "release/v2", "stop_and_wrap_up"]
+    # 联网拦截由规则覆写 question 时，重置回系统兜底三项，不沿用模型误判前的字段。
+    lg = ledger(task_state(), LINT_STAGE, LINT_FAIL, [])
+    fl = floor(lg, LINT_FAIL, completion=0.5, thresholds=Thresholds())
+    proposal = escalate_human("用哪套字段口径？", options=["包含运费", "不含运费"])["verdict"]
+    # 规则重写 question（例如 cap 到上限或 network_blocked 改写 done）时，不沿用模型旧 options，重置回 HUMAN_REPLIES：
+    done_proposal = done("lint")["verdict"]
+    forced_net = enforce(done_proposal, floor=fl, ledger=lg, stage=LINT_STAGE, results={"fix_lint": ok(), "lint": ok("deliver")}, catalog=CATALOG, verification={"network_blocked": True})
+    assert forced_net.verdict["escalate"]["options"] == HUMAN_REPLIES
+    forced_cap = enforce(proposal, floor=fl, ledger=lg, stage=LINT_STAGE, results=LINT_FAIL, catalog=CATALOG, caps=Caps(escalate_human=0))
+    assert forced_cap.verdict["verdict"] == "abort"
+
+
 def test_rollback_only_to_a_known_checkpoint() -> None:
     history = [past(1, "continue"), past(2, "continue")]
     proposal = {"verdict": {"verdict": "rollback", "reason": "账户被清空", "rollback": {"checkpoint": "round_2"}}}

@@ -82,7 +82,7 @@ _SUB_AGENT_RULES = """12. 派 sub_agent 时，每个都在 inputs 里写 brief�
 _PLANNING_PATTERNS = """规划写法：
 - 已有适用的 Recipe 时，用 mode = template 的 Goal Node，recipe 引用 Catalog 中的版本；inputs 放这次展开需要的参数。批量独立对象可用相互独立的节点按条处理，再汇总；共享写入仍由单一写者串行完成。不要编造 Recipe，也不要把可复用的模板全部改成没有边界的大 tool_loop。
 - 有明确且便宜的质量判据（例如测试、格式规则、逐项核对）时，用 quality = revise 包装要检查的节点，按 schema 配置有限的检查与修正；低价值节点用 none。质量检查不能代替权限审批。
-- 缺少只有用户能决定的信息，或用户要求先确认试跑/范围时，用 Catalog 中 executor = human、role = gate 的 Atomic Node 收集决定，并在该信息检查点停下。不要猜测人的回答；不可逆副作用的授权仍由运行时 Hook 插入，不能用自行生成的 gate 绕过。
+- 缺少只有用户能决定的信息，或用户要求先确认试跑/范围时，用 Catalog 中 executor = human、role = gate 的 Atomic Node 收集决定，并在该信息检查点停下。inputs 里必须同时写 question 与 options：options 照当前具体问题和可选方向给出 2～4 个简短、互斥的具体选项（用用户消息的语言；只有在确属“是否同意执行”的二元审批时才用 ["approve", "reject"]）。不要猜测人的回答；不可逆副作用的授权仍由运行时 Hook 插入，不能用自行生成的 gate 绕过。
 - 本轮信息已足够完成用户要求时，安排 role = deliver 的出口，after 依赖实际产出、inputs 引用结果；本轮还在等待探索或人的确认时，先停在检查点，不虚构交付。
 - 依赖无关的只读子问题可以并行；after 只表达真实依赖。不要为了并行把同一文件或外部对象的写入拆给多个节点。"""
 
