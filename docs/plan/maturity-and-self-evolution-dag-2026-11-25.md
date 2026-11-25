@@ -125,12 +125,12 @@ flowchart TD
 | `MAT-HARNESS-ISO` | `services/py-learning/src/agentruntime_learning/evolution/{isolation,store}.py`、`deploy/dev/sys-evolution-policy.json` | 采用符合 `defs.schema.json` slug 规范的隔离租户 `sys-evolution`（`^[a-z0-9][a-z0-9_-]{0,62}$`，拒绝前导 `_`）；`IsolatedEvolutionRegistry` 只允许暂存 `cand-<skill>-<hash>` 阴影候选；`EvolutionStore`（平台表 `evolution_candidates`）强制管理员审批 `approve_and_promote` 与一键 `rollback`。 | `test_evolution_wave2.py` 验证跨租户表与 Registry 写入严格隔离，系统身份禁止自审批。 |
 | `MAT-LEARN-EVOL` | `services/py-learning/src/agentruntime_learning/evolution/{clustering,proposer,pipeline}.py` | 解析 OTel / console Span 结构聚类 5 类高频缺陷（如 `readonly_churn`、`edit_or_patch_conflict`、`unverified_completion` 等），自动生成含 Schema + 安全红线校验的 Unified Diff，经 Matrix Gate 后写入 `pending_approval` 或 `rejected_by_gate`。 | `uv run --package agentruntime-learning python -m agentruntime_learning.evolution evolve --traces <files...> --out <dir> --data-dir <dir>`；离线证据在 `docs/plan/evidence/wave2-evolution-20261126/`。 |
 
-### Wave 3 — 管理员面板（`#/admin`）与 `<coding-dance>` 接入
+### Wave 3 — 管理员面板（`#/admin`）与 `<coding-dance>` 接入（已实现、部署并验证）
 
-| 节点 ID | 依赖 | 目标与范围 | 验收标准 |
+| 节点 ID | 依赖 | 目标与范围 | 验收标准与实现映射 |
 | --- | --- | --- | --- |
-| `MAT-ADMIN-UI` | `MAT-LEARN-EVOL` | 在 `coding-agent` 实现 `CODING_ADMINS` 鉴权、`#/admin` 控制台路由，聚合 OTel / Grafana / VictoriaMetrics 指标视图，以及 `sys-evolution` 候选项（读取 `EvolutionStore`）的 Diff 审阅、Approve Promote 与 Rollback 操作。 | 非管理员访问返回 `403`，管理员可查看指标并完成一键 Promote / Rollback。 |
-| `CD-ENTRY-V1` | `MAT-PROMPT-V2`, `MAT-TOOL-L2A`, `MAT-SKILL-BASE` | 在 `coding-agent` 新增 `internal/entry/codingdance`（Webhook）与 `/api/integrations/coding-dance/v1/*`（实时提示、历史分析、薄弱项训练题生成），严格遵守 **Consent-First（`off` / `on_demand` / `proactive_consent`）** 与 **L1–L4 渐进提示**。 | `off` 零触发；`proactive_consent` 默认只抛非剧透询问卡片；用户点击确认后按选定 `hint_level` 解锁建议。 |
+| `MAT-ADMIN-UI` | `MAT-LEARN-EVOL` | 在 `coding-agent` 实现 `adminops` 包（`scrypt` 独立运维认证 + `CODING_ADMINS` RBAC、`VictoriaMetrics`/`Grafana`/`Task API` 聚合、`evolution_candidates` 存储与 Registry 内部 `8092` `Publish` 晋升/回滚）及 `#/admin` 独立前端控制台。 | 已通过 `adminops_test.go`、`wave3_test.go`、CSP/i18n 检查与线上部署验收；未认证返回 `401`、缺权限返回 `403`、管理员可完成观测巡检与 Approve Promote / Rollback。 |
+| `CD-ENTRY-V1` | `MAT-PROMPT-V2`, `MAT-TOOL-L2A`, `MAT-SKILL-BASE` | 在 `coding-agent` 新增 `internal/entry/codingdance`（Webhook 入口）与 `/api/integrations/coding-dance/v1/{hint-check,hint-reveal,history-analyze}`，严格执行 **Consent-First（`off` / `on_demand` / `proactive_consent` + HMAC `consent_token`）** 与 **L1–L4 渐进提示**。 | 已通过 `codingdance/kind_test.go` 与 `TestWave3CodingDanceCompanionAPI`；`off` 静默/拦截，`proactive_consent` 默认无剧透征询，显式同意+有效令牌才按 `L1`–`L4` 解锁。 |
 
 ### Wave 4 — 自建内外网纯净爬虫集群
 
