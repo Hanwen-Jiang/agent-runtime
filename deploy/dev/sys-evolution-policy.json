@@ -1,0 +1,26 @@
+{
+  "entries": [
+    {
+      "kind": "tenant_policy",
+      "tenant": "sys-evolution",
+      "document": {
+        "effect_ceiling": "write_reversible",
+        "budget": {
+          "usd": 2.0,
+          "tool_calls": 40,
+          "wall_clock_min": 15
+        },
+        "model_budget": {
+          "daily_usd": 10.0,
+          "monthly_usd": 100.0
+        },
+        "workspace": {
+          "max_workspaces": 20
+        },
+        "mcp": {
+          "allowed": false
+        }
+      }
+    }
+  ]
+}

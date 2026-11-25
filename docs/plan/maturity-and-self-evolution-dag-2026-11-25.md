@@ -74,9 +74,9 @@ flowchart TD
     MAT_PROMPT_V2["MAT-PROMPT-V2: Unified System Identity & Runtime Boundary Prompt"]
     MAT_SKILL_BASE["MAT-SKILL-BASE: 10 Platform Skills in platform-skills.json"]
 
-    %% Wave 2: 评测矩阵与独立自进化通道
+    %% Wave 2: 评测矩阵与独立自进化通道（已落地）
     MAT_EVAL_MATRIX["MAT-EVAL-MATRIX: Model x Skill x Benchmark (SWE/DocEval) Matrix Runner"]
-    MAT_HARNESS_ISO["MAT-HARNESS-ISO: Isolated _system_evolution Tenant & Candidate Registry"]
+    MAT_HARNESS_ISO["MAT-HARNESS-ISO: Isolated sys-evolution Tenant & Candidate Registry"]
     MAT_LEARN_EVOL["MAT-LEARN-EVOL: OTel Failure Clustering + Auto Diff Proposal"]
 
     %% Wave 3: 管理员控制台与 coding-dance 深度接入
@@ -117,19 +117,19 @@ flowchart TD
 | `MAT-PROMPT-V2` | `services/py-worker/src/agentruntime_worker/prompts/__init__.py`、`prompts/system_identity.py`、`executor/tool_loop.py`、`planner/prompts.py`、`reviewer/prompts.py` | 抽象分角色系统身份与运行时边界构建器 `build_system_identity(role, ...)`，把工具层级分工、沙箱/无外网/只读上限边界、Skill 优先查证规则与“仅陈述实测证据”原则统一注入 `executor`/`planner`/`reviewer`。 | 单测验证不同角色与 `RuntimeCapabilities` 组合提示词输出；`test_planner_verdicts.py`、`test_reviewer_rules.py` 通过。 |
 | `MAT-SKILL-BASE` | `deploy/dev/platform-skills.json` | 平台 Skill 扩充至 10 份高密度可执行规范（覆盖工程开发、代码库探索、TDD 修 Bug、测试、安全重构、架构文档、Eval 编写、安全审查、Git 提交与交付），每份给出明确 Trigger 与 Step-by-Step 检查清单。 | 全部 10 个条目严格通过 `schemas/skill.schema.json`（Draft 2020-12）校验，并成功 seed 到线上 Registry。 |
 
-### Wave 2 — Model × Skill Eval Matrix 与独立自进化通道
+### Wave 2 — Model × Skill Eval Matrix 与独立自进化通道（已实现并离线验收）
 
-| 节点 ID | 依赖 | 目标与范围 | 验收标准 |
+| 节点 ID | 目标模块与文件 | 核心交付内容 | 验收与运行入口 |
 | --- | --- | --- | --- |
-| `MAT-EVAL-MATRIX` | `MAT-SKILL-BASE` | 在 `services/py-evals` 或 `evals/` 扩展矩阵运行器：输入 `(model_tier, skill_version, benchmark_suite)`，支持 SWE-bench 子集、DocEval 结构化评分及工具调用效率指标（步数、空读率、单测通过率）。 | 一条命令产出横向对比 Markdown + JSON 报告。 |
-| `MAT-HARNESS-ISO` | `MAT-EVAL-MATRIX` | 在 Registry 与 Policy 层新增独立系统演化租户 `_system_evolution`（独立配额与候选状态 `candidate_eval`），确保系统自我试验、对比评测、生成补丁不进入任何终端用户会话或租户工作区。 | 跨租户访问测试证明用户 harness 对 `_system_evolution` 零可见、零影响。 |
-| `MAT-LEARN-EVOL` | `MAT-HARNESS-ISO` | 扩展 `services/py-learning/pipeline/run.py`：定期从 OTel / 任务结束信号聚类“连续只读提醒触发率高 / 某工具报错率高 / Reviewer 打回率高”的模式，自动起草 Skill/Prompt Diff 并在 Eval Matrix 跑分后写入待审批队列。 | 端到端在测试环境产出一份带基线 vs 候选分数对比的 Diff 记录。 |
+| `MAT-EVAL-MATRIX` | `services/py-learning/src/agentruntime_learning/evolution/matrix.py`、`__main__.py` | 新增 `(model_tier, skill_variant, benchmark_suite)` 多维矩阵运行器（内置 `swe_engineering` 与 `doc_architecture` 套件），自动计算通过率、盲读率、工具报错率、Doc/Mermaid 规范与诚实性门禁并输出 `matrix-report.{json,md}`。 | `uv run --package agentruntime-learning python -m agentruntime_learning.evolution matrix --out <dir>`（默认 `fixture` 模式 `$0`，支持 `gateway` 实测）。 |
+| `MAT-HARNESS-ISO` | `services/py-learning/src/agentruntime_learning/evolution/{isolation,store}.py`、`deploy/dev/sys-evolution-policy.json` | 采用符合 `defs.schema.json` slug 规范的隔离租户 `sys-evolution`（`^[a-z0-9][a-z0-9_-]{0,62}$`，拒绝前导 `_`）；`IsolatedEvolutionRegistry` 只允许暂存 `cand-<skill>-<hash>` 阴影候选；`EvolutionStore`（平台表 `evolution_candidates`）强制管理员审批 `approve_and_promote` 与一键 `rollback`。 | `test_evolution_wave2.py` 验证跨租户表与 Registry 写入严格隔离，系统身份禁止自审批。 |
+| `MAT-LEARN-EVOL` | `services/py-learning/src/agentruntime_learning/evolution/{clustering,proposer,pipeline}.py` | 解析 OTel / console Span 结构聚类 5 类高频缺陷（如 `readonly_churn`、`edit_or_patch_conflict`、`unverified_completion` 等），自动生成含 Schema + 安全红线校验的 Unified Diff，经 Matrix Gate 后写入 `pending_approval` 或 `rejected_by_gate`。 | `uv run --package agentruntime-learning python -m agentruntime_learning.evolution evolve --traces <files...> --out <dir> --data-dir <dir>`；离线证据在 `docs/plan/evidence/wave2-evolution-20261126/`。 |
 
 ### Wave 3 — 管理员面板（`#/admin`）与 `<coding-dance>` 接入
 
 | 节点 ID | 依赖 | 目标与范围 | 验收标准 |
 | --- | --- | --- | --- |
-| `MAT-ADMIN-UI` | `MAT-LEARN-EVOL` | 在 `coding-agent` 实现 `CODING_ADMINS` 鉴权、`#/admin` 控制台路由，聚合 OTel / Grafana / VictoriaMetrics 指标视图，以及 `_system_evolution` 候选项 Diff 审阅、Approve Promote 与 Rollback 操作。 | 非管理员访问返回 `403`，管理员可查看指标并完成一键 Promote / Rollback。 |
+| `MAT-ADMIN-UI` | `MAT-LEARN-EVOL` | 在 `coding-agent` 实现 `CODING_ADMINS` 鉴权、`#/admin` 控制台路由，聚合 OTel / Grafana / VictoriaMetrics 指标视图，以及 `sys-evolution` 候选项（读取 `EvolutionStore`）的 Diff 审阅、Approve Promote 与 Rollback 操作。 | 非管理员访问返回 `403`，管理员可查看指标并完成一键 Promote / Rollback。 |
 | `CD-ENTRY-V1` | `MAT-PROMPT-V2`, `MAT-TOOL-L2A`, `MAT-SKILL-BASE` | 在 `coding-agent` 新增 `internal/entry/codingdance`（Webhook）与 `/api/integrations/coding-dance/v1/*`（实时提示、历史分析、薄弱项训练题生成），严格遵守 **Consent-First（`off` / `on_demand` / `proactive_consent`）** 与 **L1–L4 渐进提示**。 | `off` 零触发；`proactive_consent` 默认只抛非剧透询问卡片；用户点击确认后按选定 `hint_level` 解锁建议。 |
 
 ### Wave 4 — 自建内外网纯净爬虫集群
@@ -148,6 +148,6 @@ flowchart TD
 2. **禁止破坏既有契约**：
    - `agent-runtime` 修改 Temporal workflow 必须遵循 `patches.py` / `workflow.patched` 确定性规则；
    - 工具 `effect`（`read` / `write_reversible` / `write_irreversible`）与 `output` schema 字段保持向后兼容；
-   - `_system_evolution` 自进化链路必须隔离在独立租户，严禁修改普通用户的运行时行为以绕过审批。
+   - `sys-evolution` 自进化链路必须隔离在独立租户，严禁修改普通用户的运行时行为以绕过审批。
 3. **调优闭环原则**：每次调整 `prompts/system_identity.py` 或 `deploy/dev/platform-skills.json` 中的任何指令，必须同步运行回归测试与对应 Benchmark 对比，记录真实指标再决定是否推广到默认版本。
 4. **同步更新计划与笔记**：每完成一个节点，在此文档更新状态与关键 commit SHA，并在根目录 `AGENTS.md` 约定范围内将可复用工程与评测结论沉淀至对应笔记。

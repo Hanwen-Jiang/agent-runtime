@@ -1,0 +1,4 @@
+{"kind":"span","name":"runtime.round","trace_id":"t001","span_id":"s001","attributes":{"task_id":"tk-001","runtime.task_family":"coding.bugfix","read_only_reminder":true}}
+{"kind":"span","name":"runtime.round","trace_id":"t002","span_id":"s002","attributes":{"task_id":"tk-002","runtime.task_family":"coding.refactor","read_only_reminder":true}}
+{"kind":"span","name":"runtime.round","trace_id":"t003","span_id":"s003","attributes":{"task_id":"tk-003","runtime.task_family":"coding.feature","signals":["excessive_reads"]}}
+{"kind":"span","name":"execute_tool repo_edit","trace_id":"t004","span_id":"s004","attributes":{"task_id":"tk-004","runtime.task_family":"coding.bugfix","gen_ai.tool.name":"repo_edit","error.code":"edit_no_match","tool.status":"error"}}
