@@ -1,0 +1,247 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-runtime-maturity-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  agent-runtime-maturity-ops.json: |-
+    {
+      "uid": "ar-maturity-ops",
+      "title": "Agent Runtime Maturity, Evolution & Crawler",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "time": {"from": "now-6h", "to": "now"},
+      "templating": {"list": []},
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Healthy Scrape Targets",
+          "gridPos": {"x": 0, "y": 0, "w": 6, "h": 5},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "expr": "count(up == 1)"}]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Total Model Calls",
+          "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "expr": "sum(runtime_model_calls_total)"}]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Crawler Cache Hits",
+          "gridPos": {"x": 12, "y": 0, "w": 6, "h": 5},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "expr": "sum(crawler_cache_hits_total)"}]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Crawler Blocked SSRF/Policy",
+          "gridPos": {"x": 18, "y": 0, "w": 6, "h": 5},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "expr": "sum(crawler_blocked_total)"}]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "OTel Accepted Spans / sec",
+          "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A", "expr": "sum(rate(otelcol_receiver_accepted_spans_total[5m]))"}]
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "Crawler Requests vs Cache Hits",
+          "gridPos": {"x": 12, "y": 5, "w": 12, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [
+            {"refId": "A", "expr": "sum(rate(crawler_requests_total[5m]))", "legendFormat": "requests/s"},
+            {"refId": "B", "expr": "sum(rate(crawler_cache_hits_total[5m]))", "legendFormat": "cache_hits/s"}
+          ]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ar-agent-runtime-crawler-gateway
+  namespace: agent-runtime
+  labels:
+    app: ar-agent-runtime-crawler-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ar-agent-runtime-crawler-gateway
+  template:
+    metadata:
+      labels:
+        app: ar-agent-runtime-crawler-gateway
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: crawler-gateway
+          image: ghcr.io/agentruntime/crawler-gateway:__TAG__
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8096
+              name: http
+          env:
+            - name: AR_CRAWLER_ADDR
+              value: ":8096"
+            - name: AR_CRAWLER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: crawler-gateway-secret
+                  key: token
+            - name: AR_CRAWLER_SEARCH_PROVIDER
+              value: "auto"
+            - name: AR_CRAWLER_INTERNAL_ALLOW_HOSTS
+              value: "ar-agent-runtime-task-service:8080,coding-web:8095"
+            - name: AR_CRAWLER_RPM
+              value: "120"
+            - name: AR_CRAWLER_CACHE_TTL_S
+              value: "300"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8096
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8096
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ar-agent-runtime-crawler-gateway
+  namespace: agent-runtime
+  labels:
+    app: ar-agent-runtime-crawler-gateway
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8096"
+spec:
+  selector:
+    app: ar-agent-runtime-crawler-gateway
+  ports:
+    - name: http
+      port: 8096
+      targetPort: 8096
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ar-self-evolution-cycle
+  namespace: agent-runtime
+  labels:
+    app: ar-self-evolution-cycle
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: ar-self-evolution-cycle
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: evolution
+              image: ghcr.io/agentruntime/learning:__TAG__
+              imagePullPolicy: IfNotPresent
+              args:
+                - -m
+                - agentruntime_learning.evolution
+                - evolve
+                - --topic
+                - telemetry.spans
+                - --group
+                - ar-self-evolution
+                - --format
+                - otlp_json
+                - --out
+                - /tmp/evolution-out
+                - --mode
+                - fixture
+                - --budget-usd
+                - "0.0"
+                - --min-support
+                - "2"
+              env:
+                - name: AR_EVENT_STREAM_BROKERS
+                  value: "redpanda.data.svc:9093"
+                - name: AR_EVOLUTION_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      name: coding-github-db
+                      key: dsn
+                - name: AR_REGISTRY_ADDRESS
+                  value: "ar-agent-runtime-registry:8092"
+                - name: AR_REGISTRY_PUBLISH_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: coding-admin
+                      key: registry-token
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: "http://ar-agent-runtime-otel-collector:4318"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

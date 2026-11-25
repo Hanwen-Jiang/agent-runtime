@@ -186,18 +186,24 @@ async def run_evolution_cycle(
     record: CandidateRecord | None = None
     if store is not None:
         await store.migrate()
-        record = await store.create_candidate(
-            target_kind="skill",
-            target_name=proposal.target_name,
-            baseline_version=proposal.baseline_version,
-            baseline_document=proposal.baseline_document,
-            candidate_document=proposal.candidate_document,
-            unified_diff=proposal.unified_diff,
-            cluster_summary=chosen_cluster.to_json(),
-            matrix_report=matrix_report.to_json(),
-            status=status,
-            staged_skill_name=staged_name,
-        )
+        existing = await store.list_candidates(status=status)
+        for cur in existing:
+            if cur.target_name == proposal.target_name and cur.unified_diff == proposal.unified_diff:
+                record = cur
+                break
+        if record is None:
+            record = await store.create_candidate(
+                target_kind="skill",
+                target_name=proposal.target_name,
+                baseline_version=proposal.baseline_version,
+                baseline_document=proposal.baseline_document,
+                candidate_document=proposal.candidate_document,
+                unified_diff=proposal.unified_diff,
+                cluster_summary=chosen_cluster.to_json(),
+                matrix_report=matrix_report.to_json(),
+                status=status,
+                staged_skill_name=staged_name,
+            )
 
     if telemetry is not None:
         await telemetry.bind_platform(EVOLUTION_PLATFORM_PURPOSE).log(

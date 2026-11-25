@@ -138,12 +138,14 @@ class WebFetcher:
                 name="web_fetch",
                 version="v1",
                 effect=Effect.READ,
-                description="抓取登记主机上的公开 http/https 网页，校验重定向并支持正文清洗提取（只读；内网地址拦截）",
+                description="抓取登记主机上的公开 http/https 网页，校验重定向并支持正文清洗提取（只读；内网地址拦截；配 AR_CRAWLER_ENDPOINT 时经独立爬虫网关隔离抓取）",
                 input_schema={
                     "type": "object",
                     "required": ["url"],
                     "properties": {
                         "url": {"type": "string", "minLength": 1},
+                        "zone": {"type": "string", "enum": ["external", "internal"], "description": "抓取区域：external（公网网页）或 internal（白名单内网文档服务）"},
+                        "render_js": {"type": "boolean", "description": "是否启用无头浏览器渲染动态页面（默认 false，需爬虫网关支持）"},
                         "max_bytes": {"type": "integer", "minimum": 1, "maximum": 1_000_000},
                         "extract_readable": {"type": "boolean", "description": "从 HTML 中剔除脚本/样式/导航并提取可读正文（默认 true）"},
                         "follow_redirects": {"type": "boolean", "description": "是否安全跟踪合法公开域名重定向（默认 true，最多 5 跳；目标受限则返回 3xx）"},
@@ -174,9 +176,45 @@ class WebFetcher:
 
     async def fetch(self, invocation: ToolInvocation) -> dict[str, Any]:
         url = str(invocation.arguments["url"]).strip()
+        zone = str(invocation.arguments.get("zone") or "external").strip().lower()
+        if zone not in ("external", "internal"):
+            raise InvalidError("invalid_zone", f"不支持的抓取区域：{zone}")
+        render_js = bool(invocation.arguments.get("render_js", False))
         limit = min(int(invocation.arguments.get("max_bytes", self.config.fetch_limit)), 1_000_000)
         readable = bool(invocation.arguments.get("extract_readable", True))
         follow = bool(invocation.arguments.get("follow_redirects", True))
+
+        crawler_endpoint = os.environ.get("AR_CRAWLER_ENDPOINT", "").strip().rstrip("/")
+        if crawler_endpoint:
+            headers: dict[str, str] = {}
+            crawler_token = os.environ.get("AR_CRAWLER_TOKEN", "").strip()
+            if crawler_token:
+                headers["Authorization"] = f"Bearer {crawler_token}"
+            try:
+                return await asyncio.to_thread(
+                    _http_json,
+                    f"{crawler_endpoint}/v1/fetch",
+                    method="POST",
+                    payload={
+                        "url": url,
+                        "zone": zone,
+                        "max_bytes": limit,
+                        "extract_readable": readable,
+                        "follow_redirects": follow,
+                        "render_js": render_js,
+                    },
+                    headers=headers,
+                    timeout=float(max(15, int(getattr(self.config, "fetch_timeout_s", 20)))),
+                )
+            except DeniedError as err:
+                raise DeniedError("crawler_denied", err.message) from None
+            except InvalidError as err:
+                raise InvalidError("crawler_invalid", err.message) from None
+            except TransientError as err:
+                raise TransientError("crawler_unavailable", err.message) from None
+
+        if zone == "internal":
+            raise DeniedError("crawler_required", "未配置 AR_CRAWLER_ENDPOINT 时禁止直连抓取 internal 内网地址")
 
         await self._validate_target(url)
         current_url = url

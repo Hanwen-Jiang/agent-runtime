@@ -64,6 +64,13 @@
         "MAIN": "./cmd/pkg-mirror"
       }
     },
+    "crawler-gateway": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {
+        "MODULE": "services/go-crawler-gateway",
+        "MAIN": "./cmd/crawler-gateway"
+      }
+    },
     "egress-gateway": {
       "dockerfile": "deploy/images/go.Dockerfile",
       "args": {

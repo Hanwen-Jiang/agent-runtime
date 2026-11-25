@@ -415,3 +415,75 @@ def test_platform_skills_all_10_match_skill_schema() -> None:
     for entry in entries:
         assert entry["kind"] == "skill"
         validator.validate(entry["document"])
+
+
+@pytest.mark.asyncio
+async def test_web_fetch_delegates_to_crawler_and_blocks_internal_without_gateway(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = LocalToolDriverProvider()
+    register_platform_tools(provider, PlatformToolsConfig(fetch_hosts=("*",)))
+
+    # Without AR_CRAWLER_ENDPOINT, zone=internal must be rejected cleanly.
+    monkeypatch.delenv("AR_CRAWLER_ENDPOINT", raising=False)
+    monkeypatch.delenv("AR_CRAWLER_TOKEN", raising=False)
+    with pytest.raises(DeniedError):
+        await provider.bind(T1).invoke(
+            "web_fetch",
+            "v1",
+            {"url": "http://ar-agent-runtime-task-service:8080/healthz", "zone": "internal"},
+        )
+
+    captured: list[dict[str, Any]] = []
+
+    class _MockCrawler(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:  # noqa: N802
+            ln = int(self.headers.get("Content-Length", "0"))
+            body = json.loads(self.rfile.read(ln).decode("utf-8"))
+            captured.append({"auth": self.headers.get("Authorization"), "body": body})
+            if "169.254.169.254" in body["url"]:
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error":"blocked by policy"}')
+                return
+            out = json.dumps({"url": body["url"], "zone": body["zone"], "status": 200, "text": "clean-doc", "cached": False}).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(out)))
+            self.end_headers()
+            self.wfile.write(out)
+
+        def log_message(self, *args: Any) -> None:
+            return
+
+    srv = HTTPServer(("127.0.0.1", 0), _MockCrawler)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    try:
+        monkeypatch.setenv("AR_CRAWLER_ENDPOINT", f"http://127.0.0.1:{srv.server_address[1]}")
+        monkeypatch.setenv("AR_CRAWLER_TOKEN", "wave4-tok")
+
+        res = (await provider.bind(T1).invoke(
+            "web_fetch",
+            "v1",
+            {"url": "https://docs.python.org/3/", "zone": "external", "render_js": True},
+        )).output
+        assert res["text"] == "clean-doc" and res["zone"] == "external"
+        assert captured[-1]["auth"] == "Bearer wave4-tok"
+        assert captured[-1]["body"]["render_js"] is True
+
+        res_int = (await provider.bind(T1).invoke(
+            "web_fetch",
+            "v1",
+            {"url": "http://ar-agent-runtime-task-service:8080/healthz", "zone": "internal"},
+        )).output
+        assert res_int["zone"] == "internal" and res_int["status"] == 200
+
+        with pytest.raises(DeniedError):
+            await provider.bind(T1).invoke(
+                "web_fetch",
+                "v1",
+                {"url": "http://169.254.169.254/latest/meta-data/", "zone": "external"},
+            )
+    finally:
+        srv.shutdown()
+        srv.server_close()

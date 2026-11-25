@@ -132,11 +132,11 @@ flowchart TD
 | `MAT-ADMIN-UI` | `MAT-LEARN-EVOL` | 在 `coding-agent` 实现 `adminops` 包（`scrypt` 独立运维认证 + `CODING_ADMINS` RBAC、`VictoriaMetrics`/`Grafana`/`Task API` 聚合、`evolution_candidates` 存储与 Registry 内部 `8092` `Publish` 晋升/回滚）及 `#/admin` 独立前端控制台。 | 已通过 `adminops_test.go`、`wave3_test.go`、CSP/i18n 检查与线上部署验收；未认证返回 `401`、缺权限返回 `403`、管理员可完成观测巡检与 Approve Promote / Rollback。 |
 | `CD-ENTRY-V1` | `MAT-PROMPT-V2`, `MAT-TOOL-L2A`, `MAT-SKILL-BASE` | 在 `coding-agent` 新增 `internal/entry/codingdance`（Webhook 入口）与 `/api/integrations/coding-dance/v1/{hint-check,hint-reveal,history-analyze}`，严格执行 **Consent-First（`off` / `on_demand` / `proactive_consent` + HMAC `consent_token`）** 与 **L1–L4 渐进提示**。 | 已通过 `codingdance/kind_test.go` 与 `TestWave3CodingDanceCompanionAPI`；`off` 静默/拦截，`proactive_consent` 默认无剧透征询，显式同意+有效令牌才按 `L1`–`L4` 解锁。 |
 
-### Wave 4 — 自建内外网纯净爬虫集群
+### Wave 4 — 自建内外网纯净爬虫集群（已实现、部署并验证）
 
-| 节点 ID | 依赖 | 目标与范围 | 验收标准 |
+| 节点 ID | 依赖 | 目标与范围 | 验收标准与实现映射 |
 | --- | --- | --- | --- |
-| `MAT-CRAWLER-INFRA` | `MAT-TOOL-WEB` | 部署独立外网无头渲染/纯净抓取服务与内网白名单文档抓取代理（配域名策略与缓存），通过 `AR_CRAWLER_ENDPOINT` 与 `SelfHostedCrawlerProvider` 对接 `web_search`/`web_fetch`。 | Worker 无需直连不可信目标即可获得渲染后正文与干净搜索索引。 |
+| `MAT-CRAWLER-INFRA` | `MAT-TOOL-WEB` | 在 `services/go-crawler-gateway` 实现零外部依赖 Go 静态服务，隔离 `external`（严格公网 IP / 防 DNS 重绑定 / 5 跳重验 / 正文清洗 / 可选无头渲染）与 `internal`（严格主机端口白名单 + 阻断 metadata/DB 端口 + 脱敏响应头），接入 `py-worker` 的 `web_search` 与 `web_fetch`；同时通过 `deploy/cluster/wave4-crawler-and-wave2-evolution.yaml` 上线 Wave 2 `ar-self-evolution-cycle`（Redpanda `telemetry.spans` → Postgres）定时巡检与 Grafana 成熟度看板。 | 已通过 `crawler_test.go`、`test_maturity_wave1.py`、`test_evolution_wave2.py` 与双集群实测验证。 |
 
 ---
 

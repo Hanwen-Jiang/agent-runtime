@@ -318,3 +318,62 @@ def test_evolution_cli_subcommands(tmp_path: Path) -> None:
         "2",
     ]) == 0
     assert evolution_main(["candidates", "list", "--data-dir", str(tmp_path / "cli-data")]) == 0
+
+    # Repeated run with identical diff is idempotent (does not duplicate pending_approval rows)
+    assert evolution_main([
+        "evolve",
+        "--traces",
+        str(trace_file),
+        "--out",
+        str(cli_out),
+        "--data-dir",
+        str(tmp_path / "cli-data"),
+        "--min-support",
+        "2",
+    ]) == 0
+    import asyncio
+
+    store = EvolutionStore(SQLiteRelationalStoreProvider(tmp_path / "cli-data" / "relational"))
+    rows = asyncio.run(store.list_candidates(status="pending_approval"))
+    assert len(rows) == 1
+
+
+def test_evolution_topic_snapshot_and_commit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agentruntime_learning.pipeline import stream as stream_mod
+
+    lines = _sample_console_trace_lines()
+    recs = tuple(stream_mod.Record(0, i, ln.encode("utf-8")) for i, ln in enumerate(lines))
+    committed: list[Any] = []
+
+    class _FakeReader:
+        def __init__(self, brokers: str, topic: str, group: str) -> None:
+            self.brokers, self.topic, self.group = brokers, topic, group
+
+        def snapshot(self) -> Any:
+            return stream_mod.Snapshot(self.topic, self.group, starts={0: 0}, ends={0: len(recs)}, records=recs)
+
+        def commit(self, snap: Any) -> None:
+            committed.append(snap)
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setenv("AR_EVENT_STREAM_BROKERS", "127.0.0.1:9093")
+    monkeypatch.setattr(stream_mod, "TopicReader", _FakeReader)
+    out = tmp_path / "topic-out"
+    assert evolution_main([
+        "evolve",
+        "--topic",
+        "telemetry.spans",
+        "--group",
+        "ar-self-evolution-test",
+        "--format",
+        "console",
+        "--out",
+        str(out),
+        "--data-dir",
+        str(tmp_path / "topic-data"),
+        "--min-support",
+        "2",
+    ]) == 0
+    assert len(committed) == 1 and committed[0].topic == "telemetry.spans"
