@@ -202,6 +202,8 @@ spec:
                 - ar-self-evolution
                 - --format
                 - otlp_json
+                - --skills-file
+                - /etc/agentruntime/evolution/platform-skills.json
                 - --out
                 - /tmp/evolution-out
                 - --mode
@@ -242,6 +244,12 @@ spec:
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
+                - name: skills-seed
+                  mountPath: /etc/agentruntime/evolution
+                  readOnly: true
           volumes:
             - name: tmp
               emptyDir: {}
+            - name: skills-seed
+              configMap:
+                name: ar-platform-skills-seed
