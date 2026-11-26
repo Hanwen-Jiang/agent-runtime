@@ -1,0 +1,43 @@
+{
+  "timestamp_utc": "2026-11-26T18:18:50Z",
+  "cluster": "ar-node-1",
+  "live_redpanda_probe": {
+    "run_id": "evol-20261126T181120Z-fe9c200f",
+    "topic": "telemetry.spans",
+    "group": "ar-self-evol-live-20261127",
+    "records_read": 102,
+    "mode": "gateway",
+    "budget_usd": 0.5,
+    "clusters": 0,
+    "status": "no_clusters",
+    "note": "Raw 102 Redpanda spans from worker runtime.workspace_op do not emit failure/read_only_reminder attributes."
+  },
+  "controlled_gateway_eval": {
+    "run_id": "evol-20261126T181850Z-61f8709c",
+    "mode": "gateway",
+    "budget_usd": 0.5,
+    "min_support": 2,
+    "clusters": 1,
+    "cluster_kind": "readonly_churn",
+    "target_skill": "explore-repo",
+    "candidate_id": "cand_wave2_explore_repo_v2",
+    "staged_skill_name": "cand-explore-repo-773cdf96",
+    "gate_passed": true,
+    "baseline_pass_rate": 0.6667,
+    "candidate_pass_rate": 1.0,
+    "pass_rate_delta": 0.3333,
+    "baseline_blind_read_ratio": 0.0909,
+    "candidate_blind_read_ratio": 0.0,
+    "now_passing": [
+      "mid@medium/swe-04-line-numbered-targeted-read",
+      "strong@medium/swe-04-line-numbered-targeted-read"
+    ]
+  },
+  "promote_rollback_drill": {
+    "candidate_id": "cand_wave2_explore_repo_v2",
+    "actor": "haven-admin",
+    "promoted_version": "platform/v5",
+    "rollback_version": "platform/v6",
+    "final_status": "rolled_back"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "timestamp_utc": "2026-11-26T18:20:50Z",
+  "cluster": "ar-node-1",
+  "service": "ar-agent-runtime-memory:50061",
+  "config": {
+    "rerank_mode": "bm25_pool50",
+    "code_nav_enabled": true,
+    "embedding_version": "a6api/text-embedding-3-large@2026-10",
+    "client_timeout_s": 5.0
+  },
+  "probe": {
+    "calls": 10,
+    "succeeded": 9,
+    "deadline_exceeded": 1,
+    "items_returned": [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    "p50_ms": 2231.71,
+    "p95_ms": 5003.99,
+    "max_ms": 5003.99,
+    "all_ms": [5003.99, 1716.93, 1659.61, 1918.15, 3153.21, 1595.81, 2020.21, 2231.71, 2681.74, 2378.72]
+  },
+  "metrics_observation": {
+    "prometheus_active_targets": [],
+    "note": "py-memory does not expose Prometheus scrape targets in VictoriaMetrics; live gRPC Search latency is dominated (~1.6-3.2s warm, >5s cold) by synchronous external embedding RPC to a6api/text-embedding-3-large@2026-10."
+  }
+}

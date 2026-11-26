@@ -8,6 +8,7 @@ set -euo pipefail
 APPLY=0
 NAMESPACE="agent-runtime"
 SSH_TARGET=""
+SSH_JUMP=""
 KUBE_CONTEXT=""
 TARGETS="crawler,admin,registry"
 
@@ -18,6 +19,7 @@ Usage: scripts/rotate_secrets.sh [OPTIONS]
   --apply                  Generate new random 256-bit tokens, patch Secrets, and restart workloads
   --namespace <ns>         Kubernetes namespace (default: agent-runtime)
   --ssh <host>             Run kubectl remotely via ssh <host>
+  --ssh-jump <jump>        SSH jump host (e.g. win-gw for ar-node-1)
   --context <ctx>          kubectl --context <ctx>
   --targets <csv>          Comma-separated groups: crawler,admin,registry (default: crawler,admin,registry)
   -h, --help               Show this help
@@ -30,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --apply) APPLY=1; shift ;;
     --namespace) NAMESPACE="$2"; shift 2 ;;
     --ssh) SSH_TARGET="$2"; shift 2 ;;
+    --ssh-jump) SSH_JUMP="$2"; shift 2 ;;
     --context) KUBE_CONTEXT="$2"; shift 2 ;;
     --targets) TARGETS="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
@@ -42,7 +45,11 @@ kctl() {
   if [[ -n "$KUBE_CONTEXT" ]]; then
     args+=(--context "$KUBE_CONTEXT")
   fi
-  if [[ -n "$SSH_TARGET" ]]; then
+  if [[ -n "$SSH_TARGET" && -n "$SSH_JUMP" ]]; then
+    local target="$SSH_TARGET"
+    [[ "$target" == "ar-node-1" ]] && target="root@10.90.0.11"
+    ssh -o ConnectTimeout=25 -o ServerAliveInterval=10 "$SSH_JUMP" ssh -o BatchMode=yes -o ConnectTimeout=10 "$target" KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl "${args[@]}" -n "$NAMESPACE" "$@"
+  elif [[ -n "$SSH_TARGET" ]]; then
     ssh "$SSH_TARGET" kubectl "${args[@]}" -n "$NAMESPACE" "$@"
   else
     kubectl "${args[@]}" -n "$NAMESPACE" "$@"
@@ -108,11 +115,18 @@ rotate_registry() {
   local t_reg
   t_reg="$(gen_token)"
   kctl patch secret coding-admin --type=merge -p "{\"stringData\":{\"registry-token\":\"${t_reg}\"}}" >/dev/null
-  python3 - "$NAMESPACE" "$SSH_TARGET" "$KUBE_CONTEXT" "$t_reg" <<'PY'
+  python3 - "$NAMESPACE" "$SSH_TARGET" "$SSH_JUMP" "$KUBE_CONTEXT" "$t_reg" <<'PY'
 import base64, json, subprocess, sys
 
-ns, ssh_host, ctx, new_tok = sys.argv[1:5]
-cmd = (["ssh", ssh_host] if ssh_host else []) + ["kubectl"] + (["--context", ctx] if ctx else []) + ["-n", ns]
+ns, ssh_host, ssh_jump, ctx, new_tok = sys.argv[1:6]
+k_args = ["kubectl"] + (["--context", ctx] if ctx else []) + ["-n", ns]
+if ssh_host and ssh_jump:
+    target = "root@10.90.0.11" if ssh_host == "ar-node-1" else ssh_host
+    cmd = ["ssh", "-o", "ConnectTimeout=25", ssh_jump, "ssh", "-o", "BatchMode=yes", target, "KUBECONFIG=/etc/rancher/k3s/k3s.yaml"] + k_args
+elif ssh_host:
+    cmd = ["ssh", ssh_host] + k_args
+else:
+    cmd = k_args
 raw = subprocess.check_output(cmd + ["get", "secret", "agent-runtime-secrets", "-o", "json"])
 sec = json.loads(raw)
 data = sec.get("data") or {}
