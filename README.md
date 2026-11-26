@@ -1,4 +1,4 @@
-# Agent Runtime（暂名）
+# Agent Runtime
 
 多租户的 Agent 运行核心。用户的每一条命令都是一个 Task，按同一个固定的 Task Loop（Planner → Stage → Reviewer）执行完：进程崩溃或发布时从断点继续，写操作不重复生效，模型按成本选档，数据、记忆、凭据与配额按租户隔离。
 
