@@ -751,13 +751,13 @@ func generateRequest(g *modelgatewayv1.GenerateParams) (modelprovider.GenerateRe
 	return out, nil
 }
 
-// forCandidate 填上候选的模型名、思考预算（请求为 0 时用 Tier 的默认值）与输出上限（outputLimit，与预留的是同一个数）。
+// forCandidate 填上候选的模型名、思考预算（请求为 0 时用 Tier 的默认值，并在小 MaxOutputTokens <= 128 时跳过思考避免挤占全部可见输出）与输出上限（outputLimit，与预留的是同一个数）。
 func (s *Server) forCandidate(req modelprovider.GenerateRequest, cand router.Candidate) modelprovider.GenerateRequest {
 	req.Model = cand.Profile.Model
-	req.MaxOutputTokens = s.outputLimit(req.MaxOutputTokens, req.ThinkingBudgetTokens, cand)
-	if req.ThinkingBudgetTokens == 0 {
+	if req.ThinkingBudgetTokens == 0 && !(req.MaxOutputTokens > 0 && req.MaxOutputTokens <= 128) {
 		req.ThinkingBudgetTokens = cand.Tier.ThinkingBudget
 	}
+	req.MaxOutputTokens = s.outputLimit(req.MaxOutputTokens, req.ThinkingBudgetTokens, cand)
 	return req
 }
 

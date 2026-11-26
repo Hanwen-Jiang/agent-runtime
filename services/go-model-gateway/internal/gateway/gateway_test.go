@@ -190,6 +190,14 @@ func TestThinkingBudgetAndMaxOutput(t *testing.T) {
 	if calls[0].Generate.MaxOutputTokens != 256 {
 		t.Errorf("max_output_tokens：%d", calls[0].Generate.MaxOutputTokens)
 	}
+	// 请求极小可见输出（<= 128）且未显式指定思考预算时，跳过 Tier 默认思考预算，避免推理 token 耗尽全部输出额度。
+	tiny := say("say ok")
+	tiny.MaxOutputTokens = 48
+	h.mustGenerate(t, "t1", c, tiny)
+	all := h.fake.allCalls()
+	if got := all[len(all)-1].Generate; got.ThinkingBudgetTokens != 0 || got.MaxOutputTokens != 48 {
+		t.Errorf("tiny max_output_tokens thinking=%d max=%d, want 0 and 48", got.ThinkingBudgetTokens, got.MaxOutputTokens)
+	}
 }
 
 // 难点“rationale 只进 trace”：思考内容放进 rationale，不混进 text 或 result。

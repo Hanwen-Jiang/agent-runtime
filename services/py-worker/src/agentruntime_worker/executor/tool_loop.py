@@ -13,6 +13,7 @@ TMP 计划第 11.15 节：回答不合格（调了没给的工具、输出不是
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Callable
 from typing import Any
 
@@ -31,7 +32,9 @@ from agentruntime_worker.memory import Searcher, node_experiences, searcher
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, measured, tenant_context, task_family
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.executor.model_gateway import ModelGateway, billed_cost_usd, with_billed_cost
+from agentruntime_worker.executor.schemas import OutputSchemaResolver
 from agentruntime_worker.executor.tiers import SUB_AGENT_TIER, sub_agent_tier
+from agentruntime_worker.executor.tool_schema import format_schema_correction, validate_tool_arguments
 from agentruntime_worker.workflows.verification import only_reads
 from agentruntime_worker.workflows.events import public_progress
 from agentruntime_worker.session.transcript import TranscriptSource, transcript_text
@@ -97,10 +100,11 @@ class ModelToolLoop:
         self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None,
         transcript: TranscriptSource | None = None, mcp_tools: Callable[[], frozenset[str]] | None = None, memory: Searcher | None = None,
         sub_agent_tier: str | None = None, personal: TaskPersonalConfig | None = None, attachments: Any = None,
-        runtime_capabilities: Any | None = None,
+        runtime_capabilities: Any | None = None, schema_validation: bool = True,
     ) -> None:
         self.attachments = attachments
         self.runtime_capabilities = runtime_capabilities
+        self.schema_validation = schema_validation
         self.memory = memory
         self.personal = personal
         # 子 Agent（isolated 的步）用的 Tier；None 时与主流程同一个。
@@ -194,6 +198,8 @@ class ModelToolLoop:
                         "runtime.signals": "excessive_reads",
                         "runtime.task_id": inp.task_id,
                         "runtime.task_family": inp.task_family,
+                        "skill.name": str(node.get("skill") or (node.get("metadata") or {}).get("skill") or "explore-repo"),
+                        "failure.reason": "excessive_reads",
                     })
         if isinstance(node.get("output_schema"), dict):
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_value(node["output_schema"])))
@@ -222,8 +228,14 @@ class ModelToolLoop:
         return ToolLoopStep(action="finish", result=result, cost_usd=cost, vendor=vendor, context_usage=usage)
 
     async def _generate(self, inp: ToolLoopStepInput, params: mg.GenerateParams, tools: list[mg.ToolSpec]) -> tuple[mg.GenerateResponse, float]:
-        """调模型；回答不合格时带上改正说明再问。返回回答与之前失败的调用已经计费的花费（美元）。"""
+        """调模型；回答不合格或工具参数未过 Schema 校验时带上改正说明再问。返回回答与之前失败调用已计费的花费（美元）。"""
         billed = 0.0
+        schemas = {
+            t.name: json_format.MessageToDict(t.params_schema.value)
+            for t in tools
+            if t.HasField("params_schema") and t.params_schema.HasField("value")
+        }
+        repairs = 0
         for attempt in range(MAX_CORRECTIONS + 1):
             try:
                 response = await self.gateway.generate(
@@ -243,6 +255,28 @@ class ModelToolLoop:
                     raise with_billed_cost(err, round(billed * 1_000_000)) from None
                 params.messages.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_correction(err, tools)))
             else:
+                if self.schema_validation and response.tool_calls:
+                    schema_issue: tuple[str, list[str]] | None = None
+                    for call in response.tool_calls:
+                        args = json_format.MessageToDict(call.arguments) if call.HasField("arguments") else {}
+                        errs = validate_tool_arguments(call.name, args, schemas.get(call.name))
+                        if errs:
+                            schema_issue = (call.name, errs)
+                            break
+                    if schema_issue is not None:
+                        call_name, errs = schema_issue
+                        billed += response.usage.cost_usd_micros / 1_000_000
+                        repairs += 1
+                        with contextlib.suppress(Exception):
+                            from opentelemetry import trace
+
+                            span = trace.get_current_span()
+                            if span.is_recording():
+                                span.set_attribute("tool.schema_repairs", repairs)
+                        if attempt == MAX_CORRECTIONS:
+                            raise with_billed_cost(InvalidError("bad_tool_arguments", "；".join(errs)), round(billed * 1_000_000))
+                        params.messages.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=format_schema_correction(call_name, errs)))
+                        continue
                 return response, billed
         raise AssertionError("循环总会返回或抛出")
 
