@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-27T01:39:10+08:00",
+  "cluster": "ar-node-1",
+  "worker_url": "https://agentruntime-sandbox-bridge.root-60a.workers.dev",
+  "worker_version_id": "1984807c-820b-40da-a2f1-22d069c10620",
+  "container_image": "registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:6a505bc7",
+  "r2_binding_bucket": "agentruntime-objects",
+  "tests": {
+    "TestLiveCloudflareServiceDirectOutputAndQuota": {
+      "status": "PASS",
+      "elapsed_s": 24.78
+    },
+    "TestLiveCloudflareBridgeWorkspaceBenchmark": {
+      "status": "PASS",
+      "elapsed_s": 86.33,
+      "cold_20files_ms": 21545,
+      "unchanged_ms": 4043,
+      "delta_1file_ms": 9235,
+      "restore_20files_ms": 5601,
+      "settled_grants": 41,
+      "settled_actual_bytes": 2098989,
+      "restored_verify": "1048576 / # updated delta / 19 files"
+    }
+  }
+}

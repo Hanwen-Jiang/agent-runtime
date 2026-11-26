@@ -42,11 +42,13 @@ import (
 var agentBin string
 
 func TestMain(m *testing.M) {
-	bin, err := testkit.SandboxAgentBinary()
-	if err != nil {
-		panic(fmt.Sprintf("编译 sandbox-agent 失败：%v", err))
+	if os.Getenv("AR_SKIP_LOCAL_AGENT_BUILD") != "1" {
+		bin, err := testkit.SandboxAgentBinary()
+		if err != nil {
+			panic(fmt.Sprintf("编译 sandbox-agent 失败：%v", err))
+		}
+		agentBin = bin
 	}
-	agentBin = bin
 	os.Exit(pgtest.Main(m))
 }
 

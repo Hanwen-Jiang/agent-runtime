@@ -122,26 +122,29 @@ export class Sandbox extends Container<Env> {
     return Response.json({ url: `http://${TRANSFER_HOST}/${id}` });
   }
 
-  async grantTransfersBatch(items: Array<{ id: string; spec: TransferSpec }>): Promise<Response> {
+  async grantTransfersBatch(items: Array<{ id: string; spec?: TransferSpec } & Partial<TransferSpec>>): Promise<Response> {
     if (!Array.isArray(items) || items.length < 1 || items.length > MAX_BATCH_GRANTS) {
       return problem(400, "invalid_transfer", "invalid transfer batch");
     }
     const now = Date.now();
     const seen = new Set<string>();
+    const normalized: Array<{ id: string; spec: TransferSpec }> = [];
     let maxExpiry = 0;
     for (const item of items) {
-      if (!item || typeof item.id !== "string" || !GRANT_ID.test(item.id) || seen.has(item.id) || !validTransferSpec(item.spec, now)) {
+      const spec = (item && typeof item === "object" && item.spec ? item.spec : item) as TransferSpec;
+      if (!item || typeof item.id !== "string" || !GRANT_ID.test(item.id) || seen.has(item.id) || !validTransferSpec(spec, now)) {
         return problem(400, "invalid_transfer", "invalid scoped object transfer");
       }
       seen.add(item.id);
-      if (item.spec.expires_at_ms > maxExpiry) maxExpiry = item.spec.expires_at_ms;
+      if (spec.expires_at_ms > maxExpiry) maxExpiry = spec.expires_at_ms;
+      normalized.push({ id: item.id, spec });
     }
     if (!(await this.owner())) return problem(404, "unknown_env", "environment missing");
-    await this.schedule(new Date(maxExpiry), "expireTransfersBatch", { ids: items.map((it) => it.id) });
+    await this.schedule(new Date(maxExpiry), "expireTransfersBatch", { ids: normalized.map((it) => it.id) });
     const errCode = await this.ctx.storage.transaction<"ok" | "revoked" | "conflict" | "expired" | "capacity">(async (tx) => {
       const count = await this.countStoredGrants(tx);
       const toPut: Array<{ id: string; spec: TransferSpec }> = [];
-      for (const item of items) {
+      for (const item of normalized) {
         if (await tx.get(`transfer-revoked:${item.id}`)) return "revoked";
         const existing = await tx.get<TransferGrant>(`transfer:${item.id}`);
         if (existing) {
@@ -165,7 +168,7 @@ export class Sandbox extends Container<Env> {
     if (errCode === "capacity") return problem(429, "transfer_capacity", "too many transfer records");
     if (errCode === "conflict") return problem(409, "transfer_conflict", "transfer identity changed");
     const urls: Record<string, string> = {};
-    for (const item of items) urls[item.id] = `http://${TRANSFER_HOST}/${item.id}`;
+    for (const item of normalized) urls[item.id] = `http://${TRANSFER_HOST}/${item.id}`;
     return Response.json({ urls });
   }
 
@@ -597,7 +600,7 @@ export default {
         return problem(400, "invalid_transfer", "invalid batch metadata");
       }
       if (payload.action === "grant") {
-        return stub.grantTransfersBatch(payload.items as Array<{ id: string; spec: TransferSpec }>);
+        return stub.grantTransfersBatch(payload.items as Array<{ id: string; spec?: TransferSpec } & Partial<TransferSpec>>);
       }
       if (payload.action === "revoke") {
         return stub.revokeTransfersBatch(payload.ids as string[]);
