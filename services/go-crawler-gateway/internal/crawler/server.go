@@ -201,10 +201,15 @@ func (s *Server) allowRate(actor string) bool {
 func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 	openCircuits := s.circuits.OpenDomains()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":                   true,
-		"service":              "crawler-gateway",
-		"upstream_search":      s.cfg.Backend.ProviderName(),
-		"headless_configured":  s.cfg.Backend.HeadlessConfigured(),
+		"ok":                         true,
+		"service":                    "crawler-gateway",
+		"upstream_search":            s.cfg.Backend.ProviderName(),
+		"available_search_providers": s.cfg.Backend.AvailableProviders(),
+		"headless_configured":        s.cfg.Backend.HeadlessConfigured(),
+		"optional_overseas_module": map[string]any{
+			"searxng_configured":  s.cfg.Backend.SearxngConfigured(),
+			"headless_configured": s.cfg.Backend.HeadlessConfigured(),
+		},
 		"internal_allow_count": s.cfg.Policy.InternalAllowCount(),
 		"open_circuits":        openCircuits,
 		"cache_entries":        s.searchCache.Len() + s.fetchCache.Len(),

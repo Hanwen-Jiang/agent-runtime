@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Unified dual-cluster deployment & config reconciliation script for agent-runtime + coding-agent.
+# Unified cluster deployment & config reconciliation script for agent-runtime + coding-agent.
 # Usage:
-#   ./scripts/deploy_clusters.sh --clusters ar-node-1,cloudnium_cloud --ar-tag main-cfd46463 --ca-tag main-73d0ebb --mode ghcr --sync-gemini4-profiles
+#   ./scripts/deploy_clusters.sh --clusters ar-node-1 --ar-tag main-6a505bc7 --ca-tag main-257eb4d --mode ghcr --sync-gemini4-profiles
 
-CLUSTERS="ar-node-1,cloudnium_cloud"
+CLUSTERS="ar-node-1"
 AR_TAG=""
 CA_TAG=""
 MODE="ghcr"

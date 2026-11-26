@@ -57,6 +57,13 @@ func main() {
 		Provider:    strings.TrimSpace(os.Getenv("AR_CRAWLER_SEARCH_PROVIDER")),
 		UpstreamURL: searchUpstream,
 		APIKey:      strings.TrimSpace(os.Getenv("AR_CRAWLER_SEARCH_API_KEY")),
+		ProviderKeys: map[string]string{
+			"tavily": strings.TrimSpace(os.Getenv("AR_CRAWLER_TAVILY_KEY")),
+			"brave":  strings.TrimSpace(os.Getenv("AR_CRAWLER_BRAVE_KEY")),
+			"serper": strings.TrimSpace(os.Getenv("AR_CRAWLER_SERPER_KEY")),
+			"exa":    strings.TrimSpace(os.Getenv("AR_CRAWLER_EXA_KEY")),
+			"bocha":  strings.TrimSpace(os.Getenv("AR_CRAWLER_BOCHA_KEY")),
+		},
 		HeadlessURL: strings.TrimSpace(os.Getenv("AR_CRAWLER_HEADLESS_URL")),
 		HeadlessTok: strings.TrimSpace(os.Getenv("AR_CRAWLER_HEADLESS_TOKEN")),
 		Timeout:     timeout,

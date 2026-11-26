@@ -23,11 +23,12 @@ To recover from node loss onto a fresh Kubernetes host (while preserving isolate
 - Dry-run check (default):
   ```bash
   ./scripts/rotate_secrets.sh --dry-run
-  ./scripts/rotate_secrets.sh --ssh cloudnium_cloud --dry-run
+  ./scripts/rotate_secrets.sh --ssh ar-node-1 --dry-run
   ```
 - Apply rotation for crawler or admin service tokens (never prints plaintext secrets):
   ```bash
-  ./scripts/rotate_secrets.sh --ssh cloudnium_cloud --targets crawler --apply
+  ./scripts/rotate_secrets.sh --ssh ar-node-1 --targets crawler --apply
   ./scripts/rotate_secrets.sh --ssh ar-node-1 --targets admin --apply
   ```
+  *(Note: `cloudnium_cloud` retired on 2026-11-27; optional overseas crawler stack moved to `deploy/modules/crawler-overseas/`.)*
 - Coordinated `registry-token` rotation (`--targets registry --apply`) atomically updates both `coding-admin` (`registry-token`) and `agent-runtime-secrets` (`_platform["registry/publish-token"]`), then performs rolling restarts of `ar-agent-runtime-task-service`, `coding-web`, and `ar-agent-runtime-evolution-runner`.

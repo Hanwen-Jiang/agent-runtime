@@ -124,49 +124,141 @@ func ParseDDGHTML(rawHTML string) []SearchResult {
 
 // SearchConfig defines upstream web search providers supported by go-crawler-gateway.
 type SearchConfig struct {
-	Provider    string // auto | ddg_lite | searxng | tavily
-	UpstreamURL string
-	APIKey      string
-	HeadlessURL string
-	HeadlessTok string
-	Timeout     time.Duration
+	Provider     string            // auto | tavily | brave | serper | exa | bocha | searxng | ddg_lite
+	UpstreamURL  string            // optional explicit search endpoint override (or SearXNG base URL)
+	APIKey       string            // generic API key paired with explicit provider (or tavily under auto)
+	ProviderKeys map[string]string // optional per-provider keys (tavily, brave, serper, exa, bocha)
+	HeadlessURL  string
+	HeadlessTok  string
+	Timeout      time.Duration
 }
 
 type SearchBackend struct {
-	cfg    SearchConfig
-	client *http.Client
+	cfg      SearchConfig
+	provider string
+	endpoint string
+	apiKey   string
+	client   *http.Client
+}
+
+var searchProviderOrder = []string{"tavily", "brave", "serper", "exa", "bocha"}
+
+func normalizeProviderName(p string) string {
+	return strings.ToLower(strings.TrimSpace(p))
+}
+
+func defaultEndpointForProvider(provider string) string {
+	switch provider {
+	case "tavily":
+		return "https://api.tavily.com/search"
+	case "brave":
+		return "https://api.search.brave.com/res/v1/web/search"
+	case "serper":
+		return "https://google.serper.dev/search"
+	case "exa":
+		return "https://api.exa.ai/search"
+	case "bocha":
+		return "https://api.bochaai.com/v1/web-search"
+	case "ddg_lite":
+		return "https://html.duckduckgo.com/html/"
+	default:
+		return ""
+	}
 }
 
 func NewSearchBackend(cfg SearchConfig) *SearchBackend {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 15 * time.Second
 	}
-	if cfg.Provider == "" || cfg.Provider == "auto" {
-		if cfg.APIKey != "" {
-			cfg.Provider = "tavily"
-		} else if cfg.UpstreamURL != "" {
-			cfg.Provider = "searxng"
-		} else {
-			cfg.Provider = "ddg_lite"
+	keys := make(map[string]string, len(cfg.ProviderKeys)+1)
+	for k, v := range cfg.ProviderKeys {
+		nk := normalizeProviderName(k)
+		if nk != "" && strings.TrimSpace(v) != "" {
+			keys[nk] = strings.TrimSpace(v)
 		}
 	}
-	if cfg.UpstreamURL == "" {
-		switch cfg.Provider {
-		case "tavily":
-			cfg.UpstreamURL = "https://api.tavily.com/search"
-		case "ddg_lite":
-			cfg.UpstreamURL = "https://html.duckduckgo.com/html/"
+	reqProv := normalizeProviderName(cfg.Provider)
+	genericKey := strings.TrimSpace(cfg.APIKey)
+	if genericKey != "" {
+		if reqProv != "" && reqProv != "auto" && reqProv != "searxng" && reqProv != "ddg_lite" {
+			if _, ok := keys[reqProv]; !ok {
+				keys[reqProv] = genericKey
+			}
+		} else if _, ok := keys["tavily"]; !ok {
+			keys["tavily"] = genericKey
 		}
 	}
+	cfg.ProviderKeys = keys
+	cfg.UpstreamURL = strings.TrimSpace(cfg.UpstreamURL)
+
+	resolved := reqProv
+	if resolved == "" || resolved == "auto" {
+		resolved = ""
+		for _, cand := range searchProviderOrder {
+			if keys[cand] != "" {
+				resolved = cand
+				break
+			}
+		}
+		if resolved == "" {
+			if cfg.UpstreamURL != "" {
+				resolved = "searxng"
+			} else {
+				resolved = "ddg_lite"
+			}
+		}
+	}
+
+	endpoint := cfg.UpstreamURL
+	if endpoint == "" {
+		endpoint = defaultEndpointForProvider(resolved)
+	}
+	apiKey := keys[resolved]
+	if apiKey == "" {
+		apiKey = genericKey
+	}
+	cfg.Provider = resolved
+
 	return &SearchBackend{
-		cfg:    cfg,
-		client: &http.Client{Timeout: cfg.Timeout},
+		cfg:      cfg,
+		provider: resolved,
+		endpoint: endpoint,
+		apiKey:   apiKey,
+		client:   &http.Client{Timeout: cfg.Timeout},
 	}
 }
 
-func (b *SearchBackend) ProviderName() string { return b.cfg.Provider }
+func (b *SearchBackend) ProviderName() string { return b.provider }
 func (b *SearchBackend) HeadlessConfigured() bool {
 	return strings.TrimSpace(b.cfg.HeadlessURL) != ""
+}
+func (b *SearchBackend) SearxngConfigured() bool {
+	return b.provider == "searxng" || (b.cfg.UpstreamURL != "" && (b.provider == "searxng" || b.apiKey == ""))
+}
+func (b *SearchBackend) AvailableProviders() []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, p := range searchProviderOrder {
+		if b.cfg.ProviderKeys[p] != "" {
+			out = append(out, p)
+			seen[p] = true
+		}
+	}
+	if !seen[b.provider] && b.provider != "" && b.provider != "ddg_lite" && b.provider != "searxng" {
+		out = append(out, b.provider)
+	}
+	if b.SearxngConfigured() {
+		out = append(out, "searxng")
+	}
+	out = append(out, "ddg_lite")
+	return out
+}
+
+func extractDomain(rawURL string) string {
+	if u, err := url.Parse(rawURL); err == nil {
+		return strings.ToLower(u.Hostname())
+	}
+	return ""
 }
 
 func applySiteFilter(query string, domains []string) string {
@@ -210,10 +302,10 @@ func filterDomains(rows []SearchResult, includeDomains []string) []SearchResult 
 }
 
 func (b *SearchBackend) Search(ctx context.Context, query string, maxResults int, includeDomains []string, searchDepth string) ([]SearchResult, error) {
-	switch b.cfg.Provider {
+	switch b.provider {
 	case "tavily":
 		payload := map[string]any{
-			"api_key":      b.cfg.APIKey,
+			"api_key":      b.apiKey,
 			"query":        query,
 			"max_results":  maxResults,
 			"search_depth": searchDepth,
@@ -222,7 +314,7 @@ func (b *SearchBackend) Search(ctx context.Context, query string, maxResults int
 			payload["include_domains"] = includeDomains
 		}
 		raw, _ := json.Marshal(payload)
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.cfg.UpstreamURL, bytes.NewReader(raw))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.endpoint, bytes.NewReader(raw))
 		if err != nil {
 			return nil, err
 		}
@@ -256,17 +348,188 @@ func (b *SearchBackend) Search(ctx context.Context, query string, maxResults int
 			if snip == "" {
 				snip = r.Snippet
 			}
-			dom := ""
-			if u, perr := url.Parse(r.URL); perr == nil {
-				dom = strings.ToLower(u.Hostname())
+			out = append(out, SearchResult{Title: r.Title, URL: r.URL, Snippet: snip, Domain: extractDomain(r.URL), Score: r.Score})
+		}
+		return filterDomains(out, includeDomains), nil
+
+	case "brave":
+		scoped := applySiteFilter(query, includeDomains)
+		sep := "?"
+		if strings.Contains(b.endpoint, "?") {
+			sep = "&"
+		}
+		u := fmt.Sprintf("%s%s%s", b.endpoint, sep, url.Values{"q": {scoped}, "count": {fmt.Sprintf("%d", maxResults)}}.Encode())
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("X-Subscription-Token", b.apiKey)
+		resp, err := b.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("brave upstream HTTP %d", resp.StatusCode)
+		}
+		var wire struct {
+			Web struct {
+				Results []struct {
+					Title       string `json:"title"`
+					URL         string `json:"url"`
+					Description string `json:"description"`
+				} `json:"results"`
+			} `json:"web"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&wire); err != nil {
+			return nil, err
+		}
+		out := make([]SearchResult, 0, len(wire.Web.Results))
+		for _, r := range wire.Web.Results {
+			if r.URL == "" {
+				continue
 			}
-			out = append(out, SearchResult{Title: r.Title, URL: r.URL, Snippet: snip, Domain: dom, Score: r.Score})
+			out = append(out, SearchResult{Title: r.Title, URL: r.URL, Snippet: r.Description, Domain: extractDomain(r.URL)})
+		}
+		return filterDomains(out, includeDomains), nil
+
+	case "serper":
+		scoped := applySiteFilter(query, includeDomains)
+		raw, _ := json.Marshal(map[string]any{"q": scoped, "num": maxResults})
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.endpoint, bytes.NewReader(raw))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-API-KEY", b.apiKey)
+		resp, err := b.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("serper upstream HTTP %d", resp.StatusCode)
+		}
+		var wire struct {
+			Organic []struct {
+				Title   string `json:"title"`
+				Link    string `json:"link"`
+				Snippet string `json:"snippet"`
+			} `json:"organic"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&wire); err != nil {
+			return nil, err
+		}
+		out := make([]SearchResult, 0, len(wire.Organic))
+		for _, r := range wire.Organic {
+			if r.Link == "" {
+				continue
+			}
+			out = append(out, SearchResult{Title: r.Title, URL: r.Link, Snippet: r.Snippet, Domain: extractDomain(r.Link)})
+		}
+		return filterDomains(out, includeDomains), nil
+
+	case "exa":
+		payload := map[string]any{
+			"query":      query,
+			"numResults": maxResults,
+			"type":       "auto",
+		}
+		if len(includeDomains) > 0 {
+			payload["includeDomains"] = includeDomains
+		}
+		raw, _ := json.Marshal(payload)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.endpoint, bytes.NewReader(raw))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("x-api-key", b.apiKey)
+		resp, err := b.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("exa upstream HTTP %d", resp.StatusCode)
+		}
+		var wire struct {
+			Results []struct {
+				Title   string   `json:"title"`
+				URL     string   `json:"url"`
+				Text    string   `json:"text"`
+				Snippet string   `json:"snippet"`
+				Score   *float64 `json:"score"`
+			} `json:"results"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&wire); err != nil {
+			return nil, err
+		}
+		out := make([]SearchResult, 0, len(wire.Results))
+		for _, r := range wire.Results {
+			if r.URL == "" {
+				continue
+			}
+			snip := r.Snippet
+			if snip == "" {
+				snip = r.Text
+			}
+			if len(snip) > 600 {
+				snip = snip[:600]
+			}
+			out = append(out, SearchResult{Title: r.Title, URL: r.URL, Snippet: snip, Domain: extractDomain(r.URL), Score: r.Score})
+		}
+		return filterDomains(out, includeDomains), nil
+
+	case "bocha":
+		scoped := applySiteFilter(query, includeDomains)
+		raw, _ := json.Marshal(map[string]any{"query": scoped, "count": maxResults, "summary": true})
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, b.endpoint, bytes.NewReader(raw))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+b.apiKey)
+		resp, err := b.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("bocha upstream HTTP %d", resp.StatusCode)
+		}
+		var wire struct {
+			Data struct {
+				WebPages struct {
+					Value []struct {
+						Name    string `json:"name"`
+						URL     string `json:"url"`
+						Snippet string `json:"snippet"`
+						Summary string `json:"summary"`
+					} `json:"value"`
+				} `json:"webPages"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&wire); err != nil {
+			return nil, err
+		}
+		out := make([]SearchResult, 0, len(wire.Data.WebPages.Value))
+		for _, r := range wire.Data.WebPages.Value {
+			if r.URL == "" {
+				continue
+			}
+			snip := r.Summary
+			if snip == "" {
+				snip = r.Snippet
+			}
+			out = append(out, SearchResult{Title: r.Name, URL: r.URL, Snippet: snip, Domain: extractDomain(r.URL)})
 		}
 		return filterDomains(out, includeDomains), nil
 
 	case "searxng":
 		scoped := applySiteFilter(query, includeDomains)
-		u := fmt.Sprintf("%s/search?%s", strings.TrimRight(b.cfg.UpstreamURL, "/"), url.Values{"q": {scoped}, "format": {"json"}}.Encode())
+		u := fmt.Sprintf("%s/search?%s", strings.TrimRight(b.endpoint, "/"), url.Values{"q": {scoped}, "format": {"json"}}.Encode())
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 		if err != nil {
 			return nil, err
@@ -294,17 +557,13 @@ func (b *SearchBackend) Search(ctx context.Context, query string, maxResults int
 			if r.URL == "" {
 				continue
 			}
-			dom := ""
-			if pu, perr := url.Parse(r.URL); perr == nil {
-				dom = strings.ToLower(pu.Hostname())
-			}
-			out = append(out, SearchResult{Title: r.Title, URL: r.URL, Snippet: r.Content, Domain: dom})
+			out = append(out, SearchResult{Title: r.Title, URL: r.URL, Snippet: r.Content, Domain: extractDomain(r.URL)})
 		}
 		return filterDomains(out, includeDomains), nil
 
 	default:
 		scoped := applySiteFilter(query, includeDomains)
-		u := fmt.Sprintf("%s?%s", b.cfg.UpstreamURL, url.Values{"q": {scoped}}.Encode())
+		u := fmt.Sprintf("%s?%s", b.endpoint, url.Values{"q": {scoped}}.Encode())
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 		if err != nil {
 			return nil, err

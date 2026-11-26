@@ -58,6 +58,38 @@ spec:
                   name: {{ $cg.searchApiKeySecret.name }}
                   key: {{ $cg.searchApiKeySecret.key | default "api-key" }}
             {{- end }}
+            {{- if and $cg.apiKeysSecret $cg.apiKeysSecret.name }}
+            - name: AR_CRAWLER_TAVILY_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.apiKeysSecret.name }}
+                  key: tavily-key
+                  optional: true
+            - name: AR_CRAWLER_BRAVE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.apiKeysSecret.name }}
+                  key: brave-key
+                  optional: true
+            - name: AR_CRAWLER_SERPER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.apiKeysSecret.name }}
+                  key: serper-key
+                  optional: true
+            - name: AR_CRAWLER_EXA_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.apiKeysSecret.name }}
+                  key: exa-key
+                  optional: true
+            - name: AR_CRAWLER_BOCHA_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.apiKeysSecret.name }}
+                  key: bocha-key
+                  optional: true
+            {{- end }}
             {{- if $cg.headless.enabled }}
             - name: AR_CRAWLER_HEADLESS_URL
               value: {{ printf "http://%s:%v" $headlessName ($cg.headless.port | default 8098) | quote }}

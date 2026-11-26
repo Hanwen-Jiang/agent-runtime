@@ -502,6 +502,7 @@ crawlerGateway:
   searchProvider: auto
   searchUpstreamUrl: ""
   searchApiKeySecret: {name: "", key: api-key}
+  apiKeysSecret: {name: ""}
   headlessUrl: ""
   internalAllowHosts: []
   rpm: 120

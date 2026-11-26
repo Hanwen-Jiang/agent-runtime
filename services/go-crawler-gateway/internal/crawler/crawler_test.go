@@ -334,3 +334,102 @@ func TestCircuitBreakerAuditAndAllowlistGovernance(t *testing.T) {
 		t.Fatalf("expected updated allowlist with 2 entries, got (%d): %#v", code, listResp)
 	}
 }
+
+func TestMultiProviderWebSearchAPIs(t *testing.T) {
+	ctx := context.Background()
+	cases := []struct {
+		name     string
+		provider string
+		handler  http.HandlerFunc
+		wantURL  string
+		wantTit  string
+	}{
+		{
+			name:     "brave",
+			provider: "brave",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("X-Subscription-Token") != "k-brave" || r.Method != http.MethodGet {
+					t.Fatalf("unexpected brave request: %s hdr=%q", r.Method, r.Header.Get("X-Subscription-Token"))
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"web": map[string]any{
+						"results": []map[string]any{{"title": "Brave Hit", "url": "https://docs.example.com/a", "description": "from brave"}},
+					},
+				})
+			},
+			wantURL: "https://docs.example.com/a",
+			wantTit: "Brave Hit",
+		},
+		{
+			name:     "serper",
+			provider: "serper",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("X-API-KEY") != "k-serper" || r.Method != http.MethodPost {
+					t.Fatalf("unexpected serper request: %s hdr=%q", r.Method, r.Header.Get("X-API-KEY"))
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"organic": []map[string]any{{"title": "Serper Hit", "link": "https://docs.example.com/b", "snippet": "from serper"}},
+				})
+			},
+			wantURL: "https://docs.example.com/b",
+			wantTit: "Serper Hit",
+		},
+		{
+			name:     "exa",
+			provider: "exa",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("x-api-key") != "k-exa" || r.Method != http.MethodPost {
+					t.Fatalf("unexpected exa request: %s hdr=%q", r.Method, r.Header.Get("x-api-key"))
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"results": []map[string]any{{"title": "Exa Hit", "url": "https://docs.example.com/c", "text": "from exa"}},
+				})
+			},
+			wantURL: "https://docs.example.com/c",
+			wantTit: "Exa Hit",
+		},
+		{
+			name:     "bocha",
+			provider: "bocha",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Authorization") != "Bearer k-bocha" || r.Method != http.MethodPost {
+					t.Fatalf("unexpected bocha request: %s hdr=%q", r.Method, r.Header.Get("Authorization"))
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"data": map[string]any{
+						"webPages": map[string]any{
+							"value": []map[string]any{{"name": "Bocha Hit", "url": "https://docs.example.com/d", "summary": "from bocha"}},
+						},
+					},
+				})
+			},
+			wantURL: "https://docs.example.com/d",
+			wantTit: "Bocha Hit",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(tc.handler)
+			defer srv.Close()
+			b := NewSearchBackend(SearchConfig{
+				Provider:     tc.provider,
+				UpstreamURL:  srv.URL,
+				ProviderKeys: map[string]string{tc.provider: "k-" + tc.provider},
+				Timeout:      5 * time.Second,
+			})
+			rows, err := b.Search(ctx, "test query", 3, []string{"docs.example.com"}, "basic")
+			if err != nil || len(rows) != 1 || rows[0].URL != tc.wantURL || rows[0].Title != tc.wantTit {
+				t.Fatalf("search failed: rows=%+v err=%v", rows, err)
+			}
+		})
+	}
+
+	autoBrave := NewSearchBackend(SearchConfig{
+		Provider:     "auto",
+		ProviderKeys: map[string]string{"brave": "k-b", "bocha": "k-bo"},
+	})
+	if autoBrave.ProviderName() != "brave" || len(autoBrave.AvailableProviders()) < 3 {
+		t.Fatalf("unexpected auto backend: provider=%s available=%v", autoBrave.ProviderName(), autoBrave.AvailableProviders())
+	}
+}

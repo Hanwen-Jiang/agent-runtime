@@ -1,0 +1,19 @@
+# Opt-in Helm override to deploy SearXNG and Headless Chromium inside Kubernetes.
+# Keep disabled by default when using WebSearch API providers (Tavily / Brave / Serper / Exa / Bocha).
+crawlerGateway:
+  enabled: true
+  searchProvider: auto
+  searxng:
+    enabled: true
+    port: 8080
+    secretRef:
+      name: crawler-gateway-secret
+      key: searxng-secret
+  headless:
+    enabled: true
+    port: 8098
+    tokenSecret:
+      name: crawler-gateway-secret
+      key: headless-token
+    concurrency: 2
+    timeoutMs: 15000
