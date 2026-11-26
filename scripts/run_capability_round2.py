@@ -317,7 +317,7 @@ async def main() -> None:
     slices = _load_slice()
     budget = _BudgetTracker(MAX_BUDGET_USD)
     sem = asyncio.Semaphore(CONCURRENCY)
-    gw = GrpcModelGateway(GATEWAY_ADDR, timeout_s=60.0)
+    gw = GrpcModelGateway(GATEWAY_ADDR, timeout_s=90.0)
 
     async def bounded(coro: Any) -> dict[str, Any]:
         async with sem:
@@ -347,31 +347,39 @@ async def main() -> None:
         by_suite: dict[str, Any] = {}
         for suite_name in ("bfcl", "judgebench", "rewardbench2", "frames"):
             sub = [r for r in rows if r["suite"] == suite_name]
-            wins = sum(r["score"] for r in sub)
-            lo, hi = _wilson_ci(wins, len(sub))
+            valid_sub = [r for r in sub if not r.get("error") and not r.get("errors")]
+            err_count = len(sub) - len(valid_sub)
+            wins = sum(r["score"] for r in valid_sub)
+            denom = len(valid_sub)
+            lo, hi = _wilson_ci(wins, denom)
             by_suite[suite_name] = {
-                "n": len(sub),
+                "n": denom,
+                "attempted": len(sub),
+                "errors": err_count,
                 "wins": wins,
-                "score": round(wins / len(sub), 4) if sub else 0.0,
+                "score": round(wins / denom, 4) if denom else 0.0,
                 "wilson_95_ci": [lo, hi],
                 "cost_usd": round(sum(r["cost_usd"] for r in sub), 6),
-                "latency_p50_ms": _percentile([r["latency_ms"] for r in sub], 50),
-                "latency_p95_ms": _percentile([r["latency_ms"] for r in sub], 95),
+                "latency_p50_ms": _percentile([r["latency_ms"] for r in valid_sub], 50),
+                "latency_p95_ms": _percentile([r["latency_ms"] for r in valid_sub], 95),
             }
-        # Derive per-role empirical scores replacing 0.5 priors
+        # Derive per-role empirical scores replacing 0.5 priors over non-error trials
+        valid_rows = [r for r in rows if not r.get("error") and not r.get("errors")]
         act_score = by_suite["bfcl"]["score"]
-        judge_rows = [r for r in rows if r["suite"] in ("judgebench", "rewardbench2")]
+        judge_rows = [r for r in valid_rows if r["suite"] in ("judgebench", "rewardbench2")]
         judge_wins = sum(r["score"] for r in judge_rows)
         plan_score = by_suite["frames"]["score"]
-        overall_wins = sum(r["score"] for r in rows)
+        overall_wins = sum(r["score"] for r in valid_rows)
         summary_by_model[profile] = {
             "completed_trials": len(rows),
+            "valid_trials": len(valid_rows),
+            "error_trials": len(rows) - len(valid_rows),
             "total_cost_usd": round(sum(r["cost_usd"] for r in rows), 6),
             "cost_per_trial_usd": round(sum(r["cost_usd"] for r in rows) / len(rows), 6),
-            "latency_p50_ms": _percentile([r["latency_ms"] for r in rows], 50),
-            "latency_p95_ms": _percentile([r["latency_ms"] for r in rows], 95),
-            "overall_score": round(overall_wins / len(rows), 4),
-            "overall_wilson_95_ci": list(_wilson_ci(overall_wins, len(rows))),
+            "latency_p50_ms": _percentile([r["latency_ms"] for r in valid_rows], 50),
+            "latency_p95_ms": _percentile([r["latency_ms"] for r in valid_rows], 95),
+            "overall_score": round(overall_wins / len(valid_rows), 4) if valid_rows else 0.0,
+            "overall_wilson_95_ci": list(_wilson_ci(overall_wins, len(valid_rows))),
             "role_scores": {
                 "act": act_score,
                 "judge": round(judge_wins / len(judge_rows), 4) if judge_rows else 0.0,
@@ -418,14 +426,15 @@ async def main() -> None:
         f"- **Total Spend**: `${payload['total_spend_usd']:.4f}` (cap `${MAX_BUDGET_USD:.2f}`)",
         f"- **Pareto Undominated (Score ↑ vs Cost/Trial ↓)**: {', '.join(f'`{m}`' for m in pareto)}",
         "",
-        "| Model | Overall (95% CI) | BFCL (`act`) | JudgeBench | RewardBench2 | FRAMES (`plan`) | Role `judge` | Cost / Trial | P50 / P95 (ms) |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Model | Valid/Att | Errors | Overall (95% CI) | BFCL (`act`) | JudgeBench | RewardBench2 | FRAMES (`plan`) | Role `judge` | Cost / Trial | P50 / P95 (ms) |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for profile, st in summary_by_model.items():
         ci = st["overall_wilson_95_ci"]
         su = st["suites"]
         md.append(
-            f"| `{profile}` | **{st['overall_score']:.1%}** [{ci[0]:.1%}, {ci[1]:.1%}] | "
+            f"| `{profile}` | {st['valid_trials']}/{st['completed_trials']} | {st['error_trials']} | "
+            f"**{st['overall_score']:.1%}** [{ci[0]:.1%}, {ci[1]:.1%}] | "
             f"{su['bfcl']['score']:.1%} | {su['judgebench']['score']:.1%} | {su['rewardbench2']['score']:.1%} | "
             f"{su['frames']['score']:.1%} | {st['role_scores']['judge']:.1%} | "
             f"${st['cost_per_trial_usd']:.5f} | {st['latency_p50_ms']} / {st['latency_p95_ms']} |"
