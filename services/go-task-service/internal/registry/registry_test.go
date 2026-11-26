@@ -640,3 +640,55 @@ func TestRegistryTablesAreCoveredByRowLevelSecurity(t *testing.T) {
 		}
 	}
 }
+
+func TestPromoteConcurrentWithoutExpectedDefaultKeepsSingleDefault(t *testing.T) {
+	eachBackend(t, func(t *testing.T, h *harness) {
+		v1 := h.mustPublish(nil, kindTemplate, "answer", answerDoc)
+		v2 := h.mustPublish(nil, kindTemplate, "answer", answerDocV2)
+		if prev := h.mustPromote(nil, kindTemplate, "answer", v1); prev != "" {
+			t.Fatalf("unexpected initial previous default: %q", prev)
+		}
+		const workers = 6
+		versionsToPromote := make([]string, workers)
+		for i := range workers {
+			if i%2 == 0 {
+				versionsToPromote[i] = v1
+			} else {
+				versionsToPromote[i] = v2
+			}
+		}
+		start := make(chan struct{})
+		errs := make(chan error, workers)
+		for _, ver := range versionsToPromote {
+			go func(ver string) {
+				<-start
+				_, err := h.client.Promote(context.Background(), withToken(&registryv1.PromoteRequest{
+					Kind:       kindTemplate,
+					Name:       "answer",
+					Version:    ver,
+					Evaluation: payload(t, passingEvidence),
+				}, publishToken))
+				errs <- err
+			}(ver)
+		}
+		close(start)
+		for range workers {
+			if err := <-errs; err != nil {
+				t.Fatalf("unexpected concurrent promote failure: %v", err)
+			}
+		}
+		listed, err := h.listTemplates(t1, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defaultCount := 0
+		for _, tpl := range listed {
+			if tpl.GetName() == "answer" && tpl.GetState() == stateDefault {
+				defaultCount++
+			}
+		}
+		if defaultCount != 1 {
+			t.Fatalf("expected exactly 1 default version after concurrent promote, got %d", defaultCount)
+		}
+	})
+}

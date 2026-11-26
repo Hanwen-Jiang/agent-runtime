@@ -1,0 +1,50 @@
+{{- if .Values.alerts.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-alert-rules" (include "ar.fullname" .) }}
+  namespace: {{ .Values.alerts.namespace | default "observability" }}
+  labels:
+    {{- include "ar.labels" (list . "alerts") | nindent 4 }}
+data:
+  agent-runtime-alerts.yml: |-
+    groups:
+      - name: agent-runtime-ops
+        interval: 30s
+        rules:
+          - alert: AgentRuntimePodCrashLooping
+            expr: increase(kube_pod_container_status_restarts_total{namespace="{{ .Release.Namespace }}"}[15m]) > 2
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod restarts detected in {{ .Release.Namespace }}"
+          - alert: AgentRuntimeCrawlerErrorSpike
+            expr: sum(rate(crawler_upstream_errors_total[5m])) > 0.2
+            for: 3m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Crawler gateway upstream error rate elevated"
+          - alert: AgentRuntimeCrawlerCircuitOpen
+            expr: max(crawler_circuits_open) > 0
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "One or more crawler domain circuit breakers are open"
+          - alert: AgentRuntimeModelGateway5xx
+            expr: (sum(rate(runtime_model_calls_total{status="error"}[5m])) / clamp_min(sum(rate(runtime_model_calls_total[5m])), 1)) > 0.15
+            for: 3m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Model gateway error ratio exceeds 15%"
+          - alert: AgentRuntimeBudgetExhaustion
+            expr: increase(runtime_budget_exhausted_total[15m]) > 0
+            for: 1m
+            labels:
+              severity: info
+            annotations:
+              summary: "Tenant or task model budget threshold reached"
+{{- end }}

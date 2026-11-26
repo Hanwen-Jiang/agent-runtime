@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -49,6 +50,19 @@ var alwaysBlockedHosts = map[string]bool{
 
 var _, cgnatPrefix, _ = net.ParseCIDR("100.64.0.0/10")
 
+// AllowlistProposal tracks a proposed change to the internal crawler allowlist.
+type AllowlistProposal struct {
+	ID         string `json:"id"`
+	Action     string `json:"action"` // "add" | "remove"
+	Target     string `json:"target"`
+	Reason     string `json:"reason,omitempty"`
+	ProposedBy string `json:"proposed_by,omitempty"`
+	ApprovedBy string `json:"approved_by,omitempty"`
+	Status     string `json:"status"` // "pending" | "approved"
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
 // PolicyConfig governs dual-zone SSRF isolation and domain allow/deny enforcement.
 type PolicyConfig struct {
 	ExternalAllowDomains []string
@@ -59,9 +73,12 @@ type PolicyConfig struct {
 }
 
 type Policy struct {
+	mu        sync.RWMutex
 	extAllow  []string
 	extDeny   []string
 	intAllow  map[string]bool
+	proposals map[string]AllowlistProposal
+	nextProp  int
 	allowPriv bool
 	lookupIP  func(ctx context.Context, network, host string) ([]net.IP, error)
 }
@@ -84,6 +101,7 @@ func NewPolicy(cfg PolicyConfig) *Policy {
 		extAllow:  extAllow,
 		extDeny:   extDeny,
 		intAllow:  intAllow,
+		proposals: map[string]AllowlistProposal{},
 		allowPriv: cfg.AllowPrivateForTest,
 		lookupIP:  lookup,
 	}
@@ -133,7 +151,112 @@ func IsPublicIP(ip net.IP) bool {
 }
 
 func (p *Policy) InternalAllowCount() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return len(p.intAllow)
+}
+
+func (p *Policy) InternalAllowlist() []string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	out := make([]string, 0, len(p.intAllow))
+	for host := range p.intAllow {
+		out = append(out, host)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func (p *Policy) InternalProposals() []AllowlistProposal {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	out := make([]AllowlistProposal, 0, len(p.proposals))
+	for _, prop := range p.proposals {
+		out = append(out, prop)
+	}
+	slices.SortFunc(out, func(a, b AllowlistProposal) int {
+		return strings.Compare(a.ID, b.ID)
+	})
+	return out
+}
+
+func validateInternalAllowEntry(raw string) (string, error) {
+	clean := strings.TrimSpace(strings.ToLower(raw))
+	if clean == "" || strings.ContainsAny(clean, "/\\ \t\r\n@") {
+		return "", fmt.Errorf("%w: internal target must be host or host:port", ErrInvalid)
+	}
+	host := clean
+	if strings.Contains(clean, ":") {
+		h, portStr, err := net.SplitHostPort(clean)
+		if err != nil || strings.TrimSpace(h) == "" {
+			return "", fmt.Errorf("%w: invalid host:port %q", ErrInvalid, raw)
+		}
+		port, perr := strconv.Atoi(portStr)
+		if perr != nil || port < 1 || port > 65535 {
+			return "", fmt.Errorf("%w: invalid port in %q", ErrInvalid, raw)
+		}
+		if blockedInfraPorts[port] {
+			return "", fmt.Errorf("%w: infrastructure port %d is blocked", ErrBlocked, port)
+		}
+		host = strings.TrimSpace(h)
+	}
+	if alwaysBlockedHosts[host] || strings.HasSuffix(host, ".169.254.169.254") {
+		return "", fmt.Errorf("%w: metadata/control-plane host %q is hard-blocked", ErrBlocked, host)
+	}
+	return clean, nil
+}
+
+func (p *Policy) ProposeInternalAllow(action, target, reason, actor string) (AllowlistProposal, error) {
+	act := strings.TrimSpace(strings.ToLower(action))
+	if act != "add" && act != "remove" {
+		return AllowlistProposal{}, fmt.Errorf("%w: action must be add or remove", ErrInvalid)
+	}
+	clean, err := validateInternalAllowEntry(target)
+	if err != nil {
+		return AllowlistProposal{}, err
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.nextProp++
+	prop := AllowlistProposal{
+		ID:         fmt.Sprintf("allow-%04d", p.nextProp),
+		Action:     act,
+		Target:     clean,
+		Reason:     strings.TrimSpace(reason),
+		ProposedBy: strings.TrimSpace(actor),
+		Status:     "pending",
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+	p.proposals[prop.ID] = prop
+	return prop, nil
+}
+
+func (p *Policy) ApproveInternalAllow(id, actor string) (AllowlistProposal, error) {
+	key := strings.TrimSpace(id)
+	if key == "" {
+		return AllowlistProposal{}, fmt.Errorf("%w: proposal id is required", ErrInvalid)
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	prop, ok := p.proposals[key]
+	if !ok {
+		return AllowlistProposal{}, fmt.Errorf("%w: proposal %q not found", ErrInvalid, key)
+	}
+	if prop.Status == "approved" {
+		return prop, nil
+	}
+	if prop.Action == "remove" {
+		delete(p.intAllow, prop.Target)
+	} else {
+		p.intAllow[prop.Target] = true
+	}
+	prop.Status = "approved"
+	prop.ApprovedBy = strings.TrimSpace(actor)
+	prop.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	p.proposals[key] = prop
+	return prop, nil
 }
 
 // ValidateTarget checks URL syntax, zone rules, deny/allow lists, and returns resolved dial address when external.
@@ -173,7 +296,10 @@ func (p *Policy) ValidateTarget(ctx context.Context, rawURL, zone string) (*url.
 
 	if zone == ZoneInternal {
 		hostPort := fmt.Sprintf("%s:%d", host, port)
-		if !p.intAllow[hostPort] && !p.intAllow[host] {
+		p.mu.RLock()
+		allowed := p.intAllow[hostPort] || p.intAllow[host]
+		p.mu.RUnlock()
+		if !allowed {
 			return nil, 0, nil, fmt.Errorf("%w: internal target %q is not in allowlist", ErrBlocked, hostPort)
 		}
 		return u, port, nil, nil

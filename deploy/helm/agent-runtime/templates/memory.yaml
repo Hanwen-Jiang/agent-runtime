@@ -18,6 +18,7 @@ spec:
     spec:
       serviceAccountName: {{ include "ar.fullname" . }}
       automountServiceAccountToken: false
+      {{- include "ar.imagePullSecrets" . | nindent 6 }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -56,6 +57,30 @@ spec:
               value: {{ printf "%s:%v" (include "ar.modelGatewayService" $) $.Values.modelGateway.port | quote }}
             - name: AR_EMBEDDING_VERSION
               value: {{ . | quote }}
+            {{- end }}
+            {{- with $mem.rerankMode }}
+            - name: AR_MEMORY_RERANK_MODE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $mem.embedderBackend }}
+            - name: AR_EMBEDDER_BACKEND
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $mem.rerankerBackend }}
+            - name: AR_RERANKER_BACKEND
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $mem.torchEmbedModel }}
+            - name: AR_TORCH_EMBED_MODEL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $mem.torchRerankModel }}
+            - name: AR_TORCH_RERANK_MODEL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if hasKey $mem "codeNavEnabled" }}
+            - name: AR_MEMORY_CODE_NAV_ENABLED
+              value: {{ ternary "1" "0" $mem.codeNavEnabled | quote }}
             {{- end }}
             {{- with $.Values.memory.extraEnv }}
             {{- toYaml . | nindent 12 }}

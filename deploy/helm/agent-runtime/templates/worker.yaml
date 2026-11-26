@@ -25,6 +25,7 @@ spec:
       # 沙箱经 Sandbox Service（SBX-01）：Worker 不挂 Kubernetes 的令牌。
       serviceAccountName: {{ include "ar.fullname" $ }}
       automountServiceAccountToken: false
+      {{- include "ar.imagePullSecrets" $ | nindent 6 }}
       securityContext:
         {{- toYaml $.Values.podSecurityContext | nindent 8 }}
       containers:
@@ -124,6 +125,21 @@ spec:
             {{- if $.Values.worker.workspacesClaim }}
             - name: AR_TOOL_WORKSPACE_ROOT
               value: /workspaces
+            {{- end }}
+            {{- with $.Values.worker.webFetchHosts }}
+            - name: AR_TOOL_FETCH_HOSTS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if or $.Values.crawlerGateway.enabled $.Values.worker.crawler.endpoint }}
+            - name: AR_CRAWLER_ENDPOINT
+              value: {{ default (printf "http://%s-crawler-gateway:%v" (include "ar.fullname" $) ($.Values.crawlerGateway.port | default 8096)) $.Values.worker.crawler.endpoint | quote }}
+            {{- if or $.Values.worker.crawler.tokenSecret.name $.Values.crawlerGateway.tokenSecret.name }}
+            - name: AR_CRAWLER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default $.Values.crawlerGateway.tokenSecret.name $.Values.worker.crawler.tokenSecret.name }}
+                  key: {{ default ($.Values.crawlerGateway.tokenSecret.key | default "token") $.Values.worker.crawler.tokenSecret.key }}
+            {{- end }}
             {{- end }}
           securityContext:
             {{- toYaml $.Values.containerSecurityContext | nindent 12 }}

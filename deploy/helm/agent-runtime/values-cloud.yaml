@@ -94,6 +94,8 @@ memory:
   replicas: 1
   # 真 embedding 经 Model Gateway（docs/plan/memory-live.md M-02）；所有租户的白名单都有它。
   embeddingVersion: a6api/text-embedding-3-large@2026-10
+  rerankMode: bm25_pool50
+  codeNavEnabled: true
 
 pkgMirror:
   enabled: true
@@ -112,6 +114,9 @@ worker:
   # Worker 接 Memory Service：写入经验、规划与 tool_loop 时检索（M-03）。
   memory:
     enabled: true
+  webFetchHosts: "*"
+  crawler:
+    tokenSecret: {name: crawler-gateway-secret, key: token}
   workspacesClaim: workspaces
   shell:
     mode: sandbox
@@ -242,3 +247,23 @@ learning:
 
 collector:
   replicas: 1
+
+crawlerGateway:
+  enabled: true
+  searchProvider: auto
+  internalAllowHosts:
+    - ar-agent-runtime-task-service:8080
+    - coding-web:8095
+  cbThreshold: 5
+  cbCooldownS: 120
+
+evolution:
+  enabled: true
+  mode: fixture
+  budgetUsd: "0.0"
+  minSupport: 2
+  dashboard:
+    enabled: true
+
+alerts:
+  enabled: true

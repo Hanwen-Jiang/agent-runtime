@@ -184,6 +184,17 @@ class ModelToolLoop:
         params = mg.GenerateParams(messages=built.messages, tools=tools)
         if _needs_read_only_reminder(node, inp.history):
             params.messages.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=READ_ONLY_REMINDER))
+            with contextlib.suppress(Exception):
+                from opentelemetry import trace
+
+                span = trace.get_current_span()
+                if span.is_recording():
+                    span.set_attributes({
+                        "runtime.read_only_reminder": True,
+                        "runtime.signals": "excessive_reads",
+                        "runtime.task_id": inp.task_id,
+                        "runtime.task_family": inp.task_family,
+                    })
         if isinstance(node.get("output_schema"), dict):
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_value(node["output_schema"])))
         response, billed = await self._generate(inp, params, tools)

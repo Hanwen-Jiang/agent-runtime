@@ -1,0 +1,234 @@
+{{- if .Values.evolution.enabled }}
+{{- $ev := .Values.evolution -}}
+{{- $skillsCm := printf "%s-platform-skills-seed" (include "ar.fullname" .) -}}
+{{- $runnerName := printf "%s-evolution-runner" (include "ar.fullname" .) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $skillsCm }}
+  labels:
+    {{- include "ar.labels" (list . "evolution") | nindent 4 }}
+data:
+  platform-skills.json: |-
+{{ .Files.Get "files/platform-skills.json" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ar-self-evolution-cycle
+  labels:
+    {{- include "ar.labels" (list . "evolution") | nindent 4 }}
+spec:
+  schedule: {{ $ev.schedule | default "0 */6 * * *" | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            {{- include "ar.labels" (list . "evolution") | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "ar.fullname" . }}
+          automountServiceAccountToken: false
+          {{- include "ar.imagePullSecrets" . | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          containers:
+            - name: evolution
+              image: {{ include "ar.image" (list . "learning") }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              args:
+                - -m
+                - agentruntime_learning.evolution
+                - evolve
+                - --topic
+                - {{ $ev.topic | default "telemetry.spans" | quote }}
+                - --group
+                - {{ $ev.group | default "ar-self-evolution" | quote }}
+                - --format
+                - otlp_json
+                - --skills-file
+                - /etc/agentruntime/evolution/platform-skills.json
+                - --out
+                - /tmp/evolution-out
+                - --mode
+                - {{ $ev.mode | default "fixture" | quote }}
+                - --budget-usd
+                - {{ $ev.budgetUsd | default "0.0" | quote }}
+                - --min-support
+                - {{ $ev.minSupport | default 2 | int | quote }}
+              env:
+                {{- include "ar.telemetryEnv" (merge (dict "imageComponent" "learning") .) | nindent 16 }}
+                - name: AR_EVENT_STREAM_BROKERS
+                  value: {{ .Values.external.redpanda.brokers | quote }}
+                {{- if $ev.dsnSecret.name }}
+                - name: AR_EVOLUTION_DSN
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $ev.dsnSecret.name }}
+                      key: {{ $ev.dsnSecret.key | default "dsn" }}
+                {{- end }}
+                - name: AR_REGISTRY_ADDRESS
+                  value: {{ printf "%s:%v" (include "ar.registryService" .) .Values.taskService.registryPort | quote }}
+                {{- if $ev.registryTokenSecret.name }}
+                - name: AR_REGISTRY_PUBLISH_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $ev.registryTokenSecret.name }}
+                      key: {{ $ev.registryTokenSecret.key | default "registry-token" }}
+                {{- end }}
+              resources:
+                {{- toYaml $ev.resources | nindent 16 }}
+              securityContext:
+                {{- toYaml .Values.containerSecurityContext | nindent 16 }}
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+                - name: skills-seed
+                  mountPath: /etc/agentruntime/evolution
+                  readOnly: true
+          volumes:
+            - name: tmp
+              emptyDir: {}
+            - name: skills-seed
+              configMap:
+                name: {{ $skillsCm }}
+{{- if $ev.runner.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $runnerName }}
+  labels:
+    {{- include "ar.labels" (list . "evolution-runner") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "evolution-runner") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "evolution-runner") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      {{- include "ar.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: evolution-runner
+          image: {{ include "ar.image" (list . "learning") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["-m", "agentruntime_learning.evolution.server"]
+          ports:
+            - name: http
+              containerPort: {{ $ev.runner.port | default 8099 }}
+          env:
+            {{- include "ar.telemetryEnv" (merge (dict "imageComponent" "learning") .) | nindent 12 }}
+            - name: AR_EVOLUTION_RUNNER_ADDR
+              value: {{ printf "0.0.0.0:%v" ($ev.runner.port | default 8099) | quote }}
+            {{- if $ev.runner.tokenSecret.name }}
+            - name: AR_EVOLUTION_RUNNER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $ev.runner.tokenSecret.name }}
+                  key: {{ $ev.runner.tokenSecret.key | default "runner-token" }}
+            {{- end }}
+            - name: AR_EVOLUTION_MAX_BUDGET_USD
+              value: {{ $ev.runner.maxBudgetUsd | default "1.0" | quote }}
+            - name: AR_EVOLUTION_RUNS_DIR
+              value: /tmp/evolution-runs
+            - name: AR_EVOLUTION_SKILLS_FILE
+              value: /etc/agentruntime/evolution/platform-skills.json
+            - name: AR_EVENT_STREAM_BROKERS
+              value: {{ .Values.external.redpanda.brokers | quote }}
+            {{- if $ev.dsnSecret.name }}
+            - name: AR_EVOLUTION_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $ev.dsnSecret.name }}
+                  key: {{ $ev.dsnSecret.key | default "dsn" }}
+            {{- end }}
+            - name: AR_REGISTRY_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.registryService" .) .Values.taskService.registryPort | quote }}
+            {{- if $ev.registryTokenSecret.name }}
+            - name: AR_REGISTRY_PUBLISH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $ev.registryTokenSecret.name }}
+                  key: {{ $ev.registryTokenSecret.key | default "registry-token" }}
+            {{- end }}
+            - name: AR_MODEL_GATEWAY_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.modelGatewayService" .) .Values.modelGateway.port | quote }}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          resources:
+            {{- toYaml $ev.runner.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: skills-seed
+              mountPath: /etc/agentruntime/evolution
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: skills-seed
+          configMap:
+            name: {{ $skillsCm }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $runnerName }}
+  labels:
+    {{- include "ar.labels" (list . "evolution-runner") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "evolution-runner") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $ev.runner.port | default 8099 }}
+      targetPort: http
+{{- end }}
+{{- if $ev.dashboard.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-runtime-maturity-dashboard
+  namespace: {{ $ev.dashboard.namespace | default "observability" }}
+  labels:
+    {{- include "ar.labels" (list . "evolution") | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  agent-runtime-maturity-ops.json: |-
+    {
+      "uid": "ar-maturity-ops",
+      "title": "Agent Runtime Maturity, Evolution & Crawler",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "time": {"from": "now-6h", "to": "now"},
+      "templating": {"list": []},
+      "panels": [
+        {"id": 1, "type": "stat", "title": "Healthy Scrape Targets", "gridPos": {"x": 0, "y": 0, "w": 6, "h": 5}, "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "targets": [{"refId": "A", "expr": "count(up == 1)"}]},
+        {"id": 2, "type": "stat", "title": "Total Model Calls", "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5}, "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "targets": [{"refId": "A", "expr": "sum(runtime_model_calls_total)"}]},
+        {"id": 3, "type": "stat", "title": "Crawler Cache Hits", "gridPos": {"x": 12, "y": 0, "w": 6, "h": 5}, "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "targets": [{"refId": "A", "expr": "sum(crawler_cache_hits_total)"}]},
+        {"id": 4, "type": "stat", "title": "Crawler Blocked SSRF/Policy", "gridPos": {"x": 18, "y": 0, "w": 6, "h": 5}, "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "targets": [{"refId": "A", "expr": "sum(crawler_blocked_total)"}]},
+        {"id": 5, "type": "timeseries", "title": "OTel Accepted Spans / sec", "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "targets": [{"refId": "A", "expr": "sum(rate(otelcol_receiver_accepted_spans_total[5m]))"}]},
+        {"id": 6, "type": "timeseries", "title": "Crawler Requests vs Cache Hits", "gridPos": {"x": 12, "y": 5, "w": 12, "h": 8}, "datasource": {"type": "prometheus", "uid": "victoriametrics"}, "targets": [{"refId": "A", "expr": "sum(rate(crawler_requests_total[5m]))", "legendFormat": "requests/s"}, {"refId": "B", "expr": "sum(rate(crawler_cache_hits_total[5m]))", "legendFormat": "cache_hits/s"}]}
+      ]
+    }
+{{- end }}
+{{- end }}

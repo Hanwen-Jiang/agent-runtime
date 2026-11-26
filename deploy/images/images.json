@@ -71,6 +71,10 @@
         "MAIN": "./cmd/crawler-gateway"
       }
     },
+    "crawler-headless": {
+      "dockerfile": "services/py-headless-renderer/Dockerfile",
+      "args": {}
+    },
     "egress-gateway": {
       "dockerfile": "deploy/images/go.Dockerfile",
       "args": {

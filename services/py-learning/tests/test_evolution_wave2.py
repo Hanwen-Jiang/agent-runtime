@@ -377,3 +377,100 @@ def test_evolution_topic_snapshot_and_commit(tmp_path: Path, monkeypatch: pytest
         "2",
     ]) == 0
     assert len(committed) == 1 and committed[0].topic == "telemetry.spans"
+
+
+def test_worker_otel_attributes_cluster_cleanly() -> None:
+    from agentruntime_worker.executor.node_executor import span_of
+
+    _, attrs_edit = span_of({"id": "n1", "template": "repo_edit@v1", "executor": "program", "effect": "write_reversible"}, "t_1", task_family="swe.fix")
+    _, attrs_edit2 = span_of({"id": "n2", "template": "apply_patch@v1", "executor": "program", "effect": "write_reversible"}, "t_2", task_family="swe.fix")
+    lines = [
+        json.dumps({"kind": "span", "trace_id": "tr1", "span_id": "sp1", "name": "execute_tool repo_edit", "attributes": {**attrs_edit, "tool.status": "error", "error.code": "edit_no_match"}}),
+        json.dumps({"kind": "span", "trace_id": "tr2", "span_id": "sp2", "name": "execute_tool apply_patch", "attributes": {**attrs_edit2, "tool.status": "error", "error.code": "patch_conflict"}}),
+        json.dumps({"kind": "span", "trace_id": "tr3", "span_id": "sp3", "name": "tool_loop", "attributes": {"runtime.task_id": "t_3", "runtime.read_only_reminder": True, "runtime.signals": "excessive_reads"}}),
+        json.dumps({"kind": "span", "trace_id": "tr4", "span_id": "sp4", "name": "tool_loop", "attributes": {"runtime.task_id": "t_4", "runtime.read_only_reminder": True, "runtime.signals": "excessive_reads"}}),
+        json.dumps({"kind": "span", "trace_id": "tr5", "span_id": "sp5", "name": "review_round", "attributes": {"runtime.task_id": "t_5", "runtime.floor_reasons": "rule_done_unverified"}}),
+        json.dumps({"kind": "span", "trace_id": "tr6", "span_id": "sp6", "name": "review_round", "attributes": {"runtime.task_id": "t_6", "runtime.floor_reasons": "rule_done_unverified"}}),
+    ]
+    clusters = {c.cluster_kind: c for c in cluster_failures(lines, fmt="console", min_support=2)}
+    assert {"edit_or_patch_conflict", "readonly_churn", "unverified_completion"} <= set(clusters)
+
+
+def test_evolution_runner_http_service(tmp_path: Path) -> None:
+    import threading
+    import time
+    import urllib.error
+    import urllib.request
+    from http.server import ThreadingHTTPServer
+
+    from agentruntime_learning.evolution.server import EvolutionRunManager, make_handler
+
+    gate = threading.Event()
+    calls: list[dict[str, Any]] = []
+
+    def fake_exec(rec: dict[str, Any], logs: list[str]) -> dict[str, Any]:
+        calls.append(dict(rec))
+        logs.append("executing fake cycle")
+        if rec.get("budget_usd", 0) > 0:
+            gate.wait(timeout=2)
+        return {"status": "no_clusters", "clusters": 0}
+
+    mgr = EvolutionRunManager(runs_dir=tmp_path / "runs", max_budget_usd=0.5, executor=fake_exec)
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(mgr, token="evol-secret"))
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    try:
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as r:
+            assert r.status == 200 and json.loads(r.read())["max_budget_usd"] == 0.5
+
+        req_noauth = urllib.request.Request(base + "/v1/runs", data=b"{}", method="POST")
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(req_noauth, timeout=5)
+        assert exc.value.code == 401
+
+        req_cap = urllib.request.Request(
+            base + "/v1/runs",
+            data=json.dumps({"mode": "gateway", "budget_usd": 2.0}).encode(),
+            headers={"Authorization": "Bearer evol-secret", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with pytest.raises(urllib.error.HTTPError) as exc_cap:
+            urllib.request.urlopen(req_cap, timeout=5)
+        assert exc_cap.value.code == 400
+
+        req_ok = urllib.request.Request(
+            base + "/v1/runs",
+            data=json.dumps({"mode": "fixture", "budget_usd": 0.0}).encode(),
+            headers={"Authorization": "Bearer evol-secret", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req_ok, timeout=5) as r:
+            started = json.loads(r.read())
+            assert r.status == 202 and started["status"] == "running"
+
+        run_id = started["run_id"]
+        for _ in range(20):
+            with urllib.request.urlopen(urllib.request.Request(f"{base}/v1/runs/{run_id}", headers={"Authorization": "Bearer evol-secret"}), timeout=5) as r:
+                detail = json.loads(r.read())
+            if detail["status"] == "completed":
+                break
+            time.sleep(0.05)
+        assert detail["status"] == "completed" and "executing fake cycle" in detail["logs"]
+
+        # Concurrent run conflict (409) while gate blocks
+        req_hold = urllib.request.Request(
+            base + "/v1/runs",
+            data=json.dumps({"mode": "gateway", "budget_usd": 0.25}).encode(),
+            headers={"Authorization": "Bearer evol-secret", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req_hold, timeout=5) as r:
+            assert r.status == 202
+        with pytest.raises(urllib.error.HTTPError) as exc_busy:
+            urllib.request.urlopen(req_ok, timeout=5)
+        assert exc_busy.value.code == 409
+        gate.set()
+    finally:
+        srv.shutdown()
+

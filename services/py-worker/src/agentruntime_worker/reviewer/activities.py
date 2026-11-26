@@ -80,6 +80,20 @@ class ReviewerActivities:
                 )
             )
         # 判定依据与模型调用写入日志（trace），不传给下游。
+        try:
+            from opentelemetry import trace
+
+            span = trace.get_current_span()
+            if span.is_recording():
+                span.set_attributes({
+                    "runtime.task_id": inp.task_id,
+                    "runtime.task_family": str((inp.task_state.get("constraints") or {}).get("task_family") or "general.coding"),
+                    "runtime.floor_reasons": ",".join(result.floor.reasons),
+                    "runtime.signals": ",".join(result.signals),
+                    "runtime.verdict": str(result.verdict.get("verdict") or ""),
+                })
+        except Exception:  # noqa: BLE001
+            pass
         logger.info(
             "Reviewer：第 %s 轮判 %s%s；依据 %s；模型调用 %s%s%s",
             inp.round_seq,

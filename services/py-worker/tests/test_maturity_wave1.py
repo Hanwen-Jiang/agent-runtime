@@ -487,3 +487,19 @@ async def test_web_fetch_delegates_to_crawler_and_blocks_internal_without_gatewa
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_worker_span_attributes_match_evolution_clustering_schema() -> None:
+    from agentruntime_worker.executor.node_executor import span_of
+
+    op, attrs = span_of(
+        {"id": "n_edit", "template": "repo_edit@v1", "executor": "program", "effect": "write_reversible", "skill": "coding-engineering"},
+        "task-span-1",
+        task_family="swe.bugfix",
+    )
+    assert op == "execute_tool repo_edit"
+    assert attrs["gen_ai.tool.name"] == "repo_edit"
+    assert attrs["runtime.task_id"] == "task-span-1"
+    assert attrs["runtime.task_family"] == "swe.bugfix"
+    assert attrs["runtime.skill.name"] == "coding-engineering"
+

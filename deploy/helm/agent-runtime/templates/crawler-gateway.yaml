@@ -1,0 +1,321 @@
+{{- if .Values.crawlerGateway.enabled }}
+{{- $cg := .Values.crawlerGateway -}}
+{{- $name := printf "%s-crawler-gateway" (include "ar.fullname" .) -}}
+{{- $searxName := printf "%s-searxng" (include "ar.fullname" .) -}}
+{{- $headlessName := printf "%s-crawler-headless" (include "ar.fullname" .) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "crawler-gateway") | nindent 4 }}
+spec:
+  replicas: {{ $cg.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "crawler-gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "crawler-gateway") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      {{- include "ar.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: crawler-gateway
+          image: {{ if $cg.imageTag }}{{ printf "%s/crawler-gateway:%s" .Values.image.registry $cg.imageTag }}{{ else }}{{ include "ar.image" (list . "crawler-gateway") }}{{ end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $cg.port | default 8096 }}
+          env:
+            {{- include "ar.telemetryEnv" (merge (dict "imageComponent" "crawler-gateway") .) | nindent 12 }}
+            - name: AR_CRAWLER_ADDR
+              value: {{ printf ":%v" ($cg.port | default 8096) | quote }}
+            {{- if $cg.tokenSecret.name }}
+            - name: AR_CRAWLER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.tokenSecret.name }}
+                  key: {{ $cg.tokenSecret.key | default "token" }}
+            {{- end }}
+            - name: AR_CRAWLER_SEARCH_PROVIDER
+              value: {{ $cg.searchProvider | default "auto" | quote }}
+            {{- if $cg.searxng.enabled }}
+            - name: AR_CRAWLER_SEARCH_UPSTREAM_URL
+              value: {{ printf "http://%s:%v" $searxName ($cg.searxng.port | default 8080) | quote }}
+            {{- else if $cg.searchUpstreamUrl }}
+            - name: AR_CRAWLER_SEARCH_UPSTREAM_URL
+              value: {{ $cg.searchUpstreamUrl | quote }}
+            {{- end }}
+            {{- if $cg.searchApiKeySecret.name }}
+            - name: AR_CRAWLER_SEARCH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.searchApiKeySecret.name }}
+                  key: {{ $cg.searchApiKeySecret.key | default "api-key" }}
+            {{- end }}
+            {{- if $cg.headless.enabled }}
+            - name: AR_CRAWLER_HEADLESS_URL
+              value: {{ printf "http://%s:%v" $headlessName ($cg.headless.port | default 8098) | quote }}
+            {{- if $cg.headless.tokenSecret.name }}
+            - name: AR_CRAWLER_HEADLESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.headless.tokenSecret.name }}
+                  key: {{ $cg.headless.tokenSecret.key | default "headless-token" }}
+            {{- end }}
+            {{- else if $cg.headlessUrl }}
+            - name: AR_CRAWLER_HEADLESS_URL
+              value: {{ $cg.headlessUrl | quote }}
+            {{- end }}
+            {{- if $cg.adminTokenSecret.name }}
+            - name: AR_CRAWLER_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.adminTokenSecret.name }}
+                  key: {{ $cg.adminTokenSecret.key | default "admin-token" }}
+            {{- end }}
+            - name: AR_CRAWLER_INTERNAL_ALLOW_HOSTS
+              value: {{ join "," ($cg.internalAllowHosts | default (list (printf "%s-task-service:%v" (include "ar.fullname" .) .Values.taskService.httpPort) "coding-web:8095")) | quote }}
+            - name: AR_CRAWLER_RPM
+              value: {{ $cg.rpm | default 120 | int | quote }}
+            - name: AR_CRAWLER_CACHE_TTL_S
+              value: {{ $cg.cacheTtlS | default 300 | int | quote }}
+            - name: AR_CRAWLER_CB_THRESHOLD
+              value: {{ $cg.cbThreshold | default 5 | int | quote }}
+            - name: AR_CRAWLER_CB_COOLDOWN_S
+              value: {{ $cg.cbCooldownS | default 120 | int | quote }}
+            {{- with $cg.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            {{- toYaml $cg.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "crawler-gateway") | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: {{ $cg.port | default 8096 | quote }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "crawler-gateway") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $cg.port | default 8096 }}
+      targetPort: http
+{{- if $cg.searxng.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $searxName }}-config
+  labels:
+    {{- include "ar.labels" (list . "crawler-searxng") | nindent 4 }}
+data:
+  settings.yml: |-
+    use_default_settings: true
+    general:
+      instance_name: "agentruntime-searxng"
+    server:
+      limiter: false
+      image_proxy: false
+      port: {{ $cg.searxng.port | default 8080 }}
+      bind_address: "0.0.0.0"
+      method: "GET"
+    search:
+      safe_search: 0
+      autocomplete: ""
+      default_lang: "en-US"
+      formats:
+        - html
+        - json
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $searxName }}
+  labels:
+    {{- include "ar.labels" (list . "crawler-searxng") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "crawler-searxng") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "crawler-searxng") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 977
+        runAsGroup: 977
+        fsGroup: 977
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: searxng
+          image: {{ $cg.searxng.image | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $cg.searxng.port | default 8080 }}
+          env:
+            {{- if $cg.searxng.secretRef.name }}
+            - name: SEARXNG_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.searxng.secretRef.name }}
+                  key: {{ $cg.searxng.secretRef.key | default "searxng-secret" }}
+            {{- end }}
+            - name: SEARXNG_SETTINGS_PATH
+              value: /etc/searxng/settings.yml
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          resources:
+            {{- toYaml $cg.searxng.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/searxng/settings.yml
+              subPath: settings.yml
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /var/cache/searxng
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $searxName }}-config
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $searxName }}
+  labels:
+    {{- include "ar.labels" (list . "crawler-searxng") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "crawler-searxng") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $cg.searxng.port | default 8080 }}
+      targetPort: http
+{{- end }}
+{{- if $cg.headless.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $headlessName }}
+  labels:
+    {{- include "ar.labels" (list . "crawler-headless") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "crawler-headless") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "crawler-headless") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      {{- include "ar.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: crawler-headless
+          image: {{ if $cg.headless.imageTag }}{{ printf "%s/crawler-headless:%s" .Values.image.registry $cg.headless.imageTag }}{{ else }}{{ include "ar.image" (list . "crawler-headless") }}{{ end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $cg.headless.port | default 8098 }}
+          env:
+            - name: AR_HEADLESS_ADDR
+              value: {{ printf "0.0.0.0:%v" ($cg.headless.port | default 8098) | quote }}
+            {{- if $cg.headless.tokenSecret.name }}
+            - name: AR_HEADLESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $cg.headless.tokenSecret.name }}
+                  key: {{ $cg.headless.tokenSecret.key | default "headless-token" }}
+            {{- end }}
+            - name: AR_HEADLESS_CONCURRENCY
+              value: {{ $cg.headless.concurrency | default 2 | int | quote }}
+            - name: AR_HEADLESS_TIMEOUT_MS
+              value: {{ $cg.headless.timeoutMs | default 15000 | int | quote }}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            {{- toYaml $cg.headless.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $headlessName }}
+  labels:
+    {{- include "ar.labels" (list . "crawler-headless") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "crawler-headless") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $cg.headless.port | default 8098 }}
+      targetPort: http
+{{- end }}
+{{- end }}

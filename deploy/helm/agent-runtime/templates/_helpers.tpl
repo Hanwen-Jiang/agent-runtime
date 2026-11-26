@@ -257,3 +257,13 @@ AR_TENANT_ACTIVE_TASKS 的值：taskService.activeTaskLimits（租户 → 个数
 {{- end -}}
 {{- join "," $parts -}}
 {{- end -}}
+
+{{/* 可选 GHCR imagePullSecrets：image.pullSecrets 非空时渲染进 PodSpec。 */}}
+{{- define "ar.imagePullSecrets" -}}
+{{- with .Values.image.pullSecrets }}
+imagePullSecrets:
+{{- range . }}
+  - name: {{ . }}
+{{- end }}
+{{- end }}
+{{- end -}}

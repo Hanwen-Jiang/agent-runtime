@@ -238,16 +238,22 @@ def _to_value(obj: Any) -> struct_pb2.Value:
     return value
 
 
-def span_of(node: Mapping[str, Any], task_id: str) -> tuple[str, dict[str, Any]]:
+def span_of(node: Mapping[str, Any], task_id: str, *, task_family: str = "") -> tuple[str, dict[str, Any]]:
     """Node 的 span 名与开始时的属性（附录 J.1，GenAI 语义约定；T-15）：model 节点是 chat（嵌入是 embeddings），
     program 节点是 execute_tool {工具名}。都带 Temporal 的 WorkflowID、RunID；不带 inputs 与结果。"""
     attributes: dict[str, Any] = {
         "node_id": node.get("id", ""),
         "task_id": task_id,
+        "runtime.task_id": task_id,
         "template": node.get("template", ""),
         "executor": node.get("executor", ""),
         "effect": node.get("effect", ""),
     }
+    if task_family:
+        attributes["runtime.task_family"] = task_family
+    skill = node.get("skill") or (node.get("metadata") or {}).get("skill")
+    if isinstance(skill, str) and skill.strip():
+        attributes["runtime.skill.name"] = skill.strip()
     if activity.in_activity():
         info = activity.info()
         attributes["temporal.workflow_id"] = info.workflow_id or ""
@@ -441,7 +447,7 @@ class NodeExecutor:
         node = inp.node
         tenant = _tenant(inp.tenant)
         telemetry = self.deps.telemetry.bind(tenant)
-        name, attributes = span_of(node, inp.task_id)
+        name, attributes = span_of(node, inp.task_id, task_family=inp.task_family)
         try:
             async with self._heartbeating(), telemetry.start_span(name, attributes=attributes) as span:
                 try:
@@ -630,14 +636,33 @@ class NodeExecutor:
                 result = await driver.invoke(
                     name, version, node.get("inputs", {}), idempotency_key=key, credential=credential, task_id=task_id, approved_by=approved_by
                 )
-                span.set_attributes({"replayed": result.replayed})
+                out_attrs: dict[str, Any] = {"replayed": result.replayed, "tool.status": "ok"}
+                if isinstance(result.output, Mapping) and (
+                    result.output.get("ok") is False or result.output.get("error_code") or result.output.get("error")
+                ):
+                    out_attrs["tool.status"] = "error"
+                    raw_err = str(result.output.get("error") or "").lower()
+                    code = str(result.output.get("error_code") or "")
+                    if not code:
+                        if "no match" in raw_err or "not found" in raw_err:
+                            code = "edit_no_match"
+                        elif "ambiguous" in raw_err or "multiple" in raw_err:
+                            code = "edit_ambiguous"
+                        elif "conflict" in raw_err or "patch" in raw_err:
+                            code = "patch_conflict"
+                        else:
+                            code = "tool_reported_error"
+                    out_attrs["error.code"] = code
+                span.set_attributes(out_attrs)
                 return _redact_output(result.output, credential, name, span)
             except TransientError as err:
                 if effect not in WRITE_EFFECTS:
                     raise
                 found = await self._reconcile_timeout(driver, spec, node, key or "", _redact_error(err, credential, name, span))
+                span.set_attributes({"tool.status": "ok", "replayed": True})
                 return _redact_output(found, credential, name, span)
         except ProviderError as err:
+            span.set_attributes({"tool.status": "error", "error.code": err.code or type(err).__name__})
             raise _redact_error(err, credential, name, span) from None
         finally:
             if credential is not None and secrets is not None:

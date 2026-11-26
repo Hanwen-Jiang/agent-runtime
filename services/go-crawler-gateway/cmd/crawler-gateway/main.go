@@ -49,22 +49,31 @@ func main() {
 		ExternalDenyDomains:  splitCSV(os.Getenv("AR_CRAWLER_EXTERNAL_DENY_DOMAINS")),
 		InternalAllowHosts:   splitCSV(os.Getenv("AR_CRAWLER_INTERNAL_ALLOW_HOSTS")),
 	})
+	searchUpstream := strings.TrimSpace(os.Getenv("AR_CRAWLER_SEARCH_UPSTREAM_URL"))
+	if searchUpstream == "" {
+		searchUpstream = strings.TrimSpace(os.Getenv("AR_CRAWLER_SEARCH_URL"))
+	}
 	backend := crawler.NewSearchBackend(crawler.SearchConfig{
 		Provider:    strings.TrimSpace(os.Getenv("AR_CRAWLER_SEARCH_PROVIDER")),
-		UpstreamURL: strings.TrimSpace(os.Getenv("AR_CRAWLER_SEARCH_URL")),
+		UpstreamURL: searchUpstream,
 		APIKey:      strings.TrimSpace(os.Getenv("AR_CRAWLER_SEARCH_API_KEY")),
 		HeadlessURL: strings.TrimSpace(os.Getenv("AR_CRAWLER_HEADLESS_URL")),
 		HeadlessTok: strings.TrimSpace(os.Getenv("AR_CRAWLER_HEADLESS_TOKEN")),
 		Timeout:     timeout,
 	})
+	cbCooldown := time.Duration(envInt("AR_CRAWLER_CB_COOLDOWN_S", 120)) * time.Second
 	srv := crawler.NewServer(crawler.ServerConfig{
-		Token:     strings.TrimSpace(os.Getenv("AR_CRAWLER_TOKEN")),
-		RPM:       envInt("AR_CRAWLER_RPM", 60),
-		CacheTTL:  cacheTTL,
-		CacheSize: envInt("AR_CRAWLER_CACHE_SIZE", 512),
-		Timeout:   timeout,
-		Policy:    policy,
-		Backend:   backend,
+		Token:       strings.TrimSpace(os.Getenv("AR_CRAWLER_TOKEN")),
+		AdminToken:  strings.TrimSpace(os.Getenv("AR_CRAWLER_ADMIN_TOKEN")),
+		RPM:         envInt("AR_CRAWLER_RPM", 60),
+		CacheTTL:    cacheTTL,
+		CacheSize:   envInt("AR_CRAWLER_CACHE_SIZE", 512),
+		AuditSize:   envInt("AR_CRAWLER_AUDIT_SIZE", 500),
+		CBThreshold: envInt("AR_CRAWLER_CB_THRESHOLD", 5),
+		CBCooldown:  cbCooldown,
+		Timeout:     timeout,
+		Policy:      policy,
+		Backend:     backend,
 	})
 
 	httpSrv := &http.Server{

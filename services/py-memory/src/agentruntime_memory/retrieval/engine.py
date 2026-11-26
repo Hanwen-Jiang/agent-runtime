@@ -88,12 +88,13 @@ class RetrievalEngine:
     def __init__(self, *, vectors: VectorStoreProvider, embedder: Embedder,
                  relational: RelationalStoreProvider | None = None, authorize: Authorize | None = None,
                  rerank: Rerank | None = None, chunk_size: int = 600, chunk_overlap: int = 80,
-                 rerank_top8_depth: int = 40) -> None:
+                 rerank_top8_depth: int = 40, code_nav_enabled: bool = True) -> None:
         if not 100 <= chunk_size <= 1000 or not 0 <= chunk_overlap <= min(80, chunk_size // 2):
             raise ValueError("Invalid retrieval chunk bounds")
         if type(rerank_top8_depth) is not int or not 1 <= rerank_top8_depth <= 40:
             raise ValueError("rerank_top8_depth must be an integer between 1 and 40")
         self.rerank_top8_depth = rerank_top8_depth
+        self.code_nav_enabled = bool(code_nav_enabled)
         self.vectors, self.embedder, self.relational = vectors, embedder, relational
         self.authorize, self.rerank = authorize, rerank
         # UTF-8 bytes are a conservative tokenizer bound, deterministic and
@@ -195,7 +196,7 @@ class RetrievalEngine:
                         raise InvalidError("retrieval_block", "Block text and anchor required")
                     if not text.strip():
                         continue
-                    structural = is_code_block(block)
+                    structural = self.code_nav_enabled and is_code_block(block)
                     if structural:
                         nodes = code_nodes(text, anchor, truncated=block.get("truncated") is True)
                     else:

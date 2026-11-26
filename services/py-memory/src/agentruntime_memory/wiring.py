@@ -51,6 +51,13 @@ def rerank_mode(env: Mapping[str, str]) -> str:
     return mode
 
 
+def code_navigation_enabled(env: Mapping[str, str]) -> bool:
+    raw = env.get("AR_MEMORY_CODE_NAV_ENABLED", "1").strip().lower()
+    if raw not in ("1", "0", "true", "false"):
+        raise ConfigError("AR_MEMORY_CODE_NAV_ENABLED must be 1/0 or true/false")
+    return raw in ("1", "true")
+
+
 class GatewayClient:
     """Model Gateway 的 Embed（h2c，服务间认证留给部署层）。通道在第一次调用时建，要在服务的事件循环里。"""
 

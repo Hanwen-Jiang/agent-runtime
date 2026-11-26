@@ -209,3 +209,128 @@ func ioReadAllString(r *http.Response) (string, error) {
 	_, err := buf.ReadFrom(r.Body)
 	return buf.String(), err
 }
+
+func TestCircuitBreakerAuditAndAllowlistGovernance(t *testing.T) {
+	now := time.Date(2026, 11, 26, 12, 0, 0, 0, time.UTC)
+	var failUpstream bool
+	var reqCount int
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqCount++
+		if failUpstream {
+			http.Error(w, "upstream down", http.StatusBadGateway)
+			return
+		}
+		_, _ = w.Write([]byte("<html><body><p>Recovered</p></body></html>"))
+	}))
+	defer upstream.Close()
+
+	pol := NewPolicy(PolicyConfig{
+		InternalAllowHosts:  []string{"ar-agent-runtime-task-service:8080"},
+		AllowPrivateForTest: true,
+	})
+	srv := NewServer(ServerConfig{
+		Token:       "worker-token",
+		AdminToken:  "admin-gov-token",
+		RPM:         50,
+		CBThreshold: 2,
+		CBCooldown:  30 * time.Second,
+		AuditSize:   20,
+		Policy:      pol,
+		Now:         func() time.Time { return now },
+	})
+	api := httptest.NewServer(srv.Handler())
+	defer api.Close()
+
+	doReq := func(tok, method, path string, body any) (int, map[string]any) {
+		var rdr *bytes.Reader
+		if body != nil {
+			b, _ := json.Marshal(body)
+			rdr = bytes.NewReader(b)
+		} else {
+			rdr = bytes.NewReader(nil)
+		}
+		req, _ := http.NewRequest(method, api.URL+path, rdr)
+		req.Header.Set("Authorization", "Bearer "+tok)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var out map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&out)
+		return resp.StatusCode, out
+	}
+
+	// 1. Trigger circuit breaker open after 2 external upstream 502 responses
+	failUpstream = true
+	for i := 0; i < 2; i++ {
+		code, _ := doReq("worker-token", http.MethodPost, "/v1/fetch", map[string]any{
+			"url":  upstream.URL + "/flaky/" + string(rune('a'+i)),
+			"zone": ZoneExternal,
+		})
+		if code != 200 {
+			t.Fatalf("expected 200 wrapper for 502 upstream response, got %d", code)
+		}
+	}
+	// 3rd call must fast-fail 503 without hitting upstream
+	before := reqCount
+	code, cbErr := doReq("worker-token", http.MethodPost, "/v1/fetch", map[string]any{
+		"url":  upstream.URL + "/flaky/c",
+		"zone": ZoneExternal,
+	})
+	if code != http.StatusServiceUnavailable || reqCount != before {
+		t.Fatalf("expected 503 circuit open without hitting upstream: code=%d reqDelta=%d body=%#v", code, reqCount-before, cbErr)
+	}
+
+	// Advance past cooldown -> recovers
+	now = now.Add(31 * time.Second)
+	failUpstream = false
+	code, rec := doReq("worker-token", http.MethodPost, "/v1/fetch", map[string]any{
+		"url":  upstream.URL + "/flaky/c",
+		"zone": ZoneExternal,
+	})
+	if code != 200 || !strings.Contains(rec["text"].(string), "Recovered") {
+		t.Fatalf("expected recovery after cooldown, got (%d): %#v", code, rec)
+	}
+
+	// 2. Audit log captures requests and supports blocked filtering
+	code, auditAll := doReq("worker-token", http.MethodGet, "/v1/audit?limit=10", nil)
+	if code != 200 || auditAll["count"].(float64) < 4 {
+		t.Fatalf("expected audit entries, got (%d): %#v", code, auditAll)
+	}
+	code, auditBlocked := doReq("worker-token", http.MethodGet, "/v1/audit?blocked=true", nil)
+	if code != 200 || auditBlocked["count"].(float64) < 1 {
+		t.Fatalf("expected blocked audit entry from open circuit, got (%d): %#v", code, auditBlocked)
+	}
+
+	// 3. Internal allowlist governance: worker token cannot mutate (403); infra ports rejected (403); admin can propose + approve
+	code, _ = doReq("worker-token", http.MethodPost, "/v1/policy/internal-allowlist/propose", map[string]any{
+		"action": "add", "target": "coding-web:8095",
+	})
+	if code != http.StatusForbidden {
+		t.Fatalf("expected worker token forbidden on propose, got %d", code)
+	}
+	code, _ = doReq("admin-gov-token", http.MethodPost, "/v1/policy/internal-allowlist/propose", map[string]any{
+		"action": "add", "target": "pg-rw.data.svc:5432", "reason": "bad",
+	})
+	if code != http.StatusForbidden {
+		t.Fatalf("expected DB port blocked in proposal, got %d", code)
+	}
+	code, prop := doReq("admin-gov-token", http.MethodPost, "/v1/policy/internal-allowlist/propose", map[string]any{
+		"action": "add", "target": "coding-web:8095", "reason": "enable admin proxy",
+	})
+	if code != http.StatusCreated {
+		t.Fatalf("expected 201 proposal, got %d: %#v", code, prop)
+	}
+	code, appResp := doReq("admin-gov-token", http.MethodPost, "/v1/policy/internal-allowlist/approve", map[string]any{
+		"id": prop["id"],
+	})
+	if code != 200 {
+		t.Fatalf("expected 200 approve, got %d: %#v", code, appResp)
+	}
+	code, listResp := doReq("worker-token", http.MethodGet, "/v1/policy/internal-allowlist", nil)
+	if code != 200 || len(listResp["allowlist"].([]any)) != 2 {
+		t.Fatalf("expected updated allowlist with 2 entries, got (%d): %#v", code, listResp)
+	}
+}

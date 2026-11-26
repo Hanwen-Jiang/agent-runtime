@@ -13,6 +13,7 @@ image:
   # Optional component tags let an evaluation freeze Gateway/Memory while other
   # services roll out. Unspecified components continue to use image.tag.
   tags: {}
+  pullSecrets: []
   pullPolicy: IfNotPresent
 
 # 已有的 Secret（由运维创建）：
@@ -221,6 +222,12 @@ memory:
   imageTag: ""
   # 嵌入模型的 Model Profile id；设了才经 Model Gateway 嵌入。
   embeddingVersion: ""
+  rerankMode: ""
+  embedderBackend: ""
+  rerankerBackend: ""
+  torchEmbedModel: ""
+  torchRerankModel: ""
+  codeNavEnabled: true
   port: 50061
   resources:
     requests: {cpu: 250m, memory: 256Mi}
@@ -403,6 +410,10 @@ worker:
   # 接 Memory Service：写入经验、规划与 tool_loop 时检索（docs/plan/memory-live.md）。
   memory:
     enabled: false
+  webFetchHosts: ""
+  crawler:
+    endpoint: ""
+    tokenSecret: {name: "", key: token}
   # 按任务队列分池（设计书 3.6、附录 K.5），每个池一个 Deployment 与一个 KEDA ScaledObject。
   # 池名就是队列名（agentruntime_worker.names）；task 池按工作流积压扩缩，其余按 activity 积压。
   pools:
@@ -479,3 +490,73 @@ fileIntelligence:
   runtime: file-engines
   internalTokenSecret: {name: "", key: file-internal-token}
   knowledgeTokenSecret: {name: "", key: knowledge-internal-token}
+
+# Wave 4: Dual-zone crawler gateway (+ optional SearXNG & headless Chromium renderer).
+crawlerGateway:
+  enabled: false
+  replicas: 1
+  imageTag: ""
+  port: 8096
+  tokenSecret: {name: crawler-gateway-secret, key: token}
+  adminTokenSecret: {name: crawler-gateway-secret, key: admin-token}
+  searchProvider: auto
+  searchUpstreamUrl: ""
+  searchApiKeySecret: {name: "", key: api-key}
+  headlessUrl: ""
+  internalAllowHosts: []
+  rpm: 120
+  cacheTtlS: 300
+  cbThreshold: 5
+  cbCooldownS: 120
+  extraEnv: []
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+  searxng:
+    enabled: false
+    image: "docker.io/searxng/searxng@sha256:a7fc607aa6723f5a8982105bcc5ffba4d1b9fc7c6922a31a88d6e4cba49ef12a"
+    port: 8080
+    secretRef: {name: crawler-gateway-secret, key: searxng-secret}
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: "1", memory: 768Mi}
+  headless:
+    enabled: false
+    imageTag: ""
+    port: 8098
+    tokenSecret: {name: crawler-gateway-secret, key: headless-token}
+    concurrency: 2
+    timeoutMs: 15000
+    resources:
+      requests: {cpu: 200m, memory: 384Mi}
+      limits: {cpu: "1", memory: 1Gi}
+
+# Wave 2 / P1: Scheduled & on-demand isolated sys-evolution harness.
+evolution:
+  enabled: false
+  schedule: "0 */6 * * *"
+  topic: telemetry.spans
+  group: ar-self-evolution
+  mode: fixture
+  budgetUsd: "0.0"
+  minSupport: 2
+  dsnSecret: {name: coding-github-db, key: dsn}
+  registryTokenSecret: {name: coding-admin, key: registry-token}
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+  runner:
+    enabled: false
+    port: 8099
+    tokenSecret: {name: coding-admin, key: evolution-runner-token}
+    maxBudgetUsd: "1.0"
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: "1", memory: 1Gi}
+  dashboard:
+    enabled: true
+    namespace: observability
+
+alerts:
+  enabled: false
+  namespace: observability

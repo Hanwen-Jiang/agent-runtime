@@ -217,21 +217,27 @@ func (s scope) promote(ctx context.Context, kind registryv1.RegistryKind, name s
 					return invalid("capability_version_not_shadow", "能力分只能晋升未发布的影子版本")
 				}
 			}
+			var prevVersion int64
 			row, found, err := tx.QueryOne(ctx, `SELECT version FROM registry_entries WHERE kind = $1 AND name = $2 AND state = $3`,
 				int64(kind), name, int64(registryv1.ReleaseState_RELEASE_STATE_DEFAULT))
 			if err != nil {
 				return err
 			}
 			if found {
-				previous = versionLabel(asInt(row["version"]))
+				prevVersion = asInt(row["version"])
+				previous = versionLabel(prevVersion)
 			}
 			if len(expectedDefault) > 0 && previous != expectedDefault[0] {
 				return invalid("capability_baseline_changed", "能力分的现行基线版本已变化")
 			}
 			if found {
-				if _, err := tx.Execute(ctx, `UPDATE registry_entries SET state = $1, updated_at = $2 WHERE kind = $3 AND name = $4 AND state = $5`,
-					int64(registryv1.ReleaseState_RELEASE_STATE_RETIRED), now.UnixMilli(), int64(kind), name, int64(registryv1.ReleaseState_RELEASE_STATE_DEFAULT)); err != nil {
+				affected, err := tx.Execute(ctx, `UPDATE registry_entries SET state = $1, updated_at = $2 WHERE kind = $3 AND name = $4 AND state = $5 AND version = $6`,
+					int64(registryv1.ReleaseState_RELEASE_STATE_RETIRED), now.UnixMilli(), int64(kind), name, int64(registryv1.ReleaseState_RELEASE_STATE_DEFAULT), prevVersion)
+				if err != nil {
 					return err
+				}
+				if affected != 1 {
+					return providererr.New(providererr.Conflict, "concurrent_default_changed", "默认版本在晋升期间被并发修改")
 				}
 			}
 			_, err = tx.Execute(ctx, `UPDATE registry_entries SET state = $1, evaluation = $2, updated_at = $3 WHERE kind = $4 AND name = $5 AND version = $6`,
