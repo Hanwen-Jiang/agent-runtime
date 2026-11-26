@@ -85,13 +85,31 @@ class ReviewerActivities:
 
             span = trace.get_current_span()
             if span.is_recording():
-                span.set_attributes({
+                merged_floor_reasons = list(result.floor.reasons)
+                reason_code = str(result.verdict.get("reason_code") or "")
+                if reason_code.startswith("rule_") and reason_code != "rule_fallback" and reason_code not in merged_floor_reasons:
+                    merged_floor_reasons.append(reason_code)
+                for sig in result.signals:
+                    if sig.startswith("rule_") and sig not in merged_floor_reasons:
+                        merged_floor_reasons.append(sig)
+                span_attrs: dict[str, Any] = {
                     "runtime.task_id": inp.task_id,
                     "runtime.task_family": str((inp.task_state.get("constraints") or {}).get("task_family") or "general.coding"),
-                    "runtime.floor_reasons": ",".join(result.floor.reasons),
+                    "runtime.floor_reasons": ",".join(merged_floor_reasons),
                     "runtime.signals": ",".join(result.signals),
                     "runtime.verdict": str(result.verdict.get("verdict") or ""),
-                })
+                    "retry.count": max(0, int(activity.info().attempt) - 1) if activity.in_activity() else 0,
+                }
+                if merged_floor_reasons:
+                    span_attrs["failure.reason"] = ",".join(merged_floor_reasons)
+                elif result.reasons and str(result.verdict.get("verdict") or "") not in ("done", "continue"):
+                    span_attrs["failure.reason"] = str(result.verdict.get("verdict") or "")
+                skills = ((inp.task_state.get("personal_config") or {}).get("skills") or []) if isinstance(inp.task_state, dict) else []
+                if skills:
+                    first_skill = skills[0].get("name") if isinstance(skills[0], dict) else str(skills[0])
+                    if first_skill:
+                        span_attrs["skill.name"] = first_skill
+                span.set_attributes(span_attrs)
         except Exception:  # noqa: BLE001
             pass
         logger.info(

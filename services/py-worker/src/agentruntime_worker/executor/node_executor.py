@@ -254,10 +254,12 @@ def span_of(node: Mapping[str, Any], task_id: str, *, task_family: str = "") -> 
     skill = node.get("skill") or (node.get("metadata") or {}).get("skill")
     if isinstance(skill, str) and skill.strip():
         attributes["runtime.skill.name"] = skill.strip()
+        attributes["skill.name"] = skill.strip()
     if activity.in_activity():
         info = activity.info()
         attributes["temporal.workflow_id"] = info.workflow_id or ""
         attributes["temporal.run_id"] = info.workflow_run_id or ""
+        attributes["retry.count"] = max(0, int(info.attempt) - 1)
     if node.get("executor") == "model":
         operation = "embeddings" if node.get("output") == "embed" else "chat"
         attributes["gen_ai.operation.name"] = operation
@@ -271,6 +273,7 @@ def span_of(node: Mapping[str, Any], task_id: str, *, task_family: str = "") -> 
     tool = str(node.get("template", "")).partition("@")[0]
     attributes["gen_ai.operation.name"] = "execute_tool"
     attributes["gen_ai.tool.name"] = tool
+    attributes["tool.name"] = tool
     if node.get("idempotency_key"):
         attributes["idempotency_key"] = str(node["idempotency_key"])
     return f"execute_tool {tool}".rstrip(), attributes
@@ -653,6 +656,8 @@ class NodeExecutor:
                         else:
                             code = "tool_reported_error"
                     out_attrs["error.code"] = code
+                    out_attrs["tool.error_code"] = code
+                    out_attrs["failure.reason"] = code
                 span.set_attributes(out_attrs)
                 return _redact_output(result.output, credential, name, span)
             except TransientError as err:
@@ -662,7 +667,8 @@ class NodeExecutor:
                 span.set_attributes({"tool.status": "ok", "replayed": True})
                 return _redact_output(found, credential, name, span)
         except ProviderError as err:
-            span.set_attributes({"tool.status": "error", "error.code": err.code or type(err).__name__})
+            err_code = err.code or type(err).__name__
+            span.set_attributes({"tool.status": "error", "error.code": err_code, "tool.error_code": err_code, "failure.reason": err_code})
             raise _redact_error(err, credential, name, span) from None
         finally:
             if credential is not None and secrets is not None:
