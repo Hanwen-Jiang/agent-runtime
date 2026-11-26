@@ -1,0 +1,1415 @@
+{
+  "mode": "live_gateway_matrix_round2",
+  "generated_at": "2026-11-26T20:52:06.511282+00:00",
+  "gateway_address": "127.0.0.1:18091",
+  "budget_cap_usd": 0.95,
+  "total_spend_usd": 0.164592,
+  "prior_replaced": 0.5,
+  "slice_counts": {
+    "bfcl": 8,
+    "judgebench": 6,
+    "rewardbench2": 6,
+    "frames": 6
+  },
+  "pareto_undominated": [
+    "a6api/gemini-4-argon@2026-11",
+    "a6api/deepseek-v4-pro@2026-11",
+    "a6api/qwen3.8-max@2026-11",
+    "a6api/kimi-k3.1-pro@2026-11"
+  ],
+  "models": {
+    "a6api/gemini-4-argon@2026-11": {
+      "completed_trials": 26,
+      "total_cost_usd": 0.164592,
+      "cost_per_trial_usd": 0.00633,
+      "latency_p50_ms": 25316.26,
+      "latency_p95_ms": 96578.31,
+      "overall_score": 0.4231,
+      "overall_wilson_95_ci": [
+        0.2554,
+        0.6105
+      ],
+      "role_scores": {
+        "act": 1.0,
+        "judge": 0.25,
+        "plan_reason": 0.0
+      },
+      "suites": {
+        "bfcl": {
+          "n": 8,
+          "wins": 8.0,
+          "score": 1.0,
+          "wilson_95_ci": [
+            0.6756,
+            1.0
+          ],
+          "cost_usd": 0.020352,
+          "latency_p50_ms": 9691.99,
+          "latency_p95_ms": 16943.08
+        },
+        "judgebench": {
+          "n": 6,
+          "wins": 1.0,
+          "score": 0.1667,
+          "wilson_95_ci": [
+            0.0301,
+            0.5635
+          ],
+          "cost_usd": 0.10906,
+          "latency_p50_ms": 78876.22,
+          "latency_p95_ms": 111544.2
+        },
+        "rewardbench2": {
+          "n": 6,
+          "wins": 2.0,
+          "score": 0.3333,
+          "wilson_95_ci": [
+            0.0968,
+            0.7
+          ],
+          "cost_usd": 0.03518,
+          "latency_p50_ms": 34940.99,
+          "latency_p95_ms": 60010.64
+        },
+        "frames": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 25316.26,
+          "latency_p95_ms": 59766.64
+        }
+      }
+    },
+    "a6api/deepseek-v4-pro@2026-11": {
+      "completed_trials": 26,
+      "total_cost_usd": 0.0,
+      "cost_per_trial_usd": 0.0,
+      "latency_p50_ms": 0.91,
+      "latency_p95_ms": 1.79,
+      "overall_score": 0.0,
+      "overall_wilson_95_ci": [
+        0.0,
+        0.1287
+      ],
+      "role_scores": {
+        "act": 0.0,
+        "judge": 0.0,
+        "plan_reason": 0.0
+      },
+      "suites": {
+        "bfcl": {
+          "n": 8,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3244
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 1.44,
+          "latency_p95_ms": 2.76
+        },
+        "judgebench": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 1.03,
+          "latency_p95_ms": 1.28
+        },
+        "rewardbench2": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.33,
+          "latency_p95_ms": 0.54
+        },
+        "frames": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.23,
+          "latency_p95_ms": 0.47
+        }
+      }
+    },
+    "a6api/qwen3.8-max@2026-11": {
+      "completed_trials": 26,
+      "total_cost_usd": 0.0,
+      "cost_per_trial_usd": 0.0,
+      "latency_p50_ms": 0.27,
+      "latency_p95_ms": 0.63,
+      "overall_score": 0.0,
+      "overall_wilson_95_ci": [
+        0.0,
+        0.1287
+      ],
+      "role_scores": {
+        "act": 0.0,
+        "judge": 0.0,
+        "plan_reason": 0.0
+      },
+      "suites": {
+        "bfcl": {
+          "n": 8,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3244
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.58,
+          "latency_p95_ms": 0.73
+        },
+        "judgebench": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.29,
+          "latency_p95_ms": 0.34
+        },
+        "rewardbench2": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.13,
+          "latency_p95_ms": 0.17
+        },
+        "frames": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.13,
+          "latency_p95_ms": 0.18
+        }
+      }
+    },
+    "a6api/kimi-k3.1-pro@2026-11": {
+      "completed_trials": 26,
+      "total_cost_usd": 0.0,
+      "cost_per_trial_usd": 0.0,
+      "latency_p50_ms": 0.14,
+      "latency_p95_ms": 0.29,
+      "overall_score": 0.0,
+      "overall_wilson_95_ci": [
+        0.0,
+        0.1287
+      ],
+      "role_scores": {
+        "act": 0.0,
+        "judge": 0.0,
+        "plan_reason": 0.0
+      },
+      "suites": {
+        "bfcl": {
+          "n": 8,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3244
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.21,
+          "latency_p95_ms": 0.32
+        },
+        "judgebench": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.25,
+          "latency_p95_ms": 0.27
+        },
+        "rewardbench2": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.12,
+          "latency_p95_ms": 0.14
+        },
+        "frames": {
+          "n": 6,
+          "wins": 0.0,
+          "score": 0.0,
+          "wilson_95_ci": [
+            0.0,
+            0.3903
+          ],
+          "cost_usd": 0.0,
+          "latency_p50_ms": 0.1,
+          "latency_p95_ms": 0.13
+        }
+      }
+    }
+  },
+  "items": [
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "simple_python_216",
+      "score": 1.0,
+      "cost_usd": 0.001076,
+      "latency_ms": 8399.404625000898,
+      "reason": ""
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "simple_python_297",
+      "score": 1.0,
+      "cost_usd": 0.001674,
+      "latency_ms": 8359.089874982601,
+      "reason": ""
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "multiple_168",
+      "score": 1.0,
+      "cost_usd": 0.001486,
+      "latency_ms": 10119.592749979347,
+      "reason": ""
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "multiple_24",
+      "score": 1.0,
+      "cost_usd": 0.009264,
+      "latency_ms": 16943.079791992204,
+      "reason": ""
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "parallel_14",
+      "score": 1.0,
+      "cost_usd": 0.00216,
+      "latency_ms": 10432.219582988182,
+      "reason": ""
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "parallel_11",
+      "score": 1.0,
+      "cost_usd": 0.001376,
+      "latency_ms": 7306.272207992151,
+      "reason": ""
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "parallel_multiple_32",
+      "score": 1.0,
+      "cost_usd": 0.002068,
+      "latency_ms": 9691.987124999287,
+      "reason": ""
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "parallel_multiple_48",
+      "score": 1.0,
+      "cost_usd": 0.001248,
+      "latency_ms": 5687.3928339919075,
+      "reason": ""
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "gpt:82f31019-2814-5ac8-a269-2c247e9a0833",
+      "score": 1.0,
+      "verdicts": [
+        "A>B",
+        "A>B"
+      ],
+      "gold": "A>B",
+      "errors": [],
+      "cost_usd": 0.021286,
+      "latency_ms": 30606.439499999397
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "gpt:0dbbab50-fb4b-59f5-83a7-883e9e6f53f3",
+      "score": 0.0,
+      "verdicts": [
+        "A>B",
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）"
+      ],
+      "cost_usd": 0.012824,
+      "latency_ms": 78876.2207920081
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "gpt:857131ea-e0ef-517b-9f31-996edf4dc832",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        "A>B"
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）"
+      ],
+      "cost_usd": 0.016584,
+      "latency_ms": 96578.31404200988
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "gpt:428b2643-139f-52e0-aa84-ceeb4375712d",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）"
+      ],
+      "cost_usd": 0.01969,
+      "latency_ms": 111544.19749998488
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "gpt:60479e16-f175-5268-8d7b-cf0effbeaeb6",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）"
+      ],
+      "cost_usd": 0.017656,
+      "latency_ms": 78447.77066700044
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "gpt:2470ffa8-06f5-584d-90ed-6457745c4afc",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）"
+      ],
+      "cost_usd": 0.02102,
+      "latency_ms": 87555.86833402049
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "Factuality:115",
+      "score": 1.0,
+      "pred": "B",
+      "gold": "B",
+      "cost_usd": 0.013526,
+      "latency_ms": 8329.65391597827
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "Focus:1409",
+      "score": 0.0,
+      "pred": "A",
+      "gold": "C",
+      "cost_usd": 0.015892,
+      "latency_ms": 34940.986957983114
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "Math:677",
+      "error": "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 60007.76666699676
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "Precise IF:544",
+      "score": 1.0,
+      "pred": "D",
+      "gold": "D",
+      "cost_usd": 0.005762,
+      "latency_ms": 18598.906208004337
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "Safety:838",
+      "error": "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 60006.12283399096
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "Factuality:167",
+      "error": "TransientError: grpc_deadline_exceeded: 调用 Model Gateway 失败（gRPC deadline_exceeded）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 60010.644292022334
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "frames-580",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 59766.63583400659
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "frames-14",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 58992.33558398555
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "frames-687",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 33454.53262500814
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "frames-520",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 25316.258959006518
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "frames-370",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 3.4316670207772404
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/gemini-4-argon@2026-11",
+      "id": "frames-562",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 2.736875001573935
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "simple_python_216",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 1.5923329920042306
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "simple_python_297",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 1.1152910010423511
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "multiple_168",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 2.7623339847195894
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "multiple_24",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 1.7935419746208936
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "parallel_14",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 1.4382080116774887
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "parallel_11",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 1.218749996041879
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "parallel_multiple_32",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 1.32729098550044
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "parallel_multiple_48",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.9101670002564788
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "gpt:82f31019-2814-5ac8-a269-2c247e9a0833",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 1.2764179846271873
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "gpt:0dbbab50-fb4b-59f5-83a7-883e9e6f53f3",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 1.1169999779667705
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "gpt:857131ea-e0ef-517b-9f31-996edf4dc832",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 1.0041670175269246
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "gpt:428b2643-139f-52e0-aa84-ceeb4375712d",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.9060839947778732
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "gpt:60479e16-f175-5268-8d7b-cf0effbeaeb6",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 1.0752920061349869
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "gpt:2470ffa8-06f5-584d-90ed-6457745c4afc",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 1.0281659779138863
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "Factuality:115",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.5419589870143682
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "Focus:1409",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.398874981328845
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "Math:677",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.3765419824048877
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "Precise IF:544",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.3312920161988586
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "Safety:838",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.27408398455008864
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "Factuality:167",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.22016599541530013
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "frames-580",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.24900000425986946
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "frames-14",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.22987500415183604
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "frames-687",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.22449999232776463
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "frames-520",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.20750000840052962
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "frames-370",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.4680419806391001
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/deepseek-v4-pro@2026-11",
+      "id": "frames-562",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.4502920201048255
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "simple_python_216",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.7300830038730055
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "simple_python_297",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.6232919986359775
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "multiple_168",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.5785420071333647
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "multiple_24",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.4033330187667161
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "parallel_14",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.6297499930951744
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "parallel_11",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.5709170072805136
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "parallel_multiple_32",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.4598340019583702
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "parallel_multiple_48",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.2968749904539436
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "gpt:82f31019-2814-5ac8-a269-2c247e9a0833",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.3314159985166043
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "gpt:0dbbab50-fb4b-59f5-83a7-883e9e6f53f3",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.3399580018594861
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "gpt:857131ea-e0ef-517b-9f31-996edf4dc832",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.28974999440833926
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "gpt:428b2643-139f-52e0-aa84-ceeb4375712d",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.26783300563693047
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "gpt:60479e16-f175-5268-8d7b-cf0effbeaeb6",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.28916599694639444
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "gpt:2470ffa8-06f5-584d-90ed-6457745c4afc",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.33670797711238265
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "Factuality:115",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.16637498629279435
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "Focus:1409",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.12691700248979032
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "Math:677",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.13195900828577578
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "Precise IF:544",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.1155420031864196
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "Safety:838",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.10129201109521091
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "Factuality:167",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.13550001312978566
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "frames-580",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.1372499973513186
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "frames-14",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.11516601080074906
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "frames-687",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.08712502312846482
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "frames-520",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.13470801059156656
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "frames-370",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.1846670056693256
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/qwen3.8-max@2026-11",
+      "id": "frames-562",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.17733301501721144
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "simple_python_216",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.13545798719860613
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "simple_python_297",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.3185420064255595
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "multiple_168",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.2876659855246544
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "multiple_24",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.21079101134091616
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "parallel_14",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.16333398525603116
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "parallel_11",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.2517090179026127
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "parallel_multiple_32",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.1765000051818788
+    },
+    {
+      "suite": "bfcl",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "parallel_multiple_48",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.12266699923202395
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "gpt:82f31019-2814-5ac8-a269-2c247e9a0833",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.2200840099249035
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "gpt:0dbbab50-fb4b-59f5-83a7-883e9e6f53f3",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.26895900373347104
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "gpt:857131ea-e0ef-517b-9f31-996edf4dc832",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "A>B",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.25095901219174266
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "gpt:428b2643-139f-52e0-aa84-ceeb4375712d",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.2344579843338579
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "gpt:60479e16-f175-5268-8d7b-cf0effbeaeb6",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.2563759626355022
+    },
+    {
+      "suite": "judgebench",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "gpt:2470ffa8-06f5-584d-90ed-6457745c4afc",
+      "score": 0.0,
+      "verdicts": [
+        null,
+        null
+      ],
+      "gold": "B>A",
+      "errors": [
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+        "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）"
+      ],
+      "cost_usd": 0.0,
+      "latency_ms": 0.27408302412368357
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "Factuality:115",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.13095798203721642
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "Focus:1409",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.12204100494273007
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "Math:677",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.14362498768605292
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "Precise IF:544",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.11783401714637876
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "Safety:838",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.10670899064280093
+    },
+    {
+      "suite": "rewardbench2",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "Factuality:167",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.11637498391792178
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "frames-580",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.12666700058616698
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "frames-14",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.11616601841524243
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "frames-687",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.10508298873901367
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "frames-520",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.09558300371281803
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "frames-370",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.0719579984433949
+    },
+    {
+      "suite": "frames",
+      "model": "a6api/kimi-k3.1-pro@2026-11",
+      "id": "frames-562",
+      "error": "TransientError: grpc_unavailable: 调用 Model Gateway 失败（gRPC unavailable）",
+      "score": 0.0,
+      "cost_usd": 0.0,
+      "latency_ms": 0.04745801561512053
+    }
+  ]
+}
