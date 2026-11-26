@@ -1,0 +1,299 @@
+{
+  "captured_utc": "2026-11-22T21:07:19.924128+00:00",
+  "kubelet_nodefs_eviction": "10%",
+  "nodefs_capacity_bytes": 490565484544,
+  "grader_layers": {
+    "init-50": {
+      "cases": 50,
+      "unique_layers": 121,
+      "compressed_bytes": 22916021619
+    },
+    "mini-50": {
+      "cases": 50,
+      "unique_layers": 89,
+      "compressed_bytes": 9674550484
+    },
+    "combined": {
+      "cases": 94,
+      "unique_layers": 179,
+      "compressed_bytes": 28669967179
+    }
+  },
+  "public_index_sha256": "fbae6e6ffa0940cc7dac65c1373d9ac995fc004895280dcbefb57e3bbb09a291",
+  "legacy_docker_tags": 54,
+  "legacy_unique_compressed_bytes": 23219858178,
+  "backup_bytes_pinned_for_nonpublic_blobs": 268281636,
+  "confirmed_roundtrip": {
+    "tag": "16974e4ea1cdceb6d49551aa251ce675",
+    "original_and_restored_index": "sha256:843e284efbd2012713336cdc18629582f2aa08cd329e07d5c88e9c9e120c91a9",
+    "method": "exact OCI archive to new Docker tag, inspected descriptor, removed probe tag"
+  },
+  "known_deleted_init_bindings_matched": {
+    "astropy__astropy-13033": {
+      "definition_key": "cff65458742065bdd208b674b5b5f0ef54e388f7729ca56ffc3e611e759ba72c",
+      "exact_wrapper_index": "sha256:4b90dc1a59c510995a9fae92f679f597e4e8631f5fc09104c33f6240072acbd5",
+      "official_image_index": "sha256:22f4f193fbf69d61c59e285494be18041934f8b528190dfe8c6c0d8051d8d6de",
+      "official_amd64_layer_count": 10
+    },
+    "astropy__astropy-8707": {
+      "definition_key": "5e4d72b04bc3a7a68c5e7d3a1cb18a818b9b78e6e68a337af97c1ca41fd58b8e",
+      "exact_wrapper_index": "sha256:8f860ad116fd5b3ce640553d9dfd5a9284ad2e571772876c4361babaf5214afe",
+      "official_image_index": "sha256:9415ee47831f190ea4ee7971dec718e386d064e7c495feca6ba0fef7b0ede715",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-11163": {
+      "definition_key": "a4a0db7fd2c1d5a1fd84e547e3772dc5a98ca35416181db2b81037bd1d46b213",
+      "exact_wrapper_index": "sha256:acefff0688bfdde3602117f733e23aae9a02767b68d35c89fa5e9dc9afbbb8c7",
+      "official_image_index": "sha256:22424bbf0a4c54e8a7fce6b9d78bd3807589f727ff5de3e5b0c2b89c6ceab414",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-11276": {
+      "definition_key": "e88e96cb883fe4bfcf76ecc8ae1d58820efba47f86fbc2f0802bd6dc18ad38a7",
+      "exact_wrapper_index": "sha256:a3bd85c8480ab62978c1dd63b022d7992a64dc00dcf2c16282ed2b973999a6f5",
+      "official_image_index": "sha256:727317e7a8eb50abb663af37206c595a9171295157add746c3f2b3cc42da7323",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-11292": {
+      "definition_key": "65a180285583868c17b724a7e19f3496fc9260fafb4e6e309e383698fadc7b09",
+      "exact_wrapper_index": "sha256:2712a6103b9cc98838f8ce37e4d0ae35de383556ffe9e24be290b1c489d659a7",
+      "official_image_index": "sha256:ed10ed40b40643a9ebf70b08e7e93f1edadf47fee5b453ae2412dbb6ed340b80",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-11490": {
+      "definition_key": "641a10816162187878258c75e4618744d63875be1ceca30fcc668fbd61eeda60",
+      "exact_wrapper_index": "sha256:668c2851071050208a1f63fbf90d4fe1777339bcd5e30b14019f7cacb7b0ebc6",
+      "official_image_index": "sha256:efe0a8e57dfa92d296fb017ad7931d842b506ad05ef7582195b4bd9a890c3a9e",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-11740": {
+      "definition_key": "f464ccfdc9c5672dc6860b45bcb045550b190a255a0d53d315aa70dd3a1ccbdc",
+      "exact_wrapper_index": "sha256:1c11d9040d682a687987b7542b0fd56bf7cf8ecdfbdb86b445e15f3dd0e20fe3",
+      "official_image_index": "sha256:6a057a8a78fefed32c70c306c4843a12a9a83147a75e20a523d2fa7bdca392f4",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-13033": {
+      "definition_key": "ec94977cd9974a464ee97176267398afa8987121c8e9cea48500a51811f04d39",
+      "exact_wrapper_index": "sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+      "official_image_index": "sha256:1acb49e9389a6df0df9fe52bc0c87ced013e323015b4313b7397857b41166138",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-13741": {
+      "definition_key": "dca6fddc147ca3f59e20f7b48f8fb1f46771f05fc8f9312259a2e15af9b4cea9",
+      "exact_wrapper_index": "sha256:37cd633b5f483a68f866ac570120b4e392472814f3b8ab078260021b1e8091a7",
+      "official_image_index": "sha256:c4c76e39029d47b01bdbcd2b78077c736467b616dc64c01ac62f6793068b7f27",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-13810": {
+      "definition_key": "eec76e82af51194695c61fdee61b37b6ffd43c6229acb29be4d1c0cc3a44952d",
+      "exact_wrapper_index": "sha256:0aac75994fdc90ae93a27c8fdf17ffab9200ef81bbff8c818e204f71436c5efb",
+      "official_image_index": "sha256:b3b2851bafad29b19506a85779bf248365381c6f04b228989f57d5c5c54c5ddb",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-14155": {
+      "definition_key": "a7cfaa116faa0f15f2a95eb43b4df836f75896dff281b0d88cf94cb81c688e81",
+      "exact_wrapper_index": "sha256:62a0ce818228a8efb8b80af9737e3c4a6ea5da0f9e548831a84a5a291bdf2d4b",
+      "official_image_index": "sha256:df566a06348c488d15869f8c8745a9f6c19eeb3ebd66a823dd7f91ed92058a7e",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-14765": {
+      "definition_key": "05efed09504e012fc6623337846182b7ab84b2d2054bcb7d48c1b516760ecaad",
+      "exact_wrapper_index": "sha256:1ee909fb764fbbc1e07550e737aeafde1dbf322d9efacfd1cc45d9b2348bd494",
+      "official_image_index": "sha256:a87d9a378eecbeda4a4c80ff2fd8a52b28230e08e19dc73bad71dfaef6908b76",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-14771": {
+      "definition_key": "6fa22b9fc8232a4263d3f6472debf0920eba2f7352e0513921c0d9a10f6c0adc",
+      "exact_wrapper_index": "sha256:be5bf1af12e7610619ac7879c2c722bb2f62da9195e6bd3831741fcf9808dae1",
+      "official_image_index": "sha256:1e0da32b298c5c98cb54814c15164d54eb2b2aeb5d9564972dc36b05017713f7",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-15503": {
+      "definition_key": "38d2749bb9ab8f92f4643a23b93b2ec304826cf18590861b443fdba6e995a734",
+      "exact_wrapper_index": "sha256:d57430ca15a86fa0f5718e08482513e98834a5ffbdd31198537770feef50df1c",
+      "official_image_index": "sha256:4438a1d7e5551ebb084426bd286735e51a05d498684a5cb7eec337d259d02a13",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-15561": {
+      "definition_key": "638fea93ff62c46e159f93ef82930ca3947a74a56d8e5bf4f4bd4a3f9f271544",
+      "exact_wrapper_index": "sha256:ef5d70337bf967a555a700776169eee223ccae4bd6b3615f67b0c5d9f10d7c7a",
+      "official_image_index": "sha256:a45cf78a1a598052abff8ee976da1877796107e9d6f8f8ed6201aef360ec381b",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-15569": {
+      "definition_key": "f652692afcf007b62d4a7ca65c265a6d6f4bb92d85f4b3ae6dc3c311a716c7ab",
+      "exact_wrapper_index": "sha256:76b5de9631018e925b215a8fd7ef6dcdf4a0f70fa74e05038bd6e06696cc4e9a",
+      "official_image_index": "sha256:13d3ee8c6e4aa4d5c34024f32ada971a11153bfe0023339ddc4bdfb0ca48925d",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-15814": {
+      "definition_key": "4caca16110511ff818ff2ea2fbf7654baf4b4c8a361af5bc3d054a60842c18b2",
+      "exact_wrapper_index": "sha256:a6f9b0aba0b232296ab57f5b6b32b5ccd5f4857bae2e52198c21b565ec30d0dd",
+      "official_image_index": "sha256:56da9705f6ffdcd965e4226d8bfaf81fa6f2aac5ed9d2e2b796d1b0f3d200871",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-15851": {
+      "definition_key": "319a8bc720801c74c7b694580c7f22a9885e922317dc993088c87b3c2abaa183",
+      "exact_wrapper_index": "sha256:b0925da3ebb9b538cb8c67ceb78ad7562cdb771c8b625f1a385d503a42545b62",
+      "official_image_index": "sha256:aa80884e053cf1a238df7c4ceec43e4e07929547f658278bd3c3154f0ef8bc90",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-16145": {
+      "definition_key": "a626543dccf27bf7ee001d65252f78b01b4d307311b67c9f5ca5328aa277b5f5",
+      "exact_wrapper_index": "sha256:266233cf897a67d86a1ed2300976656933ec1142682b87964f9e8bee8b0efaaa",
+      "official_image_index": "sha256:c2a9c9bd764f59d267b435b1aaab00f540b334e8e4956f113543636e42a53a33",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-16595": {
+      "definition_key": "be2abe02864b77b694a99faabcb422dba59dd9a51d8cfb50ca30d224f0789895",
+      "exact_wrapper_index": "sha256:06c6b9af78c14666b2f916e43f663f9413d80ba9f87f158ead998c86ee8f0202",
+      "official_image_index": "sha256:b67a9f061115dad809d38dcd6e2bac714dd222302fd59506b303606f582d36f7",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-16661": {
+      "definition_key": "1269792e56a05825f0e00ebd9ce0672ec8a0376dfb5e53e4e5af938c1bdbd34b",
+      "exact_wrapper_index": "sha256:b838b7f03e6b44c90b0d72efffa034e6af3f67996b287a0a370a02dce9af4e13",
+      "official_image_index": "sha256:650279030ed7df19b23f0051b3313cb6d43a530101c0688204b1b64722901343",
+      "official_amd64_layer_count": 10
+    },
+    "django__django-16877": {
+      "definition_key": "06ae86d89aca4602f9096016e4d29f52b570af9e9972ac11ec57f5d727193d12",
+      "exact_wrapper_index": "sha256:45d0cb868bdbe58ec1be7fcec219ee6c908ea0cf1c7905910ff679890a328885",
+      "official_image_index": "sha256:19b59ae7add0a454202fc9301ca8ddef1e977e5c0a6ec9163224e4622b63e1e9",
+      "official_amd64_layer_count": 10
+    },
+    "matplotlib__matplotlib-13989": {
+      "definition_key": "79dcc0b1c3da3c204ac09834550d8f217b72f3e42a92ecb7babde6b58a168bec",
+      "exact_wrapper_index": "sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+      "official_image_index": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+      "official_amd64_layer_count": 10
+    },
+    "matplotlib__matplotlib-26342": {
+      "definition_key": "7ad95841ec461da1cee7495de2ae067d75617e6ae6465d79edb70dc584145705",
+      "exact_wrapper_index": "sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+      "official_image_index": "sha256:c742fc04bfdd999276142c96a59adcf9c184b0b09d58fb02af391935ae107fa0",
+      "official_amd64_layer_count": 10
+    },
+    "matplotlib__matplotlib-26466": {
+      "definition_key": "1b74a358e12700cfcc2c24038457e3bc07293700bfb3d043d7f8e05a156d5925",
+      "exact_wrapper_index": "sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+      "official_image_index": "sha256:f800b21c102fae7869144983fc32dc6c344f40871be11524807c3df30046ef37",
+      "official_amd64_layer_count": 10
+    },
+    "mwaskom__seaborn-3187": {
+      "definition_key": "8633833fe5cc98e995ec156e54da3deb188f0f026d03b91e043baddb91639772",
+      "exact_wrapper_index": "sha256:d4301cb624e4883a4dbedbab52614866a2d0c803045f3a5c9654701bfc812afa",
+      "official_image_index": "sha256:aea7e43b20703256f5cb807b54cd78a12601f21086d3a62a41de18c254771f4e",
+      "official_amd64_layer_count": 10
+    },
+    "pallets__flask-5014": {
+      "definition_key": "365af840a6fb7f90d2ebf198aa2ed3864be7abccd797a1f97f6b88e5266eb3aa",
+      "exact_wrapper_index": "sha256:c9504172f7276d0cebcd0d382698719663e54215d1fc8cc40149fe07c97ea002",
+      "official_image_index": "sha256:bde4fbdafa36141d4396944da88ec37aabdef612ed36920090675bccd0ca5d72",
+      "official_amd64_layer_count": 10
+    },
+    "pydata__xarray-2905": {
+      "definition_key": "bddb66a7350cda2adb6508069f2048f593c59feed2e8ae450d369404f815b255",
+      "exact_wrapper_index": "sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+      "official_image_index": "sha256:23c72d6ce177631efc8094bf28418e3a960d96ca23e8ad727a18c644de257e9f",
+      "official_amd64_layer_count": 10
+    },
+    "pydata__xarray-7393": {
+      "definition_key": "75e29a5cab6254d6e9c8bf48d3bc4ee9845d6f770179996b3f0e7fc42de7a752",
+      "exact_wrapper_index": "sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+      "official_image_index": "sha256:8d92f63564f3cfa7497bdc9fd4bacb5cfac11459f658621a00ebe3eb55832278",
+      "official_amd64_layer_count": 10
+    },
+    "pylint-dev__pylint-6528": {
+      "definition_key": "8741d8f23667fcf5344c19f19af79ff7e15290a8bd33838e65601729cf9ce637",
+      "exact_wrapper_index": "sha256:e0652d7e137034d58ae759c1017fdc2fc88afb3885def460802f5f59b4647181",
+      "official_image_index": "sha256:47e14a7e2b6d5f6d24ab4632ac11bd1493ab57030a8c6becdc3083c7574d0604",
+      "official_amd64_layer_count": 10
+    },
+    "pytest-dev__pytest-7205": {
+      "definition_key": "94529729b5da0e1a250948df9f6e19f2c9a41dbd7217e2cd97804815fe8a9065",
+      "exact_wrapper_index": "sha256:cb808dc4e8e39a26469f089108d8689ee116de78316ec07dd149e33df6954feb",
+      "official_image_index": "sha256:1c6124cd5254db8831df455575eff2795b0cbeb849d10846388e30e00870e495",
+      "official_amd64_layer_count": 10
+    },
+    "pytest-dev__pytest-7571": {
+      "definition_key": "3ff3b4d0a48e27aea1b30925fa3ce2900e50dc26fc77dfb4e8e4bc82ef14bc06",
+      "exact_wrapper_index": "sha256:428ac30fd436f96bf7430b632fdab638d901d3c6bbe1d3e842940146746b2318",
+      "official_image_index": "sha256:0a1f84cd32e2c8332f90bfad6f3fd16304f25c01384adb4ffd4f7250316bd60a",
+      "official_amd64_layer_count": 10
+    },
+    "scikit-learn__scikit-learn-10297": {
+      "definition_key": "da77e0eae291ded07147c4439af315ae7a14160aca7ae175b996de10a1ccaba5",
+      "exact_wrapper_index": "sha256:127d03d91853dd3af5212ab4976378d8b0c8177588a1a6432d33d9e3d90f547f",
+      "official_image_index": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+      "official_amd64_layer_count": 10
+    },
+    "scikit-learn__scikit-learn-13439": {
+      "definition_key": "ff5f1c6caaf76a6d78db4520df647b9c5527102a02f74983b2d95c050237d53d",
+      "exact_wrapper_index": "sha256:f2a3640431c4e8037059504c02d5b4716de7bb20007bd53343145655953f38b5",
+      "official_image_index": "sha256:0c61d64ae4c3b8a215ecc4f8efbde87dd6bb9d2583579a82b24ecc7780631775",
+      "official_amd64_layer_count": 10
+    },
+    "scikit-learn__scikit-learn-14629": {
+      "definition_key": "1636879b8cf03c034a4f6ede1d1d95cd6bf3688b4963459796153fe87bdcbe32",
+      "exact_wrapper_index": "sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+      "official_image_index": "sha256:66bce6f57afd4d7633046f74364ffc3c2c6944da953e013db667af550f54adc9",
+      "official_amd64_layer_count": 10
+    },
+    "sphinx-doc__sphinx-9711": {
+      "definition_key": "b7cd5b503d05c2b6d70a4e4be9a57b6c2337d46105bf849ca1650b02be86fbe3",
+      "exact_wrapper_index": "sha256:71869de459d5cbdd941c3504ba24c67b8b84b627bd70057a560a4c8d5564899d",
+      "official_image_index": "sha256:6cfd4c13fa562c54559d5d7cd9335cba16b21a4291f7f46bbaae997d6153ed35",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-12096": {
+      "definition_key": "ea11c403a548247ad731755c226bcd1f0710bfdeab956201ee4fbb59c67e824a",
+      "exact_wrapper_index": "sha256:da247d5b80fb338355e623d00345bcf628650b632244dd9433ef0737b33a6348",
+      "official_image_index": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-13615": {
+      "definition_key": "d43cb531776a213c9b84d3fea1e2a9facd92e74b011bb2eecd945ca8dd5f9768",
+      "exact_wrapper_index": "sha256:e5b9fdbb90805ec78b843e00a6fe3bcd5f5fd2b0417552905e9478c56f881964",
+      "official_image_index": "sha256:b71f0f3e41f7d5f64028c13703a3563c09b6cbd84ee43103e5925ebc52fda263",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-14531": {
+      "definition_key": "c7cd2abe8d7c6e926b0441b5d7e5f5d01a3d7aaf14de37cb3f4b57836b26e511",
+      "exact_wrapper_index": "sha256:8ae520804980aa161214f1fb2c55551ef941cc75bf67f4d657c30e3afa992b42",
+      "official_image_index": "sha256:cf141443a85d16108fd94f025f15996cc89a1ace20afdf41d77edc20603030a7",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-15599": {
+      "definition_key": "18d7751439d32dbb176b3d8e5a529e95f622fe416af16cb71fa0c700923fd577",
+      "exact_wrapper_index": "sha256:6b63809eddca49b4249fc0180e6dcb1c6219a1d508fc094337d475cbe4b8316f",
+      "official_image_index": "sha256:b7e6e69c4defe6eb7fe5c57ff3c946d94f7a2048523de41516d209a9b9d00016",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-15809": {
+      "definition_key": "dbace14876f676571ea2c53ce3f61d4b601851f3c03283d8278798bc86bef79c",
+      "exact_wrapper_index": "sha256:648f30206fcb9c16bfe46d952c2ddb7e10c4a692cea32fc15162cd5b30ce74e8",
+      "official_image_index": "sha256:106c6882b193223962fe6bf7ce76b14b3e395c7e0ffc64f5361b6a410a108ab7",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-17630": {
+      "definition_key": "123f69bc39cf46f78bf9949462e4b0598ef652d2d914329765deef2d8c8b1e4b",
+      "exact_wrapper_index": "sha256:0d0f73a5900dd8898454e8fe498b6b2f453c3b559d82bd09f911aa31e9db2a2e",
+      "official_image_index": "sha256:9b839af473048e347a0f435e920bfa5206e588b59a5187bef826352ac05ae73a",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-23413": {
+      "definition_key": "8f597b7981edc0d3fa0905411e047843e2483d60c28f8b19edcc6bd2e8b5970e",
+      "exact_wrapper_index": "sha256:950644b5f24afde891a9bb576cfa35009d583e905e297048998815283b4fddbe",
+      "official_image_index": "sha256:ff343113e7d03f91f325eb74e7a90247714fcac28af5c28cdb69ccb17c768eb0",
+      "official_amd64_layer_count": 10
+    },
+    "sympy__sympy-24562": {
+      "definition_key": "7a6d2c3206162c91fab91fa8b293cd1b54c5ac43852c92fd785a5b4ec4642162",
+      "exact_wrapper_index": "sha256:01d0e2420786455548ec4500ef07394f5f22ee6d2a9eaa1502476b15b725587c",
+      "official_image_index": "sha256:776086d668f184408eb410669894ed1721bd813aa01af4ffd2884e3312a843da",
+      "official_amd64_layer_count": 10
+    }
+  },
+  "release_journal_on_eval_host": "/opt/swebench/cache/swe-tuning-20261123/recoverable-swe-docker-cache/released.jsonl",
+  "restore_inventory_sha256": "3b1c315c87771f11bbabebb0d9b10837cefcbc3a151c1445247daa7419c9737c"
+}

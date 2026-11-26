@@ -1,0 +1,41 @@
+{
+  "run": "init50-gpt62-tuned-20261123",
+  "instance_id": "pytest-dev__pytest-7205",
+  "official_outcome": "unresolved",
+  "official_annotation": "no_tests_collected",
+  "stream_report_sha256": "e8ff24c673fb39f9f57f80a4c30d2b689641bb6825d7e6065a167542e5c8a621",
+  "grader_test_report_sha256": "c61025e344c03e9d5cedca482e35f91cf93c7d4f2c8579a9ebf32142b8a118ca",
+  "test_output_sha256": "08e0c03ed1ab9d46b3c05fb9e26dbb95f6a288952811f7d4432f6e912d924079",
+  "classifier_sha256": "72eaca5e8f76390ff9ac1d2d606f5390820b88efe6eed56efed8ff520c593eac",
+  "classifier_pattern": "no tests ran|collected 0 items",
+  "nested_markers": 20,
+  "examples": [
+    {
+      "line": 386,
+      "text": "E           and: '============================ no tests ran in 0.01s ============================='"
+    },
+    {
+      "line": 408,
+      "text": "============================ no tests ran in 0.01s ============================="
+    },
+    {
+      "line": 459,
+      "text": "E           and: '============================ no tests ran in 0.01s ============================='"
+    }
+  ],
+  "outer_suite": {
+    "line": 1296,
+    "text": "9 failed, 17 passed in 2.51s"
+  },
+  "official_tests": {
+    "FAIL_TO_PASS": {
+      "success": 1,
+      "failure": 9
+    },
+    "PASS_TO_PASS": {
+      "success": 16,
+      "failure": 0
+    }
+  },
+  "assessment": "Annotation matched nested pytest output. The outer suite ran 26 assertions classified as test outcomes by the official harness. Retain unresolved and the published annotation."
+}

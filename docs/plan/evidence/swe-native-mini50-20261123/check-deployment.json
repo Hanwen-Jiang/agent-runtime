@@ -1,0 +1,1 @@
+{"source": {"model-profiles": "ar-model-profiles-gemini4-fb9ba6b48e2c", "tenant-policies": "agent-runtime-model-allowlist"}, "models": 29, "allowed": 20, "catalog_sha256": "fb9ba6b48e2cb265e21e0bba159f2535369d94389f0aa79f0a017998cb51e799", "objects_checked": 13, "model_calls": 0, "applied": false}

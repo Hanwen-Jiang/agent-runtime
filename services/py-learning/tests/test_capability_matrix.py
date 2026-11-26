@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import asyncio
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,8 @@ import pytest
 import capability_support as cs
 from agentruntime_learning.capability import matrix as mx
 from agentruntime_learning.capability import scoring as sc
+from agentruntime_learning.capability import quota
+from agentruntime_core.errors import DeniedError
 from agentruntime_learning.capability.base import role_enum
 from agentruntime_learning.capability.evals import load_eval, resolve
 
@@ -260,15 +263,91 @@ async def test_an_eval_for_another_role_is_refused(tmp_path: Path) -> None:
 # --- 淘汰赛与追加样本 ---
 
 
-async def test_expensive_candidates_play_a_tournament_first(tmp_path: Path) -> None:
+@pytest.mark.parametrize("schedule", ["sequential", "round_robin"])
+async def test_expensive_candidates_play_a_tournament_first(tmp_path: Path, schedule: str) -> None:
     skill = {cs.SONNET: 0.9, ASTRA: 0.1, FABLE: 0.9}
-    p = plan(n=40, r=3, candidates=[cs.SONNET, ASTRA, FABLE], cell={"expensive": [ASTRA, FABLE]}, options={"skill": skill})
+    p = plan(n=40, r=3, candidates=[cs.SONNET, ASTRA, FABLE], cell={"expensive": [ASTRA, FABLE]}, options={"skill": skill}, schedule=schedule)
     report = await mx.MatrixRunner(p, cs.ServingGateway(), tmp_path).run()
     rows = mx.read_results(tmp_path)
     count = {c: sum(1 for r in rows if r["candidate"] == c) for c in skill}
     assert count == {cs.SONNET: 120, ASTRA: 20, FABLE: 120}, "不领先的只跑 n = 20、r = 1；可能领先的补到 n = 40、r = 3"
     status = {c["candidate"]: c["status"] for c in report["cells"][0]["candidates"]}
     assert status[ASTRA] == sc.NOT_LEADING
+
+
+async def test_round_robin_budget_first_reaches_both_roles_and_candidates(tmp_path: Path) -> None:
+    config = dict(plan(n=5, r=2, concurrency=1).raw)
+    config["schedule"] = "round_robin"
+    config["cells"].append({**config["cells"][0], "role":"judge",
+                            "evals":[{"eval":"capability_support:make","options":{"key":"judge", "role":"judge"}}]})
+    planned = mx.parse_plan(config)
+    limited = mx.MatrixRunner(planned, cs.ServingGateway(cost_micros=1000), tmp_path, budget_usd=.004)
+    await limited.run()
+    rows = mx.read_results(tmp_path)
+    assert [(r["role"],r["candidate"]) for r in rows] == [
+        ("plan",cs.SONNET), ("judge",cs.SONNET), ("plan",cs.OPUS), ("judge",cs.OPUS)]
+    assert limited.skipped_for_budget == 36
+    again = mx.MatrixRunner(planned, cs.ServingGateway(cost_micros=1000), tmp_path, budget_usd=.004)
+    await again.run()
+    assert again.new_runs == 0 and mx.read_results(tmp_path) == rows
+
+
+async def test_round_robin_resume_retains_suffix_after_partial_round(tmp_path: Path):
+    cfg = plan(n=3, r=1, concurrency=1, schedule="round_robin")
+    await mx.MatrixRunner(cfg, cs.ServingGateway(), tmp_path).run()
+    original = (tmp_path / mx.RESULTS).read_bytes().splitlines(keepends=True)
+    (tmp_path / mx.RESULTS).write_bytes(original[0])
+    await mx.MatrixRunner(cfg, cs.ServingGateway(), tmp_path).run()
+    assert [mx.row_key(r) for r in mx.read_results(tmp_path)] == [mx.row_key(json.loads(line)) for line in original]
+
+
+async def test_interrupted_tournament_does_not_count_skipped_jobs_twice(tmp_path: Path):
+    cfg = plan(n=5, r=2, tournament_n=2, concurrency=1, schedule="round_robin",
+               candidates=[cs.SONNET,ASTRA], cell={"expensive":[ASTRA]})
+    report = await mx.MatrixRunner(cfg, cs.ServingGateway(cost_micros=1000), tmp_path, budget_usd=.001).run()
+    assert len(mx.read_results(tmp_path)) == 1
+    assert len(report["not_run"]) == 11  # ten baseline trials plus two preliminary trials, one completed
+
+
+async def test_quota_refusal_persists_pause_and_keeps_prior_paid_calls(tmp_path: Path):
+    class Provider(cs.ServingGateway):
+        async def generate(self, request):
+            if self.requests:
+                self.requests.append(request)
+                raise DeniedError("insufficient_user_quota", "provider denied the attempt")
+            return await super().generate(request)
+
+    config = plan(n=5, r=1, concurrency=1, candidates=[cs.SONNET], item_usd_limit=1, options={"uses_judge":True})
+    provider = Provider(cost_micros=1_000)
+    with pytest.raises(quota.ProviderQuotaPaused):
+        await mx.MatrixRunner(config, provider, tmp_path).run()
+    assert len(provider.requests) == 2
+    row, = mx.read_results(tmp_path)
+    assert row["cost_usd"] == .001 and row["cost_known"] is False
+    assert row["provider_quota"] == {"provider_refused":True, "successful_responses":1, "forwarded_calls":2}
+    assert row["contaminated"] and not (tmp_path / mx.SCORES).exists()
+    marker = json.loads((tmp_path / quota.MARKER).read_text())
+    assert (marker["active"],marker["observed_rows"],marker["quota_rows"]) == (True,1,1)
+    assert marker["results_sha256"] == quota.file_sha(tmp_path / mx.RESULTS)
+    with pytest.raises(quota.ProviderQuotaPaused):
+        mx.MatrixRunner(config, provider, tmp_path)
+    assert len(provider.requests) == 2
+
+
+async def test_interrupted_unwritten_reservation_is_kept_for_reconciliation(tmp_path: Path):
+    config = plan(n=2, r=1, concurrency=1, candidates=[cs.SONNET], item_usd_limit=1)
+    provider = cs.ServingGateway(cost_micros=1000)
+    runner = mx.MatrixRunner(config, provider, tmp_path)
+    identity = (config.cells[0].key, "synthetic", cs.SONNET, "q000", 0)
+    key = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
+    pending = tmp_path / "item-budgets" / (key + ".json")
+    pending.parent.mkdir()
+    state = {"limit_usd_micros":1_000_000, "spent_usd_micros":0, "pending":True}
+    pending.write_text(json.dumps(state))
+    result = await runner.run()
+    assert result["status"] == "partial_billing_reconciliation"
+    assert len(provider.requests) == 1 and json.loads(pending.read_text()) == state
+    assert result["not_run"][0]["reason"] == "item_requires_billing_reconciliation"
 
 
 async def test_close_candidates_get_more_items_up_to_the_cap(tmp_path: Path) -> None:

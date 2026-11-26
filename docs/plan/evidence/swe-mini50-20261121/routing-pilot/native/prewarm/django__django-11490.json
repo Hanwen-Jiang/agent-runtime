@@ -1,0 +1,29 @@
+{
+  "instance_id": "django__django-11490",
+  "workspace": "swb-django-django-11490-42293e6aab",
+  "tenant": "swebench",
+  "started_at": "2026-11-22T12:53:53.336610+00:00",
+  "ready": false,
+  "released": true,
+  "status": "failed",
+  "observations": [
+    {
+      "at": "2026-11-22T12:53:58.337520+00:00",
+      "event": {
+        "probe": {
+          "state": "quota",
+          "kind": "devcontainer",
+          "path": ".devcontainer/devcontainer.json",
+          "runtime_image_id": "sha256:da8c2de93e4e89eff02b71bf588648615e8424ca4a89820052f653075e08ad06",
+          "backend": "gvisor",
+          "writable": false,
+          "lease_in_workspace": true,
+          "released": true
+        }
+      }
+    }
+  ],
+  "updated_at": "2026-11-22T12:53:58.338828+00:00",
+  "elapsed_seconds": 5.002,
+  "error": "unsupported resolution: quota"
+}

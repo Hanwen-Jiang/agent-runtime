@@ -1,0 +1,172 @@
+{
+  "prefix": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-",
+  "archived_steps": 71,
+  "git_checks": [
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-2.json",
+      "object_sha256": "617e7acceefc4c9439c5d2c4d3e1b9fd8a70920bbe9e8e3e064ddaba912f3a1f",
+      "kind": "git status --short",
+      "exit_code": 0,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_markers": [],
+      "short_stdout_is_empty": true
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-40.json",
+      "object_sha256": "2eca8bb74c7c51d85a729449238e73c11f6aad54fb7620b7d460dc8a50325516",
+      "kind": "git apply",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 70,
+      "stderr_markers": [
+        "error:",
+        "No such file"
+      ],
+      "short_stdout_is_empty": false
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-42.json",
+      "object_sha256": "c171d14c063b220283197c90977f4840af017a54c0392a9ac767f9542050650b",
+      "kind": "git apply",
+      "exit_code": 0,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_markers": [],
+      "short_stdout_is_empty": false,
+      "successful_target": "/tmp/test_sphinx_class_properties.py"
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-48.json",
+      "object_sha256": "22f91bbc88271ba29d5fb215b18b064def207a8085dd14a51fc8ef2e1cf2d7f8",
+      "kind": "git apply",
+      "exit_code": 0,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_markers": [],
+      "short_stdout_is_empty": false,
+      "successful_target": "/tmp/test_sphinx_class_properties.py"
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-50.json",
+      "object_sha256": "931eff9d17bddeee033812124c10e95b890207aebb478f55f6b42cbd9b791ee6",
+      "kind": "git apply",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 115,
+      "stderr_markers": [
+        "error:",
+        "patch does not apply",
+        "failed"
+      ],
+      "short_stdout_is_empty": false
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-51.json",
+      "object_sha256": "49eae3e146158776564fe530a1989c3ed15d630f29f811cb6c6d74366cac03b9",
+      "kind": "git apply",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 115,
+      "stderr_markers": [
+        "error:",
+        "patch does not apply",
+        "failed"
+      ],
+      "short_stdout_is_empty": false
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-52.json",
+      "object_sha256": "5995950f4a917ca9cb09cc992c90359ecafbad379d730edeaed3b85f426c13c5",
+      "kind": "git apply",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 115,
+      "stderr_markers": [
+        "error:",
+        "patch does not apply",
+        "failed"
+      ],
+      "short_stdout_is_empty": false
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-53.json",
+      "object_sha256": "bb4df5ece18585087ff5dabedb7b88b0f53dc2820046813f0a47f74292124512",
+      "kind": "git apply",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 100,
+      "stderr_markers": [
+        "error:",
+        "patch does not apply",
+        "failed"
+      ],
+      "short_stdout_is_empty": false
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-55.json",
+      "object_sha256": "ca150baa27a345b9c02b28ed214e72caf4be385064daca4d5afb0544d0ec5f03",
+      "kind": "git status --short",
+      "exit_code": 0,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_markers": [],
+      "short_stdout_is_empty": true
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-59.json",
+      "object_sha256": "4dc3a2cd028e460c190bb73c6508cf2e759bd0cb548e772fc1330f80037e61c7",
+      "kind": "git apply",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 100,
+      "stderr_markers": [
+        "error:",
+        "patch does not apply",
+        "failed"
+      ],
+      "short_stdout_is_empty": false
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-60.json",
+      "object_sha256": "1c8f4751360427566a801a289d617c8ab7d8b65e0249f5ee64153aab13d830ee",
+      "kind": "git apply",
+      "exit_code": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 100,
+      "stderr_markers": [
+        "error:",
+        "patch does not apply",
+        "failed"
+      ],
+      "short_stdout_is_empty": false
+    },
+    {
+      "key": "context/tsk_01M8321NB65X55FM23KYVFFAZ8/r2/fix_class_property_lookup.1/v2/step-70.json",
+      "object_sha256": "11140cb3cb78f646c6cae38b9d607d24ce4085a5b9cf40183eeb6b1c9fab0b3b",
+      "kind": "git status --short",
+      "exit_code": 0,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stderr_markers": [],
+      "short_stdout_is_empty": true
+    }
+  ],
+  "case": "sphinx-doc__sphinx-9461",
+  "task_id": "tsk_01M8321NB65X55FM23KYVFFAZ8",
+  "model_generations": 1,
+  "task_stop_reason": "task_usd_limit",
+  "final_native_cost_usd": 0.418416,
+  "settled_ledger_usd": 3.019278,
+  "settled_calls": 43,
+  "total_ledger_calls": 43,
+  "patch_bytes": 0,
+  "patch_files": [],
+  "patch_error": null,
+  "workspace_terminal_state": "deleted",
+  "original_base": "6195b5d092bc81054b7cd0c7c045c9f9ab529f84",
+  "stored_workspace_snapshots_remaining": 0,
+  "official_grade": "empty_patch",
+  "official_completed": 0,
+  "official_submitted": 1
+}

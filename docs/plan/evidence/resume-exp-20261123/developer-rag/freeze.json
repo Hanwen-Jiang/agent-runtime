@@ -1,0 +1,31 @@
+{
+  "frozen_at_utc": "2026-11-23T03:39:35.870932+00:00",
+  "input_files": {
+    "docs/plan/evidence/resume-exp-20261123/developer-rag/protocol.json": "bc5abe5677a767255aed0c7ba0356c1e31585f0d5311dad89d9dfc7bd599af7d",
+    "docs/plan/evidence/resume-exp-20261123/developer-rag/cohort.json": "3e7a5b1d69baaa288292d7dc497b132c46e07bc5252d82a7e4715c97397f7907",
+    "docs/plan/evidence/resume-exp-20261123/developer-rag/cohort.py": "dc85fa3be78a7bda56a9cd7e364327f4d6f4ad0484307f78081abf2e9390693f",
+    "docs/plan/evidence/resume-exp-20261123/developer-rag/evaluate.py": "05b7430f9b247fdf78af6b28fc40592bb09db75d7ab17a236b059c69e602499e",
+    "docs/plan/evidence/resume-exp-20261123/developer-rag/development.json": "681bcc2fe6b42572e6a6e6226f4e6a9636552f8c35b0352d5f201f34bd5b8354",
+    "services/py-memory/src/agentruntime_memory/retrieval/engine.py": "2a8b6668577481e85c2a7235044122198f390add0a5163fd597de98f0fb4f340"
+  },
+  "selected": "exact symbol priority inside the original authorized candidate pool for explicit natural-language definition requests",
+  "development": {
+    "A": {
+      "hit1": 2,
+      "hit8": 4,
+      "mrr8": 0.111111,
+      "p50_ms": 43.736,
+      "p95_ms": 64.276,
+      "timed_searches": 72
+    },
+    "B": {
+      "hit1": 6,
+      "hit8": 6,
+      "mrr8": 0.25,
+      "p50_ms": 43.585,
+      "p95_ms": 64.749,
+      "timed_searches": 72
+    }
+  },
+  "holdout_opened": false
+}

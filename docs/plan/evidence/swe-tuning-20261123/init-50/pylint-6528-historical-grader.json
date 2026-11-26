@@ -1,0 +1,42 @@
+{
+  "run": "t18-rev19",
+  "instance_id": "pylint-dev__pylint-6528",
+  "official": "ambiguous_failure",
+  "reason": "no_tests_collected",
+  "model_changed_files": [
+    "pylint/lint/pylinter.py",
+    "tests/test_self.py"
+  ],
+  "evidence": [
+    {
+      "line": 388,
+      "summary": "error: pathspec 'tests/regrtest_data/directory/ignored_subdirectory/failing.py' did not match any file(s) known to git"
+    },
+    {
+      "line": 393,
+      "summary": "error: while searching for:"
+    },
+    {
+      "line": 412,
+      "summary": "error: patch failed: tests/test_self.py:1228"
+    },
+    {
+      "line": 413,
+      "summary": "error: tests/test_self.py: patch does not apply"
+    },
+    {
+      "line": 416,
+      "summary": "ERROR: file or directory not found: tests/regrtest_data/directory/ignored_subdirectory/failing.py"
+    },
+    {
+      "line": 424,
+      "summary": "collected 0 items"
+    }
+  ],
+  "hashes": {
+    "test_output.txt": "40d3a4f61426da3e5b107d5da5b5414cfa755ac2831bd84fba4b3f86c211835b",
+    "eval.sh": "b86f4c87e073c3cdb1baa6ce85404832e810a9850a3ecf42ac0cd46b465b8f1c",
+    "patch.diff": "848cbb46172a14b68cbd2a4b363e7de7d3622bf349f53f1902102654d7827d6b",
+    "report.json": "9c36be97ebf46083cba6f5cb108bd58faa89be4508ad7afc94d3842111debde0"
+  }
+}

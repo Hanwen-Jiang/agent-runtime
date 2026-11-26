@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-11-23T04:06:51.743Z",
+  "verified": [
+    {
+      "id": "engineering-20261123-workspace",
+      "url": "https://evals.cgent.link/results?type=ablation#experiment-engineering-20261123-workspace",
+      "ids": 28,
+      "metrics": [
+        "场景验收通过率\t57.1%\t100.0%",
+        "同一操作并发查询峰值\t4\t2"
+      ]
+    },
+    {
+      "id": "engineering-20261123-rag-citation",
+      "url": "https://evals.cgent.link/results?type=ablation#experiment-engineering-20261123-rag-citation",
+      "ids": 48,
+      "metrics": [
+        "首条引用命中定义行\t2.1%\t31.3%",
+        "前八条命中定义行\t16.7%\t33.3%",
+        "检索 P95\t0.068 s\t0.069 s"
+      ]
+    },
+    {
+      "id": "engineering-20261123-rag-lookup",
+      "url": "https://evals.cgent.link/results?type=ablation#experiment-engineering-20261123-rag-lookup",
+      "ids": 33,
+      "metrics": [
+        "首条引用命中定义行\t18.2%\t75.8%",
+        "前八条命中定义行\t18.2%\t81.8%",
+        "检索 P95\t0.066 s\t0.063 s"
+      ]
+    }
+  ]
+}

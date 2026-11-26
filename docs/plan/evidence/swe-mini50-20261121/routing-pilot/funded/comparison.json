@@ -1,0 +1,303 @@
+{
+  "schema": "swe-role-routing-pilot-v1",
+  "original_ids": [
+    "django__django-11885",
+    "sphinx-doc__sphinx-8721"
+  ],
+  "arms": {
+    "fixed": {
+      "source_run": "route2-funded-20261122-fixed",
+      "temporal_namespace": "ar-mini50-20261121-b",
+      "gateway": "mini50-1121-gw",
+      "official_resolved": 2,
+      "per_case": {
+        "django__django-11885": {
+          "task_id": "tsk_01M81P2VC9DVHB8HF5WEGKE99M",
+          "status": "done",
+          "final_verdict": "done",
+          "rounds": 3,
+          "workspace_head": "0de7c3b531873dee875750c0be5a48326698ce53",
+          "patch_sha256": "9e63f88f29566cc7b042e2323892fdd070a361763e89e46baad4e502c9e0e25a",
+          "patch_files": [
+            "django/db/models/deletion.py"
+          ],
+          "prewarm_verified": true,
+          "environment_used": true,
+          "project_image": "127.0.0.1:30500/envs/swebench/env@sha256:99ea50d5f25566716b057a17bc529f19e907bad52cd475e9d7b34534163701a4",
+          "started_at": "2026-11-22T13:10:47.240560563Z",
+          "closed_at": "2026-11-22T13:32:56.127987661Z",
+          "temporal_task_duration_seconds": 1328.887,
+          "gateway_status_counts": {
+            "ok": 50
+          },
+          "successful_gateway_calls": 50,
+          "task_reported_cost_usd": 2.329984,
+          "gateway_reported_cost_usd": 2.329984,
+          "routes": [
+            {
+              "role": "act",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 41
+            },
+            {
+              "role": "deliver",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 1
+            },
+            {
+              "role": "judge",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 3
+            },
+            {
+              "role": "plan",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 3
+            },
+            {
+              "role": "route",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 2
+            }
+          ],
+          "official_resolved": true,
+          "official_tests": {
+            "FAIL_TO_PASS": {
+              "passed": 1,
+              "failed": []
+            },
+            "PASS_TO_PASS": {
+              "passed": 43,
+              "failed": []
+            }
+          }
+        },
+        "sphinx-doc__sphinx-8721": {
+          "task_id": "tsk_01M81QGBEEKGBZJ27ARRRXNVEZ",
+          "status": "done",
+          "final_verdict": "done",
+          "rounds": 5,
+          "workspace_head": "235354879f0be0f2db0d2a37e73dcaccfed7ac20",
+          "patch_sha256": "8379ec85fc80f04016e647b3c0ab77303b1e8962e4c8b6a4f21b958b7479ec85",
+          "patch_files": [
+            "sphinx/ext/viewcode.py"
+          ],
+          "prewarm_verified": true,
+          "environment_used": true,
+          "project_image": "127.0.0.1:30500/envs/swebench/env@sha256:8b0f854df4c3b44a947890a7ce974071fed5c7d141663f1742274f44af4dc08a",
+          "started_at": "2026-11-22T13:35:38.382433343Z",
+          "closed_at": "2026-11-22T13:52:44.983894008Z",
+          "temporal_task_duration_seconds": 1026.601,
+          "gateway_status_counts": {
+            "ok": 49
+          },
+          "successful_gateway_calls": 49,
+          "task_reported_cost_usd": 1.689268,
+          "gateway_reported_cost_usd": 1.689268,
+          "routes": [
+            {
+              "role": "act",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 31
+            },
+            {
+              "role": "deliver",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 2
+            },
+            {
+              "role": "judge",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 8
+            },
+            {
+              "role": "plan",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 5
+            },
+            {
+              "role": "route",
+              "profile": "a6api/gpt-6.2-sol@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 3
+            }
+          ],
+          "official_resolved": true,
+          "official_tests": {
+            "FAIL_TO_PASS": {
+              "passed": 1,
+              "failed": []
+            },
+            "PASS_TO_PASS": {
+              "passed": 3,
+              "failed": []
+            }
+          }
+        }
+      },
+      "task_reported_cost_usd": 4.019252
+    },
+    "native": {
+      "source_run": "route2-funded-20261122-native",
+      "temporal_namespace": "ar-route2-20261122-native",
+      "gateway": "route2-1122-native-gw",
+      "official_resolved": 1,
+      "per_case": {
+        "django__django-11885": {
+          "task_id": "tsk_01M81P2V1FY8Y109J0HK5PM7ZK",
+          "status": "aborted",
+          "final_verdict": "abort",
+          "rounds": 2,
+          "workspace_head": "008f3e1eef1cfb82f96edd01f1de18beb3a8364b",
+          "patch_sha256": "96297247f01a37ff99eaa7c022e98c410b5f51ad6337910727bb081523f2c1a4",
+          "patch_files": [
+            "django/db/models/deletion.py"
+          ],
+          "prewarm_verified": true,
+          "environment_used": true,
+          "project_image": "127.0.0.1:30500/envs/swebench/env@sha256:99ea50d5f25566716b057a17bc529f19e907bad52cd475e9d7b34534163701a4",
+          "started_at": "2026-11-22T13:10:46.578405681Z",
+          "closed_at": "2026-11-22T13:51:02.377011982Z",
+          "temporal_task_duration_seconds": 2415.799,
+          "gateway_status_counts": {
+            "ok": 50
+          },
+          "successful_gateway_calls": 50,
+          "task_reported_cost_usd": 2.977035,
+          "gateway_reported_cost_usd": 2.977035,
+          "routes": [
+            {
+              "role": "act",
+              "profile": "a6api/gemini-4-argon@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 1
+            },
+            {
+              "role": "act",
+              "profile": "a6api/kimi-k3.1-pro@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 42
+            },
+            {
+              "role": "judge",
+              "profile": "a6api/gemini-4-argon@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 3
+            },
+            {
+              "role": "plan",
+              "profile": "a6api/kimi-k3.1-pro@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 2
+            },
+            {
+              "role": "route",
+              "profile": "a6api/gpt-6-luna@2026-11",
+              "tier": "small@low",
+              "successful_calls": 2
+            }
+          ],
+          "official_resolved": false,
+          "official_tests": {
+            "FAIL_TO_PASS": {
+              "passed": 1,
+              "failed": []
+            },
+            "PASS_TO_PASS": {
+              "passed": 41,
+              "failed": [
+                "test_large_delete (delete.tests.DeletionTests)",
+                "test_large_delete_related (delete.tests.DeletionTests)"
+              ]
+            }
+          },
+          "task_deliverable_budget_event": {
+            "node": "deliver_summary",
+            "code": "budget_check",
+            "requested_usd": 0.2,
+            "remaining_usd": 0.0705,
+            "source": "records/django__django-11885.json:deliverable.not_completed"
+          }
+        },
+        "sphinx-doc__sphinx-8721": {
+          "task_id": "tsk_01M81REHBSKCXGT0Y3JQADZY36",
+          "status": "done",
+          "final_verdict": "done",
+          "rounds": 3,
+          "workspace_head": "e544d2f608ac6c2213daa538cd7cdbadc3118a31",
+          "patch_sha256": "fcc5666be0cd644d115d3b27efe57b926a61e797a784aaa172af1ccdc481b9d2",
+          "patch_files": [
+            "sphinx/ext/viewcode.py"
+          ],
+          "prewarm_verified": true,
+          "environment_used": true,
+          "project_image": "127.0.0.1:30500/envs/swebench/env@sha256:8b0f854df4c3b44a947890a7ce974071fed5c7d141663f1742274f44af4dc08a",
+          "started_at": "2026-11-22T13:52:06.988201813Z",
+          "closed_at": "2026-11-22T14:10:11.626847266Z",
+          "temporal_task_duration_seconds": 1084.639,
+          "gateway_status_counts": {
+            "ok": 34,
+            "failed": 1
+          },
+          "successful_gateway_calls": 34,
+          "task_reported_cost_usd": 1.022568,
+          "gateway_reported_cost_usd": 1.022568,
+          "routes": [
+            {
+              "role": "act",
+              "profile": "a6api/kimi-k3.1-pro@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 25
+            },
+            {
+              "role": "deliver",
+              "profile": "a6api/deepseek-v4-flash@2026-10",
+              "tier": "mid@low",
+              "successful_calls": 2
+            },
+            {
+              "role": "judge",
+              "profile": "a6api/gemini-4-argon@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 3
+            },
+            {
+              "role": "plan",
+              "profile": "a6api/kimi-k3.1-pro@2026-11",
+              "tier": "strong@medium",
+              "successful_calls": 2
+            },
+            {
+              "role": "route",
+              "profile": "a6api/gpt-6-luna@2026-11",
+              "tier": "small@low",
+              "successful_calls": 2
+            }
+          ],
+          "official_resolved": true,
+          "official_tests": {
+            "FAIL_TO_PASS": {
+              "passed": 1,
+              "failed": []
+            },
+            "PASS_TO_PASS": {
+              "passed": 3,
+              "failed": []
+            }
+          }
+        }
+      },
+      "task_reported_cost_usd": 3.999603
+    }
+  },
+  "conditions_match": true
+}

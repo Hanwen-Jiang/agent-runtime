@@ -1,0 +1,57 @@
+{
+  "observed_utc": "2026-11-23T03:29:40.234586+00:00",
+  "helpers": {
+    "swe-tuning-20261123/mirror-final-restore.pid": {
+      "pid": 3872727,
+      "active": false
+    },
+    "swe-tuning-20261123/regrade-prototype.pid": {
+      "pid": 3187776,
+      "active": false
+    },
+    "swe-tuning-20261123/disk-guard.pid": {
+      "pid": 3887493,
+      "active": false
+    },
+    "init-50/large-admission.pid": {
+      "pid": 3792165,
+      "active": false
+    },
+    "init-50/warm-next.pid": {
+      "pid": 3296938,
+      "active": false
+    },
+    "init50-gpt62-tuned-20261123/launcher.pid": {
+      "pid": 3050779,
+      "active": false
+    },
+    "init50-gpt62-tuned-20261123/stream.pid": {
+      "pid": 3219057,
+      "active": false
+    },
+    "mini50-tuned-c-gpt62-20261123/official-reconcile.pid": {
+      "pid": 347218,
+      "active": false
+    },
+    "mini50-tuned-c-gpt62-20261123/runner.pid": {
+      "pid": 3050430,
+      "active": false
+    },
+    "mini50-tuned-c-gpt62-20261123/stream.pid": {
+      "pid": 3219056,
+      "active": false
+    }
+  },
+  "prototype_services": {
+    "swe50-1123-grader.service": "inactive",
+    "swe50-1123-grader-containerd.service": "inactive",
+    "swe50-1123-grader-net.service": "inactive"
+  },
+  "prototype_namespace_absent": true,
+  "mirror_tmpfs_absent": true,
+  "main_docker_bridge_ifindex": 7475,
+  "primary_docker_root": "/var/lib/docker",
+  "kernel_inotify_limit": 128,
+  "disk_pressure": "False",
+  "node_free_bytes": 53683867648
+}

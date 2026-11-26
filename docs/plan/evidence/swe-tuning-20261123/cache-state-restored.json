@@ -1,0 +1,51 @@
+{
+  "time": "2026-11-22T21:47:29.133796+00:00",
+  "original_inventory_sha256": "3b1c315c87771f11bbabebb0d9b10837cefcbc3a151c1445247daa7419c9737c",
+  "original_verified_tags": 54,
+  "tags_released_then_restored": 7,
+  "exact_restore_bytes": 69504,
+  "restorations": [
+    {
+      "epoch": 1795384015,
+      "tag": "127.0.0.1:30500/envs/swebench/env:bddb66a7350cda2adb6508069f2048f5",
+      "restored_index": "sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+      "bytes_from_backup": 9923
+    },
+    {
+      "epoch": 1795384024,
+      "tag": "127.0.0.1:30500/envs/swebench/env:75e29a5cab6254d6e9c8bf48d3bc4ee9",
+      "restored_index": "sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+      "bytes_from_backup": 9924
+    },
+    {
+      "epoch": 1795384025,
+      "tag": "127.0.0.1:30500/envs/swebench/env:79dcc0b1c3da3c204ac09834550d8f21",
+      "restored_index": "sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+      "bytes_from_backup": 9933
+    },
+    {
+      "epoch": 1795384026,
+      "tag": "127.0.0.1:30500/envs/swebench/env:ec94977cd9974a464ee97176267398af",
+      "restored_index": "sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+      "bytes_from_backup": 9923
+    },
+    {
+      "epoch": 1795384028,
+      "tag": "127.0.0.1:30500/envs/swebench/env:1b74a358e12700cfcc2c24038457e3bc",
+      "restored_index": "sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+      "bytes_from_backup": 9934
+    },
+    {
+      "epoch": 1795384029,
+      "tag": "127.0.0.1:30500/envs/swebench/env:7ad95841ec461da1cee7495de2ae067d",
+      "restored_index": "sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+      "bytes_from_backup": 9933
+    },
+    {
+      "epoch": 1795384031,
+      "tag": "127.0.0.1:30500/envs/swebench/env:1636879b8cf03c034a4f6ede1d1d95cd",
+      "restored_index": "sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+      "bytes_from_backup": 9934
+    }
+  ]
+}

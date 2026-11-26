@@ -1,0 +1,35 @@
+{
+  "scope": "Chrome with local candidate bundle against a saved copy of the public feeds",
+  "utc": "2026-11-23T08:17:20.945339+00:00",
+  "public_parent_js_sha256": "7021bcd7c446f732c4b66436ac5af0e9273e3bc7664e3e06750a6ae1cfb76094",
+  "candidate_js_sha256": "052645f5085b0128ef5517adb4a41fc062468e38bda8879a531363de3c573725",
+  "public_parent_css_sha256": "78f454be6b1e241a4750687873d10e794638e9cba9f98338773f224886d9f108",
+  "test_count": 63,
+  "mini50": [
+    [
+      "mini50-gpt62-formal-a-20261121T1900Z",
+      "agentruntime-c095dc8a · A · 35/50 \nmedium\nmini-50",
+      "70.0%",
+      "medium"
+    ],
+    [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "agentruntime-014d63df · B · 36/50 \nmedium\nmini-50",
+      "72.0%",
+      "medium"
+    ],
+    [
+      "mini50-tuned-c-gpt62-20261123",
+      "agentruntime-e3646dd0 \nmedium\nmini-50",
+      "68.0%",
+      "medium"
+    ]
+  ],
+  "observed_group": "medium",
+  "group_tooltip": "展示分组",
+  "native_routing_verified": true,
+  "native_mixed_effort_verified": true,
+  "base_model_table_has_no_system_chip": true,
+  "legacy_idless_run": "agentruntime（版本未记录） medium · 11-02 反馈修复之后（Sonnet）",
+  "exceptions": []
+}

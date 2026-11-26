@@ -1,0 +1,745 @@
+{
+  "00706f078579f87805c33c47db56a3028bab96cfbe0343ef8771506beb95dbf3": {
+    "at": 1795392021,
+    "atime_ns": 1795382099698383418,
+    "cases": [
+      "django__django-11163"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382071972839021,
+    "new_cache_ctime": 1795382071.9918394,
+    "registry_get_verified": true,
+    "size": 89740538,
+    "status": "shared",
+    "uid": 10001
+  },
+  "00867a1047c88f4174cbab71c1a736f00215e76550417270b11dc385a4c22e5f": {
+    "at": 1795391972,
+    "atime_ns": 1795383789209057489,
+    "cases": [
+      "django__django-13741",
+      "django__django-13810"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382441039200765,
+    "new_cache_ctime": 1795382441.0622013,
+    "registry_get_verified": true,
+    "size": 402886014,
+    "status": "shared",
+    "uid": 10001
+  },
+  "078501fcd7ce66371e4ee23b56853765c2909b00acd629c33a1786adeeaacd03": {
+    "at": 1795391947,
+    "atime_ns": 1795384282679820195,
+    "cases": [
+      "django__django-14155"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382872987868049,
+    "new_cache_ctime": 1795382873.0018682,
+    "registry_get_verified": true,
+    "size": 435751539,
+    "status": "shared",
+    "uid": 10001
+  },
+  "0898dd0482f78768edc11d858095cfead64b0f10dcf7072655ce774c6d8fa523": {
+    "at": 1795391972,
+    "atime_ns": 1795383618986686876,
+    "cases": [
+      "django__django-13033"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382386444095991,
+    "new_cache_ctime": 1795382386.448096,
+    "registry_get_verified": true,
+    "size": 403158159,
+    "status": "shared",
+    "uid": 10001
+  },
+  "08aa064d3dbc53056d73501b8384cb23334d6057ba86ef2123476984f1283e11": {
+    "at": 1795392547,
+    "atime_ns": 1795392429306139749,
+    "cases": [
+      "pydata__xarray-2905"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392451146567302,
+    "new_cache_ctime": 1795392451.1625676,
+    "registry_get_verified": true,
+    "size": 1376151759,
+    "status": "shared",
+    "uid": 10001
+  },
+  "09ac14ad500b54e7280c4e0db67de138a32bb97b849d68fd5e44e7bdaa45b10d": {
+    "at": 1795391984,
+    "atime_ns": 1795387928795376394,
+    "cases": [
+      "django__django-16145"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795385578485384653,
+    "new_cache_ctime": 1795385578.509385,
+    "registry_get_verified": true,
+    "size": 103353716,
+    "status": "shared",
+    "uid": 10001
+  },
+  "0fb6452b21b0c26e02c59923687e6b9cae445e05cfdbadc51932ba49202c2f0d": {
+    "at": 1795392009,
+    "atime_ns": 1795383789281058915,
+    "cases": [
+      "django__django-13741"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382442528230859,
+    "new_cache_ctime": 1795382442.5482314,
+    "registry_get_verified": true,
+    "size": 95890724,
+    "status": "shared",
+    "uid": 10001
+  },
+  "1292419278df8e2fbf3dc7af905278262bcc75ef2c9e3f92f4466d8baf2fb6fd": {
+    "at": 1795392744,
+    "atime_ns": 1795392627079086760,
+    "cases": [
+      "pytest-dev__pytest-7205"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392627333091882,
+    "new_cache_ctime": 1795392627.339092,
+    "registry_get_verified": true,
+    "size": 17728137,
+    "status": "shared",
+    "uid": 10001
+  },
+  "1525cc95f60d4640434ec398f8e8199bd716eff4411455704f454d5ebbc3067f": {
+    "at": 1795391997,
+    "atime_ns": 1795385694839725729,
+    "cases": [
+      "django__django-15503"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795384189803983429,
+    "new_cache_ctime": 1795384189.8309839,
+    "registry_get_verified": true,
+    "size": 101482275,
+    "status": "shared",
+    "uid": 10001
+  },
+  "1555dd6c7db607e7b62e0942aa0187200d359a8c6dfd58d2c009566a8d10098b": {
+    "at": 1795391972,
+    "atime_ns": 1795381193265661135,
+    "cases": [
+      "astropy__astropy-13033"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381181089424951,
+    "new_cache_ctime": 1795381181.143426,
+    "registry_get_verified": true,
+    "size": 398372872,
+    "status": "shared",
+    "uid": 10001
+  },
+  "21a080cb89789fe2ace968841dfed1fbeae1eac9178a7d1d23c0465019e250c2": {
+    "at": 1795391947,
+    "atime_ns": 1795384647207437811,
+    "cases": [
+      "django__django-14771",
+      "django__django-15503",
+      "django__django-15561",
+      "django__django-15569",
+      "django__django-16145"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795383497488279544,
+    "new_cache_ctime": 1795383497.5222802,
+    "registry_get_verified": true,
+    "size": 449034808,
+    "status": "shared",
+    "uid": 10001
+  },
+  "247400deb38c5d5c0bdb1faf62e2a278e5754e16060ad3898a0cc1eb13639eea": {
+    "at": 1795392387,
+    "atime_ns": 1795392327628149859,
+    "cases": [
+      "pylint-dev__pylint-6528"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392327802153264,
+    "new_cache_ctime": 1795392327.8111534,
+    "registry_get_verified": true,
+    "size": 11343693,
+    "status": "shared",
+    "uid": 10001
+  },
+  "2508898c891167cbc01ba489b66365a5d50ca924a29146eba601b7a2994fc39f": {
+    "at": 1795392032,
+    "atime_ns": 1795382057012545304,
+    "cases": [
+      "django__django-11292"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381564431892442,
+    "new_cache_ctime": 1795381564.4458928,
+    "registry_get_verified": true,
+    "size": 89593585,
+    "status": "shared",
+    "uid": 10001
+  },
+  "33d7a81d7812679cf07a2fea407ecd00f57c24030e0faed5dc39690be68145e4": {
+    "at": 1795391984,
+    "atime_ns": 1795389293445199287,
+    "cases": [
+      "django__django-16595"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795386050936877319,
+    "new_cache_ctime": 1795386050.969878,
+    "registry_get_verified": true,
+    "size": 105070471,
+    "status": "shared",
+    "uid": 10001
+  },
+  "360f7d768fa7cb59b27b2b615d6dbe35549aec2e6c1898bb3a9b31c0e790bd74": {
+    "at": 1795392261,
+    "atime_ns": 1795391178208837391,
+    "cases": [
+      "pallets__flask-5014"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795391185554977700,
+    "new_cache_ctime": 1795391185.5919783,
+    "registry_get_verified": true,
+    "size": 477576899,
+    "status": "shared",
+    "uid": 10001
+  },
+  "40a6daff0f1b9711747096290e90c2b26f7f53562e42bbfa0d0ceab92bdd3eff": {
+    "at": 1795392261,
+    "atime_ns": 1795391185613978827,
+    "cases": [
+      "pallets__flask-5014"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795391185729981044,
+    "new_cache_ctime": 1795391185.7389812,
+    "registry_get_verified": true,
+    "size": 7731389,
+    "status": "shared",
+    "uid": 10001
+  },
+  "412395ec2cb0ce1e82766ecf2908c6354f4b010c693cf95226e054356af682a8": {
+    "at": 1795392736,
+    "atime_ns": 1795391363990400827,
+    "cases": [
+      "matplotlib__matplotlib-26466"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795391152606348826,
+    "new_cache_ctime": 1795391152.618349,
+    "registry_get_verified": true,
+    "size": 996599859,
+    "status": "shared",
+    "uid": 10001
+  },
+  "446b89d0246a87665c0ec6fba131ec3ec5420515f16bd29476877977a8bf3382": {
+    "at": 1795392021,
+    "atime_ns": 1795382509789588298,
+    "cases": [
+      "django__django-11740"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381621217002852,
+    "new_cache_ctime": 1795381621.280004,
+    "registry_get_verified": true,
+    "size": 90733752,
+    "status": "shared",
+    "uid": 10001
+  },
+  "495cd65b012815c3cef56a890809108660c4a91141095df1150fb63d1c287ab9": {
+    "at": 1795392736,
+    "atime_ns": 1795391204481339440,
+    "cases": [
+      "matplotlib__matplotlib-26342",
+      "matplotlib__matplotlib-26466"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795391110869553907,
+    "new_cache_ctime": 1795391110.9015546,
+    "registry_get_verified": true,
+    "size": 1494382542,
+    "status": "shared",
+    "uid": 10001
+  },
+  "4a95afb95d9abaaaa1818e0da1cdff80f198c1ad322ef51e24a304e1b3dea194": {
+    "at": 1795392261,
+    "atime_ns": 1795391162091529748,
+    "cases": [
+      "mwaskom__seaborn-3187"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795391170992699617,
+    "new_cache_ctime": 1795391171.0377004,
+    "registry_get_verified": true,
+    "size": 588620089,
+    "status": "shared",
+    "uid": 10001
+  },
+  "50965dba24b2cd8b83424917fb1fede8ec995d456a58615d5bac0e504afa6662": {
+    "at": 1795392009,
+    "atime_ns": 1795384286969905033,
+    "cases": [
+      "django__django-14155"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382874502898282,
+    "new_cache_ctime": 1795382874.535899,
+    "registry_get_verified": true,
+    "size": 97137991,
+    "status": "shared",
+    "uid": 10001
+  },
+  "53008be69ef4fc6be68ee28cb5471502e180144516158b9dfb438b51958a3c15": {
+    "at": 1795392032,
+    "atime_ns": 1795381708885718679,
+    "cases": [
+      "django__django-11276"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381602988646315,
+    "new_cache_ctime": 1795381603.0046465,
+    "registry_get_verified": true,
+    "size": 89685513,
+    "status": "shared",
+    "uid": 10001
+  },
+  "5325a9ac3e313b05456582571b3409c68eaa550eb09ddf453f62e4d82eee3095": {
+    "at": 1795391910,
+    "atime_ns": 1795381222414226863,
+    "cases": [
+      "astropy__astropy-8707"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381207134930259,
+    "new_cache_ctime": 1795381207.1589308,
+    "registry_get_verified": true,
+    "size": 456699295,
+    "status": "shared",
+    "uid": 10001
+  },
+  "680dc31fbe67a32e7368c858d531af6662b31991da70dd75df28fa05088d7ea1": {
+    "at": 1795392744,
+    "atime_ns": 1795392601867578001,
+    "cases": [
+      "pydata__xarray-7393"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392602124583190,
+    "new_cache_ctime": 1795392602.1425836,
+    "registry_get_verified": true,
+    "size": 18075802,
+    "status": "shared",
+    "uid": 10001
+  },
+  "6c084da5b646e378624cdc507d2eb05e8d52406b8031c54710ceb788634f0206": {
+    "at": 1795392261,
+    "atime_ns": 1795391171047700667,
+    "cases": [
+      "mwaskom__seaborn-3187"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795391171721713534,
+    "new_cache_ctime": 1795391171.753714,
+    "registry_get_verified": true,
+    "size": 46271362,
+    "status": "shared",
+    "uid": 10001
+  },
+  "7a13365a6c7b7b36335ff21844747a73a50b1fc011c63e840e8c50ce4cdbc927": {
+    "at": 1795391947,
+    "atime_ns": 1795384581425071029,
+    "cases": [
+      "django__django-14765"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795383271093789109,
+    "new_cache_ctime": 1795383271.1177895,
+    "registry_get_verified": true,
+    "size": 435475002,
+    "status": "shared",
+    "uid": 10001
+  },
+  "7bb6a78904831cab45acd5dc39d9f0aae03f653e736f074f42ba61a0513a6f73": {
+    "at": 1795391997,
+    "atime_ns": 1795384647206437790,
+    "cases": [
+      "django__django-14771"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795383499119311870,
+    "new_cache_ctime": 1795383499.1423123,
+    "registry_get_verified": true,
+    "size": 98554097,
+    "status": "shared",
+    "uid": 10001
+  },
+  "82a47ceeba80f08fec2e886755026c3eb83a175fde8980ab5fb7bc26fa81c087": {
+    "at": 1795391997,
+    "atime_ns": 1795386137238608465,
+    "cases": [
+      "django__django-15561"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795384198152148537,
+    "new_cache_ctime": 1795384198.1861491,
+    "registry_get_verified": true,
+    "size": 102336746,
+    "status": "shared",
+    "uid": 10001
+  },
+  "85b6b34f40ac44e4600d76f2bd397d1bdf8617e8f99aec36a44226e10b7f39b8": {
+    "at": 1795392057,
+    "atime_ns": 1795389726076909136,
+    "cases": [
+      "django__django-16661"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795386108954041165,
+    "new_cache_ctime": 1795386108.9800417,
+    "registry_get_verified": true,
+    "size": 104809951,
+    "status": "shared",
+    "uid": 10001
+  },
+  "87d563fa66d0eefddea3d68671e90cc63fb50ce83bb64c5d8950b65a05a76225": {
+    "at": 1795391910,
+    "atime_ns": 1795389295529241488,
+    "cases": [
+      "django__django-16595"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795386057990018823,
+    "new_cache_ctime": 1795386058.0360198,
+    "registry_get_verified": true,
+    "size": 476576836,
+    "status": "shared",
+    "uid": 10001
+  },
+  "8b8e2805372cef1daa765aebbd96cfda130de1503912a80f1e9a41d15bc0cfae": {
+    "at": 1795391947,
+    "atime_ns": 1795390384237055519,
+    "cases": [
+      "matplotlib__matplotlib-13989"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795387361970398514,
+    "new_cache_ctime": 1795387361.994399,
+    "registry_get_verified": true,
+    "size": 442011179,
+    "status": "shared",
+    "uid": 10001
+  },
+  "8f072205b9e85984bdc36f67066f827716ad7d1f8d4f76073165031a86429969": {
+    "at": 1795391984,
+    "atime_ns": 1795387454593179750,
+    "cases": [
+      "django__django-15851"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795385148496699778,
+    "new_cache_ctime": 1795385148.5337005,
+    "registry_get_verified": true,
+    "size": 103458791,
+    "status": "shared",
+    "uid": 10001
+  },
+  "96395261a4212519f47ffbcabf8e60371515bfe938ded7a4049ca6682430ad20": {
+    "at": 1795392387,
+    "atime_ns": 1795392327921155592,
+    "cases": [
+      "pylint-dev__pylint-6528"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392334132277118,
+    "new_cache_ctime": 1795392334.1822782,
+    "registry_get_verified": true,
+    "size": 409381626,
+    "status": "shared",
+    "uid": 10001
+  },
+  "a17e1b9b613858e2027b973d0505d85dca6d1587a8d68bb0ec135c9ba27c54d8": {
+    "at": 1795392736,
+    "atime_ns": 1795392627449094222,
+    "cases": [
+      "pytest-dev__pytest-7205"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392632384193744,
+    "new_cache_ctime": 1795392632.4211946,
+    "registry_get_verified": true,
+    "size": 348083004,
+    "status": "shared",
+    "uid": 10001
+  },
+  "ac7756917c6714c127c9ecf98074801233eee3400c00153aa1c13b91151b7f70": {
+    "at": 1795392057,
+    "atime_ns": 1795389726078909176,
+    "cases": [
+      "django__django-16661",
+      "django__django-16877"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795386116588194289,
+    "new_cache_ctime": 1795386116.624195,
+    "registry_get_verified": true,
+    "size": 476296665,
+    "status": "shared",
+    "uid": 10001
+  },
+  "b928b11c570589537eac7320f6f58e02688c9f48fc13a18060bd7f87f326b759": {
+    "at": 1795391859,
+    "atime_ns": 1795381222365225911,
+    "cases": [
+      "astropy__astropy-8707"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381208165950269,
+    "new_cache_ctime": 1795381208.198951,
+    "registry_get_verified": true,
+    "size": 60023622,
+    "status": "shared",
+    "uid": 10001
+  },
+  "c2d1cec3499f1dc02294fc29112a6d4d50a175a70143868b6d47885b058200f9": {
+    "at": 1795392032,
+    "atime_ns": 1795381192929654616,
+    "cases": [
+      "astropy__astropy-13033"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381182357449543,
+    "new_cache_ctime": 1795381182.3974502,
+    "registry_get_verified": true,
+    "size": 74941701,
+    "status": "shared",
+    "uid": 10001
+  },
+  "c425cda090f280f6eeaa2b01777caf6cfaf3559334c8a493ebc99cae295624e9": {
+    "at": 1795391997,
+    "atime_ns": 1795386214233152438,
+    "cases": [
+      "django__django-15569"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795384206585315324,
+    "new_cache_ctime": 1795384206.6083157,
+    "registry_get_verified": true,
+    "size": 102189776,
+    "status": "shared",
+    "uid": 10001
+  },
+  "cbcbbf535047ef3fcca4c4ce5e7d0fb4266d6b4a234e1fd749bcb873d1057da9": {
+    "at": 1795391910,
+    "atime_ns": 1795387301777244811,
+    "cases": [
+      "django__django-15814",
+      "django__django-15851"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795385137446475598,
+    "new_cache_ctime": 1795385137.4844763,
+    "registry_get_verified": true,
+    "size": 449317619,
+    "status": "shared",
+    "uid": 10001
+  },
+  "cda1458bae134fd16a0f628767e41d2d189f52d2c9ad7bd202a0d3b18542298f": {
+    "at": 1795392009,
+    "atime_ns": 1795384120512612925,
+    "cases": [
+      "django__django-13810"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382818781785761,
+    "new_cache_ctime": 1795382818.8047862,
+    "registry_get_verified": true,
+    "size": 95876224,
+    "status": "shared",
+    "uid": 10001
+  },
+  "ce4d8452b2f58d48e36db85dcf67b880b54be8d2614d54195302fb94f7142c6f": {
+    "at": 1795392736,
+    "atime_ns": 1795392602240585532,
+    "cases": [
+      "pydata__xarray-7393"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392619689937708,
+    "new_cache_ctime": 1795392619.7229383,
+    "registry_get_verified": true,
+    "size": 1223662926,
+    "status": "shared",
+    "uid": 10001
+  },
+  "d8cabc64f03d32248a5d1363959bdcbd0f49144830c66871ff9f14fe9a06e768": {
+    "at": 1795392547,
+    "atime_ns": 1795391204522340224,
+    "cases": [
+      "matplotlib__matplotlib-26342"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795391127063862110,
+    "new_cache_ctime": 1795391127.0978627,
+    "registry_get_verified": true,
+    "size": 995260153,
+    "status": "shared",
+    "uid": 10001
+  },
+  "dbc4fd90ca1ecaae1f4c548fa0241904ada30c61ac3f351e173587159328a993": {
+    "at": 1795392021,
+    "atime_ns": 1795383623179769932,
+    "cases": [
+      "django__django-13033"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795382388057128672,
+    "new_cache_ctime": 1795382388.0951295,
+    "registry_get_verified": true,
+    "size": 94113951,
+    "status": "shared",
+    "uid": 10001
+  },
+  "e02d4f83bb53f67b124ef9f75113a0f9bd3dcab595ba680913cf6a8a9527d011": {
+    "at": 1795391972,
+    "atime_ns": 1795389899237375657,
+    "cases": [
+      "django__django-16877"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795387221412710016,
+    "new_cache_ctime": 1795387221.4507108,
+    "registry_get_verified": true,
+    "size": 105572445,
+    "status": "shared",
+    "uid": 10001
+  },
+  "e46897be79db095ad0d5f142170c4f54a271f4d0306ead2023b7a5b712fec73f": {
+    "at": 1795391910,
+    "atime_ns": 1795390384230055379,
+    "cases": [
+      "matplotlib__matplotlib-13989"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795387371763586521,
+    "new_cache_ctime": 1795387371.7855868,
+    "registry_get_verified": true,
+    "size": 639243649,
+    "status": "shared",
+    "uid": 10001
+  },
+  "e5a4da9540a857141abc1777dc00928e20539709fee4c55538d066ab06eb073f": {
+    "at": 1795392021,
+    "atime_ns": 1795382487515139171,
+    "cases": [
+      "django__django-11490"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795381611499812779,
+    "new_cache_ctime": 1795381611.5148132,
+    "registry_get_verified": true,
+    "size": 90121940,
+    "status": "shared",
+    "uid": 10001
+  },
+  "ec54cb8e16bcc5f86d9fb1ba979179fb66db3b9e33f25fa5b97760428e46b256": {
+    "at": 1795392547,
+    "atime_ns": 1795392451249569319,
+    "cases": [
+      "pydata__xarray-2905"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795392451461573469,
+    "new_cache_ctime": 1795392451.4755738,
+    "registry_get_verified": true,
+    "size": 13668585,
+    "status": "shared",
+    "uid": 10001
+  },
+  "efa74b6544820cbaf960bb0038a78318fbab1692179258020609972029303195": {
+    "at": 1795391984,
+    "atime_ns": 1795387301752244333,
+    "cases": [
+      "django__django-15814"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795385139026507657,
+    "new_cache_ctime": 1795385139.0725086,
+    "registry_get_verified": true,
+    "size": 103351408,
+    "status": "shared",
+    "uid": 10001
+  },
+  "f449869efc386a13ff761c750beb3bceba6a3f5e15d771ecaf4edf8df5cc78df": {
+    "at": 1795392009,
+    "atime_ns": 1795384581377070029,
+    "cases": [
+      "django__django-14765"
+    ],
+    "gid": 10001,
+    "mode": 420,
+    "mtime_ns": 1795383272560818232,
+    "new_cache_ctime": 1795383272.5798187,
+    "registry_get_verified": true,
+    "size": 98101400,
+    "status": "shared",
+    "uid": 10001
+  }
+}

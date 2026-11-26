@@ -1,0 +1,286 @@
+{
+  "captured_on": "2026-11-22",
+  "public_endpoints": {
+    "/api/live.json": {
+      "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+      "planned": 50,
+      "done": 35,
+      "outcomes": {
+        "error": 4,
+        "failed": 10,
+        "submitted": 14
+      },
+      "finished": true,
+      "cost_usd": 31.059832,
+      "scores": {},
+      "updated_at": "2026-11-21T20:50:03Z"
+    },
+    "/api/benchmarks.json": {
+      "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+      "finished": true,
+      "cost_usd": 41.782292,
+      "scores": {
+        "resolved": 26,
+        "resolved_rate": 0.52
+      },
+      "selected": 50,
+      "resolved": 26,
+      "source": "benchmark_artifacts"
+    }
+  },
+  "records": {
+    "mini50-gpt62-formal-a-20261121T1900Z": {
+      "source": "records/*.json (task_id, status, patch, error and deliverable codes)",
+      "rows": [
+        {
+          "instance_id": "django__django-11964",
+          "task_id": "tsk_01M7ZWZ8CNABDXWA3AGAKGHMC6",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "django__django-12308",
+          "task_id": "tsk_01M7ZWZ8E6TSCQQY38TQGBEYQG",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "django__django-12708",
+          "task_id": "tsk_01M7ZV7GTJQK38H9MY3HJ7PB47",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 10,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10323",
+          "task_id": "tsk_01M7ZX3B4G5JY0CS43STKVN73Y",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10435",
+          "task_id": "tsk_01M7ZXPCW64CVEBF1J21YAGMKF",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-7590",
+          "task_id": "tsk_01M7ZW7D4YEKBZJ4R6JJZNV6E2",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-7985",
+          "task_id": "tsk_01M7ZW7E1DQ388TA07V19QQ1YZ",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "object_store_unavailable"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8056",
+          "task_id": null,
+          "record_state": "error",
+          "terminal_status": null,
+          "rounds": null,
+          "had_patch": false,
+          "reason": "prewarm_before_submission"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "task_id": "tsk_01M7ZXNZ0V2713PX5YC5JWWWGQ",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9230",
+          "task_id": "tsk_01M7ZXRX3F764SMPFGE5T1H2X8",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9281",
+          "task_id": null,
+          "record_state": "error",
+          "terminal_status": null,
+          "rounds": null,
+          "had_patch": false,
+          "reason": "prewarm_before_submission"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9367",
+          "task_id": null,
+          "record_state": "finished",
+          "terminal_status": "infra_error",
+          "rounds": null,
+          "had_patch": false,
+          "reason": "prewarm_before_submission"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9461",
+          "task_id": "tsk_01M7ZWBH4FM6JCX9EK5WFV4VJ1",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        }
+      ]
+    },
+    "mini50-gpt62-formal-b-20261121T1930Z": {
+      "source": "records/*.json (task_id, status, patch, error and deliverable codes)",
+      "rows": [
+        {
+          "instance_id": "django__django-11964",
+          "task_id": "tsk_01M7ZWZ8E2DF0PTVD2W0WS6J10",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "django__django-12209",
+          "task_id": "tsk_01M7ZMW84P607SQBT5KSCXVTT6",
+          "record_state": "error",
+          "terminal_status": "done",
+          "rounds": 4,
+          "had_patch": false,
+          "reason": "diff_timeout"
+        },
+        {
+          "instance_id": "django__django-12308",
+          "task_id": "tsk_01M7ZWZ8E0XED9KPERYPC51QE8",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "django__django-12708",
+          "task_id": "tsk_01M7ZV7GZBHHNN2DAKEVYHS6VF",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 10,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10323",
+          "task_id": "tsk_01M7ZX3B4DKJHN69GW7B99F4T1",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-10435",
+          "task_id": "tsk_01M7ZXPCY21XH6ZB2D5TAAYRQ1",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-7590",
+          "task_id": "tsk_01M7ZW7DCMS7Y5BRGX194E4HXR",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-7985",
+          "task_id": "tsk_01M7ZW7DW9WHZDT9YP38R31ZRW",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8056",
+          "task_id": null,
+          "record_state": "error",
+          "terminal_status": null,
+          "rounds": null,
+          "had_patch": false,
+          "reason": "prewarm_before_submission"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-8269",
+          "task_id": "tsk_01M7ZXNZ0TJGNJVJDSEHKTFSHK",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9230",
+          "task_id": "tsk_01M7ZXRX3FJ8YXRTM2XSEGC4CB",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9281",
+          "task_id": null,
+          "record_state": "error",
+          "terminal_status": null,
+          "rounds": null,
+          "had_patch": false,
+          "reason": "prewarm_before_submission"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9367",
+          "task_id": null,
+          "record_state": "finished",
+          "terminal_status": "infra_error",
+          "rounds": null,
+          "had_patch": false,
+          "reason": "prewarm_before_submission"
+        },
+        {
+          "instance_id": "sphinx-doc__sphinx-9461",
+          "task_id": "tsk_01M7ZWBH7MDJMZQ0M65G495GGT",
+          "record_state": "finished",
+          "terminal_status": "aborted",
+          "rounds": 7,
+          "had_patch": false,
+          "reason": "insufficient_user_quota"
+        }
+      ]
+    }
+  }
+}

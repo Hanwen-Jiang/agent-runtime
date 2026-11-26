@@ -1,0 +1,118 @@
+{
+  "instance_id": "pytest-dev__pytest-7205",
+  "task_id": "tsk_01M82YC2B137SAXFWBSCW8VQGS",
+  "prior": "resolved",
+  "new_resolved": false,
+  "terminal": "done",
+  "patch_files": [
+    "src/_pytest/setuponly.py"
+  ],
+  "rounds": 2,
+  "tool_counts": {
+    "skill_read": 3,
+    "repo_read": 12,
+    "shell_run": 46,
+    "repo_list": 1,
+    "repo_grep": 5,
+    "repo_edit": 3
+  },
+  "first_repo_edit_sequence": 61,
+  "checks": [
+    {
+      "tool_sequence": 18,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "779c89278b0eeda6dd6bdd3967153ffeaf93b84ab279f4b5d753e6c3b8f0ca95",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 19,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "7c914d5f12f84d04a9fa97a8a364138382a1cb68b1f1c1a2932eae741e9e417e",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 33,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "c8c3064a6d92a085e9a48bff9db70616f1b9738e34254f5205239e936abf1832",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 34,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "2f89e7ec4652b37cb3b1c5405bcce0b7ab249f5cf89ae0e6f9d157de685d9866",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 36,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "e76fe94a97b5a4503d89c52cb32dacea2426fe66863a85e6bc32a46423efd0f8",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 37,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "9a7a634c3ab764e7d2224ef5834b653c48276aa5ede3a6f38b14fc1332a2edb2",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 38,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "779c89278b0eeda6dd6bdd3967153ffeaf93b84ab279f4b5d753e6c3b8f0ca95",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 40,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "f1be161198fe5631c1ae24e22c971c3d7dbb4407cf8000af98f0900cd973feb5",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 41,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "779c89278b0eeda6dd6bdd3967153ffeaf93b84ab279f4b5d753e6c3b8f0ca95",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 44,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "6f768d78ee87722e56bbdab1ac28a1b7a5aa41f7acb4ffbb98c355479cf57fd3",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 51,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 2,
+      "target_sha256": "f8c32ba66b277749f935e8c825f2ba9feeeb896f0db5251c2e1d18ded45f5dfc",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 65,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "6f51262e5af3dea99433b35006a6ef09939050d9d5183816cf116697274a244a",
+      "command_type": "repository_test_command"
+    }
+  ],
+  "equal_recorded_shell_targets_across_first_repo_edit": [],
+  "official_tests": {
+    "FAIL_TO_PASS": {
+      "success": 1,
+      "failure": 9
+    },
+    "PASS_TO_PASS": {
+      "success": 16,
+      "failure": 0
+    }
+  },
+  "interpretation": "Matching targets are observed invocations; tool_status does not contain test stdout or a process exit code."
+}

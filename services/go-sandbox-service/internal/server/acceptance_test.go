@@ -227,6 +227,10 @@ func TestDiffAndLogRunGitInASandboxNotInTheService(t *testing.T) {
 	git("init", "-q", "-b", "main")
 	git("add", "-A")
 	git("-c", "user.name=T", "-c", "user.email=t@example.test", "commit", "-qm", "first commit")
+	legacyLock := filepath.Join(root, ".git", "agentruntime-diff.index.lock")
+	if err := os.WriteFile(legacyLock, []byte("other collector"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("one\ntwo\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -244,6 +248,26 @@ func TestDiffAndLogRunGitInASandboxNotInTheService(t *testing.T) {
 	sort.Strings(files)
 	if !contains(d.GetDiff(), "+two") || strings.Join(files, ",") != "a.txt,new.txt" || d.GetBranch() != "main" || len(d.GetHead()) != 40 {
 		t.Fatalf("diff：%+v", d)
+	}
+	// Overlap a failed collection and a valid one on the same mounted workspace.
+	// Both have already created an alternate index before Git validates the base.
+	missing := make(chan error, 1)
+	go func() {
+		_, err := h.reader.GetDiff(ctx, connect.NewRequest(&sandboxv1.GetDiffRequest{Tenant: tc, WorkspaceId: "w1", Base: "not-a-real-ref"}))
+		missing <- err
+	}()
+	again, retryErr := h.reader.GetDiff(ctx, connect.NewRequest(&sandboxv1.GetDiffRequest{Tenant: tc, WorkspaceId: "w1"}))
+	if err := <-missing; err == nil {
+		t.Fatal("missing base should fail")
+	}
+	if retryErr != nil || again.Msg.GetResponse().GetSha256() != d.GetSha256() {
+		t.Fatalf("concurrent GetDiff: %v %v", again, retryErr)
+	}
+	if files, err := filepath.Glob(filepath.Join(root, ".git", "agentruntime-diff*")); err != nil || len(files) != 1 || files[0] != legacyLock {
+		t.Fatalf("temporary files after GetDiff: %v %v", files, err)
+	}
+	if data, err := os.ReadFile(legacyLock); err != nil || string(data) != "other collector" {
+		t.Fatalf("GetDiff disturbed a pre-existing lock: %q %v", data, err)
 	}
 	log, err := h.reader.GetLog(ctx, connect.NewRequest(&sandboxv1.GetLogRequest{Tenant: tc, WorkspaceId: "w1"}))
 	if err != nil || len(log.Msg.GetResponse().GetCommits()) != 1 || log.Msg.GetResponse().GetCommits()[0].GetSubject() != "first commit" {

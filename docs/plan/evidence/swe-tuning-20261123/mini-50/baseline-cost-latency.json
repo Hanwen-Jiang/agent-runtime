@@ -1,0 +1,325 @@
+{
+  "cohort": "mini-50",
+  "arm": "b",
+  "effective_task_for_each_graded_case": {
+    "task_count": 50,
+    "task_with_ledger": 50,
+    "settled_model_usd": 58.864137,
+    "unsettled_calls": 22,
+    "accepted_to_finished_s": {
+      "n": 50,
+      "p50": 614.306,
+      "p95": 1423.407
+    }
+  },
+  "all_original_and_recovery_tasks": {
+    "task_count": 60,
+    "task_with_ledger": 60,
+    "settled_model_usd": 59.382151,
+    "unsettled_calls": 22,
+    "accepted_to_finished_s": {
+      "n": 60,
+      "p50": 571.6,
+      "p95": 1312.452
+    }
+  },
+  "effective_task_ids": {
+    "django__django-11790": "tsk_01M7ZDF9YH4K6WTG0F45VVRATA",
+    "django__django-12050": "tsk_01M7ZDFBKT1S1V8XXV6CPYDXVE",
+    "django__django-12262": "tsk_01M7ZDFBNASNBCWEBXBG1G9ZEM",
+    "django__django-12713": "tsk_01M7ZEMPHHAX1AG7A6R262745G",
+    "sphinx-doc__sphinx-8475": "tsk_01M7ZEHKXJ8AD8HD1N5E95GF2S",
+    "sphinx-doc__sphinx-8721": "tsk_01M7ZEKNMQS4A0EZJ588MMC75K",
+    "sphinx-doc__sphinx-9320": "tsk_01M7ZFBE0PPXR27ZXCZZGGP3SG",
+    "sphinx-doc__sphinx-9698": "tsk_01M7ZFBX41JRE8MJB8YY686B54",
+    "django__django-11848": "tsk_01M7ZG164PA67M9R8F8HFZGRJF",
+    "django__django-12774": "tsk_01M7ZGF7A70K1PTVW348B6077Q",
+    "sphinx-doc__sphinx-7748": "tsk_01M7ZGMTXW167HQDZS4YVK3PA5",
+    "sphinx-doc__sphinx-8035": "tsk_01M7ZGYSRN344CCSR3922DV9FT",
+    "sphinx-doc__sphinx-8548": "tsk_01M7ZJ8GWETGS0JGT9HJ68EW1R",
+    "sphinx-doc__sphinx-9229": "tsk_01M7ZJ8SPK1HJPSV5H1WZ29BP8",
+    "django__django-11880": "tsk_01M7ZJV398A4MVSNNDQ51R9Q2D",
+    "django__django-12143": "tsk_01M7ZKBPT4CFPP0DTWMHRR4QFC",
+    "django__django-12155": "tsk_01M7ZKG3XQDVDQGD6AQ4MVXTGQ",
+    "sphinx-doc__sphinx-9367": "tsk_01M82EYT4MRHAF7HP34HHZMEJZ",
+    "django__django-12209": "tsk_01M7ZMW84P607SQBT5KSCXVTT6",
+    "django__django-11951": "tsk_01M7ZMW853B5Q1TKASKFX0J3WM",
+    "django__django-12193": "tsk_01M7ZMYABYYZJ1MBKFC5W4B3D8",
+    "django__django-12276": "tsk_01M7ZNTTWBP1W70AA3P9DXREM7",
+    "django__django-12304": "tsk_01M7ZNYXCF3WVJKTJJ76MWRR5E",
+    "django__django-9296": "tsk_01M7ZPEDXAZ3RZQ255QDWJ5PGW",
+    "sphinx-doc__sphinx-10466": "tsk_01M7ZPJYFSGNYY7VF0F108F1KZ",
+    "django__django-11999": "tsk_01M7ZPWEF50PN4FT4476J10CA2",
+    "django__django-12039": "tsk_01M7ZQ95T4MS9AGNBFPMRF0KSW",
+    "django__django-12273": "tsk_01M7ZQJ7744925SAMTWSFFTEKH",
+    "django__django-12325": "tsk_01M7ZQX67BDKC35A9ETQHAE1JC",
+    "django__django-12406": "tsk_01M7ZR4DD3PXMP43ESEZR9ERD1",
+    "sphinx-doc__sphinx-10673": "tsk_01M7ZRSEFM7NCWAXKQZ4862PWV",
+    "sphinx-doc__sphinx-11510": "tsk_01M7ZRYRSP2883VX82PB54MR2A",
+    "sphinx-doc__sphinx-7757": "tsk_01M7ZRZJEPZ2T23JZBGEJAK0SA",
+    "sphinx-doc__sphinx-8265": "tsk_01M7ZSXZACR1J54DNNHN652DT2",
+    "sphinx-doc__sphinx-8551": "tsk_01M7ZT1EPFX527FZ89W4ZE8ZQH",
+    "sphinx-doc__sphinx-8638": "tsk_01M7ZT8FZNKNDQGD27P1JNABRE",
+    "django__django-11815": "tsk_01M7ZV5C41YSE59FHQH1XK85EJ",
+    "django__django-11885": "tsk_01M7ZV88E2NV7WA7DTV1VEZ769",
+    "django__django-12708": "tsk_01M81QNEP4FB3EXNTDTWQ3KTKP",
+    "sphinx-doc__sphinx-7590": "tsk_01M81V2N69PP2FT7M408KW3SHW",
+    "sphinx-doc__sphinx-7985": "tsk_01M81W1KKAYKSKG1AJHZYNR99Q",
+    "sphinx-doc__sphinx-8056": "tsk_01M82F9C2YFXR9XKVG1B2YFKC9",
+    "sphinx-doc__sphinx-9461": "tsk_01M81YBHKKEAAZT4MWFB62SXXB",
+    "django__django-11964": "tsk_01M81P1N4S73MSWBT8FGPAMZDA",
+    "django__django-12308": "tsk_01M81PQK5FPYNN1FHKXJSWRK71",
+    "sphinx-doc__sphinx-10323": "tsk_01M81S2CB37BPRFC73Y6FV6P52",
+    "sphinx-doc__sphinx-10435": "tsk_01M81TCJJFJ1T5WBHTY4ZYKH73",
+    "sphinx-doc__sphinx-8269": "tsk_01M81WPPRMC6ZJFQQAP7SE6M32",
+    "sphinx-doc__sphinx-9230": "tsk_01M81XHT1CXWGTANZJRJJF9FE6",
+    "sphinx-doc__sphinx-9281": "tsk_01M82ER7V07A1D4WN6VAMTRVT5"
+  },
+  "stage_per_task": {
+    "tsk_01M7ZKBPT4CFPP0DTWMHRR4QFC": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12143"
+    ],
+    "tsk_01M7ZWZ8E0XED9KPERYPC51QE8": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12308"
+    ],
+    "tsk_01M7ZT8FZNKNDQGD27P1JNABRE": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8638"
+    ],
+    "tsk_01M7ZGF7A70K1PTVW348B6077Q": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12774"
+    ],
+    "tsk_01M7ZDF9YH4K6WTG0F45VVRATA": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11790"
+    ],
+    "tsk_01M7ZJV398A4MVSNNDQ51R9Q2D": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11880"
+    ],
+    "tsk_01M7ZX3B4DKJHN69GW7B99F4T1": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-10323"
+    ],
+    "tsk_01M7ZV7GZBHHNN2DAKEVYHS6VF": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12708"
+    ],
+    "tsk_01M7ZWBH7MDJMZQ0M65G495GGT": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-9461"
+    ],
+    "tsk_01M7ZW7DCMS7Y5BRGX194E4HXR": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-7590"
+    ],
+    "tsk_01M7ZT1EPFX527FZ89W4ZE8ZQH": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8551"
+    ],
+    "tsk_01M7ZV5C41YSE59FHQH1XK85EJ": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11815"
+    ],
+    "tsk_01M7ZQJ7744925SAMTWSFFTEKH": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12273"
+    ],
+    "tsk_01M7ZFBE0PPXR27ZXCZZGGP3SG": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-9320"
+    ],
+    "tsk_01M7ZDFBKT1S1V8XXV6CPYDXVE": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12050"
+    ],
+    "tsk_01M7ZEMPHHAX1AG7A6R262745G": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12713"
+    ],
+    "tsk_01M7ZGYSRN344CCSR3922DV9FT": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8035"
+    ],
+    "tsk_01M7ZGMTXW167HQDZS4YVK3PA5": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-7748"
+    ],
+    "tsk_01M7ZJ8SPK1HJPSV5H1WZ29BP8": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-9229"
+    ],
+    "tsk_01M7ZXNZ0TJGNJVJDSEHKTFSHK": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8269"
+    ],
+    "tsk_01M7ZG164PA67M9R8F8HFZGRJF": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11848"
+    ],
+    "tsk_01M7ZMYABYYZJ1MBKFC5W4B3D8": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12193"
+    ],
+    "tsk_01M7ZDFBNASNBCWEBXBG1G9ZEM": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12262"
+    ],
+    "tsk_01M7ZPEDXAZ3RZQ255QDWJ5PGW": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-9296"
+    ],
+    "tsk_01M7ZPWEF50PN4FT4476J10CA2": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11999"
+    ],
+    "tsk_01M7ZMW84P607SQBT5KSCXVTT6": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12209"
+    ],
+    "tsk_01M7ZXRX3FJ8YXRTM2XSEGC4CB": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-9230"
+    ],
+    "tsk_01M7ZPJYFSGNYY7VF0F108F1KZ": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-10466"
+    ],
+    "tsk_01M7ZRZJEPZ2T23JZBGEJAK0SA": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-7757"
+    ],
+    "tsk_01M7ZV88E2NV7WA7DTV1VEZ769": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11885"
+    ],
+    "tsk_01M7ZEKNMQS4A0EZJ588MMC75K": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8721"
+    ],
+    "tsk_01M7ZXPCY21XH6ZB2D5TAAYRQ1": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-10435"
+    ],
+    "tsk_01M7ZNTTWBP1W70AA3P9DXREM7": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12276"
+    ],
+    "tsk_01M7ZFBX41JRE8MJB8YY686B54": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-9698"
+    ],
+    "tsk_01M7ZR4DD3PXMP43ESEZR9ERD1": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12406"
+    ],
+    "tsk_01M7ZMW853B5Q1TKASKFX0J3WM": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11951"
+    ],
+    "tsk_01M7ZWZ8E2DF0PTVD2W0WS6J10": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-11964"
+    ],
+    "tsk_01M7ZJ8GWETGS0JGT9HJ68EW1R": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8548"
+    ],
+    "tsk_01M7ZW7DW9WHZDT9YP38R31ZRW": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-7985"
+    ],
+    "tsk_01M7ZQX67BDKC35A9ETQHAE1JC": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12325"
+    ],
+    "tsk_01M7ZKG3XQDVDQGD6AQ4MVXTGQ": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12155"
+    ],
+    "tsk_01M7ZEHKXJ8AD8HD1N5E95GF2S": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8475"
+    ],
+    "tsk_01M7ZRSEFM7NCWAXKQZ4862PWV": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-10673"
+    ],
+    "tsk_01M7ZSXZACR1J54DNNHN652DT2": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-8265"
+    ],
+    "tsk_01M7ZQ95T4MS9AGNBFPMRF0KSW": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12039"
+    ],
+    "tsk_01M7ZRYRSP2883VX82PB54MR2A": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "sphinx-doc__sphinx-11510"
+    ],
+    "tsk_01M7ZNYXCF3WVJKTJJ76MWRR5E": [
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "django__django-12304"
+    ],
+    "tsk_01M81PQK5FPYNN1FHKXJSWRK71": [
+      "mini50-quota-20261122-b",
+      "django__django-12308"
+    ],
+    "tsk_01M81S2CB37BPRFC73Y6FV6P52": [
+      "mini50-quota-20261122-b",
+      "sphinx-doc__sphinx-10323"
+    ],
+    "tsk_01M81QNEP4FB3EXNTDTWQ3KTKP": [
+      "mini50-quota-20261122-b",
+      "django__django-12708"
+    ],
+    "tsk_01M81YBHKKEAAZT4MWFB62SXXB": [
+      "mini50-quota-20261122-b",
+      "sphinx-doc__sphinx-9461"
+    ],
+    "tsk_01M81V2N69PP2FT7M408KW3SHW": [
+      "mini50-quota-20261122-b",
+      "sphinx-doc__sphinx-7590"
+    ],
+    "tsk_01M81WPPRMC6ZJFQQAP7SE6M32": [
+      "mini50-quota-20261122-b",
+      "sphinx-doc__sphinx-8269"
+    ],
+    "tsk_01M81XHT1CXWGTANZJRJJF9FE6": [
+      "mini50-quota-20261122-b",
+      "sphinx-doc__sphinx-9230"
+    ],
+    "tsk_01M81TCJJFJ1T5WBHTY4ZYKH73": [
+      "mini50-quota-20261122-b",
+      "sphinx-doc__sphinx-10435"
+    ],
+    "tsk_01M81P1N4S73MSWBT8FGPAMZDA": [
+      "mini50-quota-20261122-b",
+      "django__django-11964"
+    ],
+    "tsk_01M81W1KKAYKSKG1AJHZYNR99Q": [
+      "mini50-quota-20261122-b",
+      "sphinx-doc__sphinx-7985"
+    ],
+    "tsk_01M82ER7V07A1D4WN6VAMTRVT5": [
+      "mini50-infra-20261123-b",
+      "sphinx-doc__sphinx-9281"
+    ],
+    "tsk_01M82F9C2YFXR9XKVG1B2YFKC9": [
+      "mini50-infra-20261123-b",
+      "sphinx-doc__sphinx-8056"
+    ],
+    "tsk_01M82EYT4MRHAF7HP34HHZMEJZ": [
+      "mini50-infra-20261123-b",
+      "sphinx-doc__sphinx-9367"
+    ]
+  },
+  "verdict_source_sha256": "3e0481f81df8afc1b91a6dde6e7194c17aecd2666e461b5093fedf51d26b8eec",
+  "definitions": {
+    "cost": "Actual settled model_usage in USD, including priced calls beyond native per-task cancellation threshold as recorded by gateway",
+    "latency": "task_accepted to task_finished only in seconds, nearest rank; excludes setup, model downtime between attempts and official grading"
+  }
+}

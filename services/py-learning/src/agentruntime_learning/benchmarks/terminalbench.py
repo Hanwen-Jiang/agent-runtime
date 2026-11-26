@@ -327,9 +327,7 @@ def run(runtime: sb.Runtime, tasks: Sequence[TBTask], out_dir: Path, settings: s
     _manifest(out_dir, tasks, settings, selection)
     runner = _Runner(runtime, list(tasks), out_dir, settings, live)  # type: ignore[arg-type]
     runner.go()
-    if live is not None:
-        live.finished(model=settings.model_name)
-    return runner.summary()
+    return runner.finish_run()
 
 
 def _manifest(out_dir: Path, tasks: Sequence[TBTask], settings: sb.Settings, selection: Mapping[str, Any] | None) -> None:

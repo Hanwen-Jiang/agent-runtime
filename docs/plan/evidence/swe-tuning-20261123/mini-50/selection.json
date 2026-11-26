@@ -1,0 +1,13 @@
+{
+  "dataset_name": "SWE-bench/SWE-bench_Verified",
+  "dataset_split": "test",
+  "population_count": 500,
+  "cohort_file_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+  "public_cohort": "MariusHobbhahn/swe-bench-verified-mini",
+  "source_commit": "1ce432065d9ed226017ef1ac88b5f91818383c64",
+  "method_description": "Published size-optimized list, 25 Django and 25 Sphinx in original order",
+  "reference_url": "https://github.com/MariusHobbhahn/SWEBench-verified-mini/blob/1ce432065d9ed226017ef1ac88b5f91818383c64/data/subsets/size_optimized_sample_ids.json",
+  "baseline_run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+  "runtime_batch": "mini-50",
+  "runtime_version": "C"
+}

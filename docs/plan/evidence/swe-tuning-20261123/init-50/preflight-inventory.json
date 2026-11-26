@@ -1,0 +1,508 @@
+[
+  {
+    "id": "astropy__astropy-13033",
+    "key": "cff65458742065bdd208b674b5b5f0ef54e388f7729ca56ffc3e611e759ba72c",
+    "image": "swebench/sweb.eval.x86_64.astropy_1776_astropy-13033:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:4b90dc1a59c510995a9fae92f679f597e4e8631f5fc09104c33f6240072acbd5",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "astropy__astropy-8707",
+    "key": "5e4d72b04bc3a7a68c5e7d3a1cb18a818b9b78e6e68a337af97c1ca41fd58b8e",
+    "image": "swebench/sweb.eval.x86_64.astropy_1776_astropy-8707:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:8f860ad116fd5b3ce640553d9dfd5a9284ad2e571772876c4361babaf5214afe",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-11163",
+    "key": "a4a0db7fd2c1d5a1fd84e547e3772dc5a98ca35416181db2b81037bd1d46b213",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-11163:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:acefff0688bfdde3602117f733e23aae9a02767b68d35c89fa5e9dc9afbbb8c7",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-11276",
+    "key": "e88e96cb883fe4bfcf76ecc8ae1d58820efba47f86fbc2f0802bd6dc18ad38a7",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-11276:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:a3bd85c8480ab62978c1dd63b022d7992a64dc00dcf2c16282ed2b973999a6f5",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-11292",
+    "key": "65a180285583868c17b724a7e19f3496fc9260fafb4e6e309e383698fadc7b09",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-11292:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:2712a6103b9cc98838f8ce37e4d0ae35de383556ffe9e24be290b1c489d659a7",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-11490",
+    "key": "641a10816162187878258c75e4618744d63875be1ceca30fcc668fbd61eeda60",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-11490:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:668c2851071050208a1f63fbf90d4fe1777339bcd5e30b14019f7cacb7b0ebc6",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-11740",
+    "key": "f464ccfdc9c5672dc6860b45bcb045550b190a255a0d53d315aa70dd3a1ccbdc",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-11740:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:1c11d9040d682a687987b7542b0fd56bf7cf8ecdfbdb86b445e15f3dd0e20fe3",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-11885",
+    "key": "541c8eeb2dd44e2fa5aabb7014fe88d8738c55785055022b596e91214ae281f4",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-11885:latest",
+    "grader_cached": true,
+    "db_state": "ready",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:99ea50d5f25566716b057a17bc529f19e907bad52cd475e9d7b34534163701a4",
+    "tag_digest": "sha256:99ea50d5f25566716b057a17bc529f19e907bad52cd475e9d7b34534163701a4",
+    "original_revision_exists": true,
+    "all_tag_blobs_exist": true
+  },
+  {
+    "id": "django__django-11951",
+    "key": "b07ae1df548c8f4c3a0c2911bf6b7cdc4bae40a994a80e40189c66e46b137b8c",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-11951:latest",
+    "grader_cached": true,
+    "db_state": "ready",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:4ee323564eb5e64d5d27505ec89fa352d6ad5e31ea6f6a14731f2b4391e43250",
+    "tag_digest": "sha256:4ee323564eb5e64d5d27505ec89fa352d6ad5e31ea6f6a14731f2b4391e43250",
+    "original_revision_exists": true,
+    "all_tag_blobs_exist": true
+  },
+  {
+    "id": "django__django-12262",
+    "key": "93355a927fa048f37fb50476f03abf6165f9874633e81014399008fdba212f09",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-12262:latest",
+    "grader_cached": true,
+    "db_state": "ready",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:6d136d7d19f4b3691b5d105202130ca0e8fb6783af6ba59193139dbf9fcf6037",
+    "tag_digest": "sha256:6d136d7d19f4b3691b5d105202130ca0e8fb6783af6ba59193139dbf9fcf6037",
+    "original_revision_exists": true,
+    "all_tag_blobs_exist": true
+  },
+  {
+    "id": "django__django-13033",
+    "key": "ec94977cd9974a464ee97176267398afa8987121c8e9cea48500a51811f04d39",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-13033:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-13741",
+    "key": "dca6fddc147ca3f59e20f7b48f8fb1f46771f05fc8f9312259a2e15af9b4cea9",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-13741:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:37cd633b5f483a68f866ac570120b4e392472814f3b8ab078260021b1e8091a7",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-13810",
+    "key": "eec76e82af51194695c61fdee61b37b6ffd43c6229acb29be4d1c0cc3a44952d",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-13810:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:0aac75994fdc90ae93a27c8fdf17ffab9200ef81bbff8c818e204f71436c5efb",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-14155",
+    "key": "a7cfaa116faa0f15f2a95eb43b4df836f75896dff281b0d88cf94cb81c688e81",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-14155:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:62a0ce818228a8efb8b80af9737e3c4a6ea5da0f9e548831a84a5a291bdf2d4b",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-14765",
+    "key": "05efed09504e012fc6623337846182b7ab84b2d2054bcb7d48c1b516760ecaad",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-14765:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:1ee909fb764fbbc1e07550e737aeafde1dbf322d9efacfd1cc45d9b2348bd494",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-14771",
+    "key": "6fa22b9fc8232a4263d3f6472debf0920eba2f7352e0513921c0d9a10f6c0adc",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-14771:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:be5bf1af12e7610619ac7879c2c722bb2f62da9195e6bd3831741fcf9808dae1",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-15503",
+    "key": "38d2749bb9ab8f92f4643a23b93b2ec304826cf18590861b443fdba6e995a734",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-15503:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:d57430ca15a86fa0f5718e08482513e98834a5ffbdd31198537770feef50df1c",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-15561",
+    "key": "638fea93ff62c46e159f93ef82930ca3947a74a56d8e5bf4f4bd4a3f9f271544",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-15561:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:ef5d70337bf967a555a700776169eee223ccae4bd6b3615f67b0c5d9f10d7c7a",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-15569",
+    "key": "f652692afcf007b62d4a7ca65c265a6d6f4bb92d85f4b3ae6dc3c311a716c7ab",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-15569:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:76b5de9631018e925b215a8fd7ef6dcdf4a0f70fa74e05038bd6e06696cc4e9a",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-15814",
+    "key": "4caca16110511ff818ff2ea2fbf7654baf4b4c8a361af5bc3d054a60842c18b2",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-15814:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:a6f9b0aba0b232296ab57f5b6b32b5ccd5f4857bae2e52198c21b565ec30d0dd",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-15851",
+    "key": "319a8bc720801c74c7b694580c7f22a9885e922317dc993088c87b3c2abaa183",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-15851:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:b0925da3ebb9b538cb8c67ceb78ad7562cdb771c8b625f1a385d503a42545b62",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-16145",
+    "key": "a626543dccf27bf7ee001d65252f78b01b4d307311b67c9f5ca5328aa277b5f5",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-16145:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:266233cf897a67d86a1ed2300976656933ec1142682b87964f9e8bee8b0efaaa",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-16595",
+    "key": "be2abe02864b77b694a99faabcb422dba59dd9a51d8cfb50ca30d224f0789895",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-16595:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:06c6b9af78c14666b2f916e43f663f9413d80ba9f87f158ead998c86ee8f0202",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-16661",
+    "key": "1269792e56a05825f0e00ebd9ce0672ec8a0376dfb5e53e4e5af938c1bdbd34b",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-16661:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:b838b7f03e6b44c90b0d72efffa034e6af3f67996b287a0a370a02dce9af4e13",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "django__django-16877",
+    "key": "06ae86d89aca4602f9096016e4d29f52b570af9e9972ac11ec57f5d727193d12",
+    "image": "swebench/sweb.eval.x86_64.django_1776_django-16877:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:45d0cb868bdbe58ec1be7fcec219ee6c908ea0cf1c7905910ff679890a328885",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "matplotlib__matplotlib-13989",
+    "key": "79dcc0b1c3da3c204ac09834550d8f217b72f3e42a92ecb7babde6b58a168bec",
+    "image": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "matplotlib__matplotlib-26342",
+    "key": "7ad95841ec461da1cee7495de2ae067d75617e6ae6465d79edb70dc584145705",
+    "image": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-26342:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "matplotlib__matplotlib-26466",
+    "key": "1b74a358e12700cfcc2c24038457e3bc07293700bfb3d043d7f8e05a156d5925",
+    "image": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-26466:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "mwaskom__seaborn-3187",
+    "key": "8633833fe5cc98e995ec156e54da3deb188f0f026d03b91e043baddb91639772",
+    "image": "swebench/sweb.eval.x86_64.mwaskom_1776_seaborn-3187:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:d4301cb624e4883a4dbedbab52614866a2d0c803045f3a5c9654701bfc812afa",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "pallets__flask-5014",
+    "key": "365af840a6fb7f90d2ebf198aa2ed3864be7abccd797a1f97f6b88e5266eb3aa",
+    "image": "swebench/sweb.eval.x86_64.pallets_1776_flask-5014:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:c9504172f7276d0cebcd0d382698719663e54215d1fc8cc40149fe07c97ea002",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "pydata__xarray-2905",
+    "key": "bddb66a7350cda2adb6508069f2048f593c59feed2e8ae450d369404f815b255",
+    "image": "swebench/sweb.eval.x86_64.pydata_1776_xarray-2905:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "pydata__xarray-7393",
+    "key": "75e29a5cab6254d6e9c8bf48d3bc4ee9845d6f770179996b3f0e7fc42de7a752",
+    "image": "swebench/sweb.eval.x86_64.pydata_1776_xarray-7393:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "pylint-dev__pylint-6528",
+    "key": "8741d8f23667fcf5344c19f19af79ff7e15290a8bd33838e65601729cf9ce637",
+    "image": "swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-6528:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:e0652d7e137034d58ae759c1017fdc2fc88afb3885def460802f5f59b4647181",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "pytest-dev__pytest-7205",
+    "key": "94529729b5da0e1a250948df9f6e19f2c9a41dbd7217e2cd97804815fe8a9065",
+    "image": "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-7205:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:cb808dc4e8e39a26469f089108d8689ee116de78316ec07dd149e33df6954feb",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "pytest-dev__pytest-7571",
+    "key": "3ff3b4d0a48e27aea1b30925fa3ce2900e50dc26fc77dfb4e8e4bc82ef14bc06",
+    "image": "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-7571:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:428ac30fd436f96bf7430b632fdab638d901d3c6bbe1d3e842940146746b2318",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "scikit-learn__scikit-learn-10297",
+    "key": "da77e0eae291ded07147c4439af315ae7a14160aca7ae175b996de10a1ccaba5",
+    "image": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:127d03d91853dd3af5212ab4976378d8b0c8177588a1a6432d33d9e3d90f547f",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "scikit-learn__scikit-learn-13439",
+    "key": "ff5f1c6caaf76a6d78db4520df647b9c5527102a02f74983b2d95c050237d53d",
+    "image": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-13439:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:f2a3640431c4e8037059504c02d5b4716de7bb20007bd53343145655953f38b5",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "scikit-learn__scikit-learn-14629",
+    "key": "1636879b8cf03c034a4f6ede1d1d95cd6bf3688b4963459796153fe87bdcbe32",
+    "image": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-14629:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sphinx-doc__sphinx-10673",
+    "key": "3b4f360abe38e7b4bc0a2788c0050f6e0625fa4f0b1e51d8213cb4be69731782",
+    "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10673:latest",
+    "grader_cached": true,
+    "db_state": "ready",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:be6c8ecdba7da7f4a7653aa18483f81c282aed0e4a3a0d70a6f96dd767b75342",
+    "tag_digest": "sha256:be6c8ecdba7da7f4a7653aa18483f81c282aed0e4a3a0d70a6f96dd767b75342",
+    "original_revision_exists": true,
+    "all_tag_blobs_exist": true
+  },
+  {
+    "id": "sphinx-doc__sphinx-8056",
+    "key": "49859aadcc2e569be6a08e0f1a010feeecde748a33947b9f22ab4870bc0d0099",
+    "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8056:latest",
+    "grader_cached": true,
+    "db_state": "ready",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:f10d6b82099a1e6de5008aaae1ff055fcbfaecf7d9c84c71703e3628b3522599",
+    "tag_digest": "sha256:f10d6b82099a1e6de5008aaae1ff055fcbfaecf7d9c84c71703e3628b3522599",
+    "original_revision_exists": true,
+    "all_tag_blobs_exist": true
+  },
+  {
+    "id": "sphinx-doc__sphinx-9367",
+    "key": "16974e4ea1cdceb6d49551aa251ce67554fbdc95acece5b62247e712c1602ceb",
+    "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9367:latest",
+    "grader_cached": true,
+    "db_state": "ready",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:0226d2aa41d2d04c4dc4c4e1a71d72378c2b90a605d4d6565be2bf75b3d19a04",
+    "tag_digest": "sha256:0226d2aa41d2d04c4dc4c4e1a71d72378c2b90a605d4d6565be2bf75b3d19a04",
+    "original_revision_exists": true,
+    "all_tag_blobs_exist": true
+  },
+  {
+    "id": "sphinx-doc__sphinx-9711",
+    "key": "b7cd5b503d05c2b6d70a4e4be9a57b6c2337d46105bf849ca1650b02be86fbe3",
+    "image": "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9711:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:71869de459d5cbdd941c3504ba24c67b8b84b627bd70057a560a4c8d5564899d",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-12096",
+    "key": "ea11c403a548247ad731755c226bcd1f0710bfdeab956201ee4fbb59c67e824a",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:da247d5b80fb338355e623d00345bcf628650b632244dd9433ef0737b33a6348",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-13615",
+    "key": "d43cb531776a213c9b84d3fea1e2a9facd92e74b011bb2eecd945ca8dd5f9768",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-13615:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:e5b9fdbb90805ec78b843e00a6fe3bcd5f5fd2b0417552905e9478c56f881964",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-14531",
+    "key": "c7cd2abe8d7c6e926b0441b5d7e5f5d01a3d7aaf14de37cb3f4b57836b26e511",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-14531:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:8ae520804980aa161214f1fb2c55551ef941cc75bf67f4d657c30e3afa992b42",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-15599",
+    "key": "18d7751439d32dbb176b3d8e5a529e95f622fe416af16cb71fa0c700923fd577",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-15599:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:6b63809eddca49b4249fc0180e6dcb1c6219a1d508fc094337d475cbe4b8316f",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-15809",
+    "key": "dbace14876f676571ea2c53ce3f61d4b601851f3c03283d8278798bc86bef79c",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-15809:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:648f30206fcb9c16bfe46d952c2ddb7e10c4a692cea32fc15162cd5b30ce74e8",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-17630",
+    "key": "123f69bc39cf46f78bf9949462e4b0598ef652d2d914329765deef2d8c8b1e4b",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-17630:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:0d0f73a5900dd8898454e8fe498b6b2f453c3b559d82bd09f911aa31e9db2a2e",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-23413",
+    "key": "8f597b7981edc0d3fa0905411e047843e2483d60c28f8b19edcc6bd2e8b5970e",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-23413:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:950644b5f24afde891a9bb576cfa35009d583e905e297048998815283b4fddbe",
+    "tag_digest": null,
+    "original_revision_exists": false
+  },
+  {
+    "id": "sympy__sympy-24562",
+    "key": "7a6d2c3206162c91fab91fa8b293cd1b54c5ac43852c92fd785a5b4ec4642162",
+    "image": "swebench/sweb.eval.x86_64.sympy_1776_sympy-24562:latest",
+    "grader_cached": false,
+    "db_state": "deleted",
+    "db_image": "127.0.0.1:30500/envs/swebench/env@sha256:01d0e2420786455548ec4500ef07394f5f22ee6d2a9eaa1502476b15b725587c",
+    "tag_digest": null,
+    "original_revision_exists": false
+  }
+]

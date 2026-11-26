@@ -1,0 +1,314 @@
+{
+  "django__django-11885": {
+    "b": {
+      "task_run": "mini50-gpt62-formal-b-20261121T1930Z",
+      "official_run": "repair-mini50-grader-11885-20261122",
+      "task_id": "tsk_01M7ZV88E2NV7WA7DTV1VEZ769",
+      "patch_sha256": "ef13509fca30387c7b3ba618c613009ca238143288e128efbfb1107473a8aa67",
+      "grader_report_sha256": "8c35c6167a4dbe2135afd1cc6ec6f576dc61e3c6f9214c29b509ee54341b2936",
+      "official_grade": "unresolved",
+      "status": "aborted",
+      "stop_reason": null,
+      "rounds": 10,
+      "changed_paths": [
+        "check_fast_delete.py",
+        "django/db/models/deletion.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 43,
+          "failure": 0
+        }
+      }
+    },
+    "c": {
+      "task_run": "mini50-tuned-c-gpt62-20261123",
+      "official_run": "mini50-tuned-c-gpt62-20261123",
+      "task_id": "tsk_01M82ZMJEZH8ZKFWA317CG3YDB",
+      "patch_sha256": "fa878a572d3152884705d145f82e3e5d321a2e61a81730e8170194539c22dc02",
+      "grader_report_sha256": "e6e8b89a35365962e92dae1ab4fecd8e55bbe323b19d8a4ce88208807c2130a4",
+      "official_grade": "resolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "changed_paths": [
+        "django/db/models/deletion.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 43,
+          "failure": 0
+        }
+      }
+    }
+  },
+  "sphinx-doc__sphinx-10435": {
+    "b": {
+      "task_run": "mini50-quota-20261122-b",
+      "official_run": "mini50-quota-20261122-b",
+      "task_id": "tsk_01M81TCJJFJ1T5WBHTY4ZYKH73",
+      "patch_sha256": "8fa496997ea6f21b481bae19da0ac7cc1913c691f5c641eeae41b424d0daaddf",
+      "grader_report_sha256": "50c15d0ddb7fe6372232dd6830c85afafd6692bbe75e8701c093451d337f5628",
+      "official_grade": "unresolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "changed_paths": [
+        "sphinx/writers/latex.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 74,
+          "failure": 0
+        }
+      }
+    },
+    "c": {
+      "task_run": "mini50-tuned-c-gpt62-20261123",
+      "official_run": "mini50-tuned-c-gpt62-20261123",
+      "task_id": "tsk_01M833PXNRZ8CW5ASG2Q8X3F1N",
+      "patch_sha256": "c27d23be116d733c6c5369a2416b8b6890ec98700bbd483005654542a11aa6e5",
+      "grader_report_sha256": "def883481699f4acd7b80e085f7038d1441d6f43f938938a5f19575beb521a7e",
+      "official_grade": "resolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "changed_paths": [
+        "sphinx/writers/latex.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 74,
+          "failure": 0
+        }
+      }
+    }
+  },
+  "django__django-11848": {
+    "b": {
+      "task_run": "mini50-gpt62-formal-b-20261121T1930Z",
+      "official_run": "mini50-gpt62-formal-b-20261121T1930Z",
+      "task_id": "tsk_01M7ZG164PA67M9R8F8HFZGRJF",
+      "patch_sha256": "5696e9e7cf9196c4616381016fec4251ff397f690f473bbedaeb1b286cbe13fe",
+      "grader_report_sha256": "e313a7e7d2b8e8f06e36b1399260e6edb552495742dcdd4b0a9f9d40db77db18",
+      "official_grade": "resolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "changed_paths": [
+        "django/utils/http.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 43,
+          "failure": 0
+        }
+      }
+    },
+    "c": {
+      "task_run": "mini50-tuned-c-gpt62-20261123",
+      "official_run": "mini50-tuned-c-gpt62-20261123",
+      "task_id": "tsk_01M82J1AH2RKS4B18RA789N2XW",
+      "patch_sha256": "8c06990ff79d8551eed0d3d98847f3a920e230fcbcb9bee644935befee67e640",
+      "grader_report_sha256": "2fcf9d852794e827696877dae1956d9116893262360574cc245bd1a1fab89074",
+      "official_grade": "unresolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 1,
+      "changed_paths": [
+        "django/utils/http.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 2
+        },
+        "PASS_TO_PASS": {
+          "success": 43,
+          "failure": 0
+        }
+      }
+    }
+  },
+  "sphinx-doc__sphinx-8056": {
+    "b": {
+      "task_run": "mini50-infra-20261123-b",
+      "official_run": "mini50-infra-20261123-b",
+      "task_id": "tsk_01M82F9C2YFXR9XKVG1B2YFKC9",
+      "patch_sha256": "eda272185f512b83acc3998294ca13d3a0888ec5996f406dce8d48f31f4e1e3e",
+      "grader_report_sha256": "3e0330a47dcb351e8275531c032569dfc8a89f61820c23659f748876d30b0251",
+      "official_grade": "resolved",
+      "status": "aborted",
+      "stop_reason": null,
+      "rounds": 4,
+      "changed_paths": [
+        "sphinx/ext/napoleon/docstring.py",
+        "tests/test_ext_napoleon_docstring.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 40,
+          "failure": 0
+        }
+      }
+    },
+    "c": {
+      "task_run": "mini50-tuned-c-gpt62-20261123",
+      "official_run": "mini50-tuned-c-gpt62-20261123",
+      "task_id": "tsk_01M831GXMK01NSQ4759807TES6",
+      "patch_sha256": "2911894c0c37c4b05416ac23fcd97e128d8d5c56202ead90484f0d6bc518e4ef",
+      "grader_report_sha256": "4150f95a88480e322d3ec99744cd4f4effc9015b8715faccef2549247030feeb",
+      "official_grade": "unresolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "changed_paths": [
+        "sphinx/util/docfields.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 40,
+          "failure": 0
+        }
+      }
+    }
+  },
+  "sphinx-doc__sphinx-10673": {
+    "b": {
+      "task_run": "mini50-gpt62-formal-b-20261121T1930Z",
+      "official_run": "mini50-gpt62-formal-b-20261121T1930Z",
+      "task_id": "tsk_01M7ZRSEFM7NCWAXKQZ4862PWV",
+      "patch_sha256": "933764550c1300f53678e92878cbd146e0d7eb03a265bcf6c38314975293ba50",
+      "grader_report_sha256": "47c1dcb11b54aa6aa7b0e973643eae36b705f3fbe34a5041872eb8994abc52b8",
+      "official_grade": "resolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "changed_paths": [
+        "doc/usage/restructuredtext/directives.rst",
+        "sphinx/builders/__init__.py",
+        "sphinx/builders/html/__init__.py",
+        "sphinx/builders/singlehtml.py",
+        "sphinx/directives/other.py",
+        "sphinx/environment/adapters/toctree.py",
+        "sphinx/environment/collectors/toctree.py",
+        "tests/test_toctree_generated.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 9,
+          "failure": 0
+        }
+      }
+    },
+    "c": {
+      "task_run": "mini50-tuned-c-gpt62-20261123",
+      "official_run": "mini50-tuned-c-gpt62-20261123",
+      "task_id": "tsk_01M82V5F53AAZY95AZMWVNTVPY",
+      "patch_sha256": "b203db189983eca7ca8d3e2fdaf5f6c0319be6f0d7faac8f4964c10c70996c47",
+      "grader_report_sha256": "29c2b77f9872b8d7b0c6bf171d8d857da38db291df707f0a471f53144d0fd710",
+      "official_grade": "unresolved",
+      "status": "cancelled",
+      "stop_reason": "task_usd_limit",
+      "rounds": 3,
+      "changed_paths": [
+        "sphinx/directives/other.py",
+        "sphinx/domains/std.py",
+        "tests/test_generated_toctree.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 9,
+          "failure": 0
+        }
+      }
+    }
+  },
+  "sphinx-doc__sphinx-9281": {
+    "b": {
+      "task_run": "mini50-infra-20261123-b",
+      "official_run": "mini50-infra-20261123-b",
+      "task_id": "tsk_01M82ER7V07A1D4WN6VAMTRVT5",
+      "patch_sha256": "daa3099e5e7e51fbb0672bc8ab7b491bb26f5e4bd015fe634105d6ca5e2ab90d",
+      "grader_report_sha256": "aa6d62a7c5541c7c24fcff59ed0736efd410008d6ef8367ddacacb41c24dc357",
+      "official_grade": "resolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 1,
+      "changed_paths": [
+        "sphinx/util/inspect.py",
+        "tests/test_util_inspect_enum.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 38,
+          "failure": 0
+        }
+      }
+    },
+    "c": {
+      "task_run": "mini50-tuned-c-gpt62-20261123",
+      "official_run": "mini50-tuned-c-gpt62-20261123",
+      "task_id": "tsk_01M834KH183ZFCVGMJ3XRB864G",
+      "patch_sha256": "31c562e6ef5162a036d41d3e76d3b13f0c0c831b01ae9df585b46e658e45c5a4",
+      "grader_report_sha256": "85208cb7267f6d4b56f270bffa1d709265d930629822343e9fb7c1baf5d30758",
+      "official_grade": "unresolved",
+      "status": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "changed_paths": [
+        "sphinx/util/inspect.py"
+      ],
+      "tests": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 38,
+          "failure": 0
+        }
+      }
+    }
+  }
+}

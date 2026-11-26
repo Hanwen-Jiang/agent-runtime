@@ -1,0 +1,3373 @@
+{
+  "split": "development",
+  "cases": 24,
+  "revision": "5af1d890195dda4524634b33fd81beb414467079",
+  "manifest_sha256": "3e7a5b1d69baaa288292d7dc497b132c46e07bc5252d82a7e4715c97397f7907",
+  "measured_on": [
+    "arm64",
+    "Darwin",
+    "3.13.14"
+  ],
+  "engine_sha256": "2a8b6668577481e85c2a7235044122198f390add0a5163fd597de98f0fb4f340",
+  "index": {
+    "indexed_files": 283,
+    "chunks": 4303,
+    "provider": "offline-hash-64"
+  },
+  "controls": [
+    {
+      "id": "dev-01",
+      "kind": "bare",
+      "identical": true
+    },
+    {
+      "id": "dev-01",
+      "kind": "behaviour",
+      "identical": true
+    },
+    {
+      "id": "dev-01",
+      "kind": "multiple",
+      "identical": true
+    },
+    {
+      "id": "dev-05",
+      "kind": "bare",
+      "identical": true
+    },
+    {
+      "id": "dev-05",
+      "kind": "behaviour",
+      "identical": true
+    },
+    {
+      "id": "dev-05",
+      "kind": "multiple",
+      "identical": true
+    },
+    {
+      "id": "dev-09",
+      "kind": "bare",
+      "identical": true
+    },
+    {
+      "id": "dev-09",
+      "kind": "behaviour",
+      "identical": true
+    },
+    {
+      "id": "dev-09",
+      "kind": "multiple",
+      "identical": true
+    },
+    {
+      "id": "dev-13",
+      "kind": "bare",
+      "identical": true
+    },
+    {
+      "id": "dev-13",
+      "kind": "behaviour",
+      "identical": true
+    },
+    {
+      "id": "dev-13",
+      "kind": "multiple",
+      "identical": true
+    },
+    {
+      "id": "dev-17",
+      "kind": "bare",
+      "identical": true
+    },
+    {
+      "id": "dev-17",
+      "kind": "behaviour",
+      "identical": true
+    },
+    {
+      "id": "dev-17",
+      "kind": "multiple",
+      "identical": true
+    },
+    {
+      "id": "dev-21",
+      "kind": "bare",
+      "identical": true
+    },
+    {
+      "id": "dev-21",
+      "kind": "behaviour",
+      "identical": true
+    },
+    {
+      "id": "dev-21",
+      "kind": "multiple",
+      "identical": true
+    }
+  ],
+  "unauthorized_results": {
+    "A": 0,
+    "B": 0
+  },
+  "metrics": {
+    "A": {
+      "hit1": 2,
+      "hit8": 4,
+      "mrr8": 0.111111,
+      "p50_ms": 43.736,
+      "p95_ms": 64.276,
+      "timed_searches": 72
+    },
+    "B": {
+      "hit1": 6,
+      "hit8": 6,
+      "mrr8": 0.25,
+      "p50_ms": 43.585,
+      "p95_ms": 64.749,
+      "timed_searches": 72
+    }
+  },
+  "rows": [
+    {
+      "id": "dev-01",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_bb9cf056da5eea17d571480f34abea977375501f725f5190589a882448f014f9",
+            "file": "services/py-worker/src/agentruntime_worker/files/render.py",
+            "start_line": 64,
+            "end_line": 92,
+            "quote_sha256": "91dcef7e3fe95f363ab49cbe403adc86c81168ecb0be641cbcb37d0e58ed9fc8"
+          },
+          {
+            "id": "chunk_cf0638f16f94930392e1f8930e296e6abe9510206b3acb8cb754df11395dfbd4",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/frames.py",
+            "start_line": 41,
+            "end_line": 57,
+            "quote_sha256": "094b7654be3da330f7775e5edcc97cca7685f564ca159c03e037c317b7cd8d32"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_c8724177b2e598b6dd7bdfeed79d1850a2c6946142c9a1b2e83db2d3ee6fa766",
+            "file": "services/py-learning/src/agentruntime_learning/evals/site_views.py",
+            "start_line": 218,
+            "end_line": 227,
+            "quote_sha256": "8209d126d3a17ee0416fd4494f2baf8aa178b31c38b669f25c00ca69ecaa93d6"
+          },
+          {
+            "id": "chunk_bbe164378cc56138521457535ac576357d0a84f88362af9d0cbf6dd8fe85e186",
+            "file": "libs/py-core/src/agentruntime_core/dev/workdir.py",
+            "start_line": 31,
+            "end_line": 36,
+            "quote_sha256": "78a62b2e6b27baa638b46f07b139963df6ce83d7e8b1a4b169a2d646557a6436"
+          },
+          {
+            "id": "chunk_193106b0dc9e05cced04637a212112bb9bbd3747f003107fbf08e32be149bffd",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/longmemeval.py",
+            "start_line": 338,
+            "end_line": 363,
+            "quote_sha256": "77365f3145362dc16d81e6aed321d51ef2b99198b8ea4504aabd9d5df0435b9f"
+          },
+          {
+            "id": "chunk_f420e64c71005b6f4badc45ee586409e9264b87ae71242ef963c1e6f9200ca1f",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/frames.py",
+            "start_line": 1,
+            "end_line": 40,
+            "quote_sha256": "87a8e90da91357c45e113c21975272ce68f9acb2040d2b0cc25dc4a259e7f21a"
+          }
+        ],
+        "search_ms": [
+          43.347,
+          44.294,
+          44.23
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_bb9cf056da5eea17d571480f34abea977375501f725f5190589a882448f014f9",
+            "file": "services/py-worker/src/agentruntime_worker/files/render.py",
+            "start_line": 64,
+            "end_line": 92,
+            "quote_sha256": "91dcef7e3fe95f363ab49cbe403adc86c81168ecb0be641cbcb37d0e58ed9fc8"
+          },
+          {
+            "id": "chunk_cf0638f16f94930392e1f8930e296e6abe9510206b3acb8cb754df11395dfbd4",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/frames.py",
+            "start_line": 41,
+            "end_line": 57,
+            "quote_sha256": "094b7654be3da330f7775e5edcc97cca7685f564ca159c03e037c317b7cd8d32"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_c8724177b2e598b6dd7bdfeed79d1850a2c6946142c9a1b2e83db2d3ee6fa766",
+            "file": "services/py-learning/src/agentruntime_learning/evals/site_views.py",
+            "start_line": 218,
+            "end_line": 227,
+            "quote_sha256": "8209d126d3a17ee0416fd4494f2baf8aa178b31c38b669f25c00ca69ecaa93d6"
+          },
+          {
+            "id": "chunk_bbe164378cc56138521457535ac576357d0a84f88362af9d0cbf6dd8fe85e186",
+            "file": "libs/py-core/src/agentruntime_core/dev/workdir.py",
+            "start_line": 31,
+            "end_line": 36,
+            "quote_sha256": "78a62b2e6b27baa638b46f07b139963df6ce83d7e8b1a4b169a2d646557a6436"
+          },
+          {
+            "id": "chunk_193106b0dc9e05cced04637a212112bb9bbd3747f003107fbf08e32be149bffd",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/longmemeval.py",
+            "start_line": 338,
+            "end_line": 363,
+            "quote_sha256": "77365f3145362dc16d81e6aed321d51ef2b99198b8ea4504aabd9d5df0435b9f"
+          },
+          {
+            "id": "chunk_f420e64c71005b6f4badc45ee586409e9264b87ae71242ef963c1e6f9200ca1f",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/frames.py",
+            "start_line": 1,
+            "end_line": 40,
+            "quote_sha256": "87a8e90da91357c45e113c21975272ce68f9acb2040d2b0cc25dc4a259e7f21a"
+          }
+        ],
+        "search_ms": [
+          43.523,
+          43.385,
+          43.834
+        ]
+      }
+    },
+    {
+      "id": "dev-02",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_4866309566fb088d233b60759f99bc7cff64d3cff0d8e89895713fc5529e3e45",
+            "file": "services/py-worker/src/agentruntime_worker/planner/triage.py",
+            "start_line": 143,
+            "end_line": 161,
+            "quote_sha256": "49d0205423f11b836acc871efd756fd15abb3080d3825aeaebeba96e36e8f960"
+          },
+          {
+            "id": "chunk_28af24a60309498d58c8af7c65bb197d382c3c29a5165b570552e18f28d34a5c",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/bfcl.py",
+            "start_line": 263,
+            "end_line": 307,
+            "quote_sha256": "1150ace7869d12a589a27433cd6e34fc7d3450d40654545d184696608cc030dd"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_51e3c77984fcece7aa5d8066d6a087b729e582b80c0d77c268288912d804b53c",
+            "file": "services/py-memory/src/agentruntime_memory/retrieval/adapter.py",
+            "start_line": 51,
+            "end_line": 59,
+            "quote_sha256": "d3b148a6196327d1ed718a4bcac3bc2dabaf575edbb8de625e41f330357fb729"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_4cec9949921cade302f861fa4ad5714e8bb8a9aea5d91bff7d0cc5d52a54ca6d",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 403,
+            "end_line": 415,
+            "quote_sha256": "574ffee471596bd9ae9e1ac3a98680dd9b3be98761ae6441b5bd59b5c987acec"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          }
+        ],
+        "search_ms": [
+          43.785,
+          43.615,
+          43.638
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_28af24a60309498d58c8af7c65bb197d382c3c29a5165b570552e18f28d34a5c",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/bfcl.py",
+            "start_line": 263,
+            "end_line": 307,
+            "quote_sha256": "1150ace7869d12a589a27433cd6e34fc7d3450d40654545d184696608cc030dd"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_51e3c77984fcece7aa5d8066d6a087b729e582b80c0d77c268288912d804b53c",
+            "file": "services/py-memory/src/agentruntime_memory/retrieval/adapter.py",
+            "start_line": 51,
+            "end_line": 59,
+            "quote_sha256": "d3b148a6196327d1ed718a4bcac3bc2dabaf575edbb8de625e41f330357fb729"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_4cec9949921cade302f861fa4ad5714e8bb8a9aea5d91bff7d0cc5d52a54ca6d",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 403,
+            "end_line": 415,
+            "quote_sha256": "574ffee471596bd9ae9e1ac3a98680dd9b3be98761ae6441b5bd59b5c987acec"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          },
+          {
+            "id": "chunk_e5ea7935cbc8a6e29d6f3621bc7e075121843bf0b60395ddc4755fe429373066",
+            "file": "services/py-memory/src/agentruntime_memory/retrieval/engine.py",
+            "start_line": 242,
+            "end_line": 271,
+            "quote_sha256": "56a2e06c03c58c22933c8515fb5ca3fe1ca4dc6a69854605eb22af22a4d56ad2"
+          }
+        ],
+        "search_ms": [
+          43.757,
+          43.658,
+          43.692
+        ]
+      }
+    },
+    {
+      "id": "dev-03",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_b5a93e87a8816ac6aad39df2c648a3d5c52c1e15b5088bf0f3707d70bb9b6445",
+            "file": "libs/py-core/src/agentruntime_core/conformance/object_store.py",
+            "start_line": 47,
+            "end_line": 52,
+            "quote_sha256": "c3d44195d1bc2f3eb7ba8763a6db7b78e06f6877fe81f9228f1f83518ee652ae"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_17f03f35229bd7bf68ecf0711d39696401be4b66a116bd5be8eb6d3302ce96b2",
+            "file": "services/py-learning/src/agentruntime_learning/evals/subjects.py",
+            "start_line": 87,
+            "end_line": 103,
+            "quote_sha256": "035d66319b6fc795b8d01f6e8242111f38e18e81567aa962d27a9dccfbe61a48"
+          },
+          {
+            "id": "chunk_cd3416c5176b81d5aa6ba934142972592c023e81a232dc31ab0374a7b9f22427",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_comparison.py",
+            "start_line": 1,
+            "end_line": 31,
+            "quote_sha256": "1f9d05aa19164a70e9a8a3c7fa2210b3e3846f0ba6c8c39926bae8012bcd925c"
+          },
+          {
+            "id": "chunk_9eb2a0c15b26e4798f2affd096a8cabf2b5a9fe02dc2dacd0cd80508c7b9961a",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/summary.py",
+            "start_line": 63,
+            "end_line": 74,
+            "quote_sha256": "0d9061e94ed8078a243d39f59c5da11040c38955733773db41570dbb05b96642"
+          },
+          {
+            "id": "chunk_3a27015b03a809a08cce85502ed9582cfa11484c9f12df761cc36099b0b71fb4",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_semantic_judge.py",
+            "start_line": 459,
+            "end_line": 463,
+            "quote_sha256": "a772b0a1d75479359c91bb264b3ee0f93d300794e310b68a707673cdc3c57ea4"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          }
+        ],
+        "search_ms": [
+          63.15,
+          42.631,
+          42.557
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_b5a93e87a8816ac6aad39df2c648a3d5c52c1e15b5088bf0f3707d70bb9b6445",
+            "file": "libs/py-core/src/agentruntime_core/conformance/object_store.py",
+            "start_line": 47,
+            "end_line": 52,
+            "quote_sha256": "c3d44195d1bc2f3eb7ba8763a6db7b78e06f6877fe81f9228f1f83518ee652ae"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_17f03f35229bd7bf68ecf0711d39696401be4b66a116bd5be8eb6d3302ce96b2",
+            "file": "services/py-learning/src/agentruntime_learning/evals/subjects.py",
+            "start_line": 87,
+            "end_line": 103,
+            "quote_sha256": "035d66319b6fc795b8d01f6e8242111f38e18e81567aa962d27a9dccfbe61a48"
+          },
+          {
+            "id": "chunk_cd3416c5176b81d5aa6ba934142972592c023e81a232dc31ab0374a7b9f22427",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_comparison.py",
+            "start_line": 1,
+            "end_line": 31,
+            "quote_sha256": "1f9d05aa19164a70e9a8a3c7fa2210b3e3846f0ba6c8c39926bae8012bcd925c"
+          },
+          {
+            "id": "chunk_9eb2a0c15b26e4798f2affd096a8cabf2b5a9fe02dc2dacd0cd80508c7b9961a",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/summary.py",
+            "start_line": 63,
+            "end_line": 74,
+            "quote_sha256": "0d9061e94ed8078a243d39f59c5da11040c38955733773db41570dbb05b96642"
+          },
+          {
+            "id": "chunk_3a27015b03a809a08cce85502ed9582cfa11484c9f12df761cc36099b0b71fb4",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_semantic_judge.py",
+            "start_line": 459,
+            "end_line": 463,
+            "quote_sha256": "a772b0a1d75479359c91bb264b3ee0f93d300794e310b68a707673cdc3c57ea4"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          }
+        ],
+        "search_ms": [
+          42.949,
+          42.905,
+          41.632
+        ]
+      }
+    },
+    {
+      "id": "dev-04",
+      "B": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_03b8a57bd8f9cd815c85653afbf07681d028e51700237b3c1174f5f02da03991",
+            "file": "services/py-worker/src/agentruntime_worker/context/probe.py",
+            "start_line": 104,
+            "end_line": 121,
+            "quote_sha256": "23d71e979eb75111e3fea64325014101510340db68f6b0b82464720435ec62e2"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_cfe70c282f46fce3e6999087906bd2c8a06e74dd61ccdec2d1fb0e661c4328c4",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_comparison.py",
+            "start_line": 144,
+            "end_line": 178,
+            "quote_sha256": "615e190125c681dc0b47fec18fdbe25879b4ab5f5175a7da84d6de3e2beba2b0"
+          },
+          {
+            "id": "chunk_fc32446dcc2894cae16eecf6514b6545b2dece4cd820133f5dd153bb7aa6b326",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/stage_plan.py",
+            "start_line": 260,
+            "end_line": 306,
+            "quote_sha256": "4ff580332e6e4240481ec5471833fb7a0991dbf8d1b6886cd6e8505155cd6d68"
+          },
+          {
+            "id": "chunk_9eb2a0c15b26e4798f2affd096a8cabf2b5a9fe02dc2dacd0cd80508c7b9961a",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/summary.py",
+            "start_line": 63,
+            "end_line": 74,
+            "quote_sha256": "0d9061e94ed8078a243d39f59c5da11040c38955733773db41570dbb05b96642"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          }
+        ],
+        "search_ms": [
+          43.885,
+          43.784,
+          43.669
+        ]
+      },
+      "A": {
+        "rank": 2,
+        "top8": [
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_03b8a57bd8f9cd815c85653afbf07681d028e51700237b3c1174f5f02da03991",
+            "file": "services/py-worker/src/agentruntime_worker/context/probe.py",
+            "start_line": 104,
+            "end_line": 121,
+            "quote_sha256": "23d71e979eb75111e3fea64325014101510340db68f6b0b82464720435ec62e2"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_cfe70c282f46fce3e6999087906bd2c8a06e74dd61ccdec2d1fb0e661c4328c4",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_comparison.py",
+            "start_line": 144,
+            "end_line": 178,
+            "quote_sha256": "615e190125c681dc0b47fec18fdbe25879b4ab5f5175a7da84d6de3e2beba2b0"
+          },
+          {
+            "id": "chunk_fc32446dcc2894cae16eecf6514b6545b2dece4cd820133f5dd153bb7aa6b326",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/stage_plan.py",
+            "start_line": 260,
+            "end_line": 306,
+            "quote_sha256": "4ff580332e6e4240481ec5471833fb7a0991dbf8d1b6886cd6e8505155cd6d68"
+          },
+          {
+            "id": "chunk_9eb2a0c15b26e4798f2affd096a8cabf2b5a9fe02dc2dacd0cd80508c7b9961a",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/summary.py",
+            "start_line": 63,
+            "end_line": 74,
+            "quote_sha256": "0d9061e94ed8078a243d39f59c5da11040c38955733773db41570dbb05b96642"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          }
+        ],
+        "search_ms": [
+          43.795,
+          44.077,
+          43.669
+        ]
+      }
+    },
+    {
+      "id": "dev-05",
+      "A": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_9dec56cd935bbe2c321969bb4ba5bcca055d69b2bf10c4e0475ae0efa98dfafd",
+            "file": "services/py-learning/src/agentruntime_learning/evals/scoring.py",
+            "start_line": 205,
+            "end_line": 230,
+            "quote_sha256": "8daefa2c5a3c5eac7184a14a1f7d0a4371c052232ec9794e0108e43022471a84"
+          },
+          {
+            "id": "chunk_3659269a836b167bea8a859af144a1ba23d934b01e2d1e7345628135f8b04303",
+            "file": "services/py-worker/src/agentruntime_worker/planner/planner.py",
+            "start_line": 239,
+            "end_line": 246,
+            "quote_sha256": "e648a98fc07fb2213879ff72fa1ea1eb70b65af26c5fe45231551aae3c082b78"
+          },
+          {
+            "id": "chunk_4ebaf7b6652f710b701768d72a00e6aa797da6f68afbbf120d5c5b248fbb879c",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/s09.py",
+            "start_line": 1,
+            "end_line": 36,
+            "quote_sha256": "76ba6946fb93d9c4c247f54ddb54abeaf9c104852376fb69862784cf287dd66d"
+          },
+          {
+            "id": "chunk_722997971f121cb42f1c8d4c3df394494fb011f22194b4f3aa52baae6d15d2e3",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/events.py",
+            "start_line": 160,
+            "end_line": 177,
+            "quote_sha256": "264ed76a7d1c4cc6c2d1e412584ae65c5573c696ffa1d65f5fd395a6a78ee7cc"
+          },
+          {
+            "id": "chunk_9eb2a0c15b26e4798f2affd096a8cabf2b5a9fe02dc2dacd0cd80508c7b9961a",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/summary.py",
+            "start_line": 63,
+            "end_line": 74,
+            "quote_sha256": "0d9061e94ed8078a243d39f59c5da11040c38955733773db41570dbb05b96642"
+          },
+          {
+            "id": "chunk_02a265c8e91da95ed998ea3ba6c9d6991f442338fb72bb2960dfb182bb35c2a0",
+            "file": "services/py-learning/src/agentruntime_learning/evals/deepeval_metrics.py",
+            "start_line": 211,
+            "end_line": 246,
+            "quote_sha256": "fb24c8c82ec4d54fd5d474519d649242fe0a600dcc75d20a1cbed1ed49b5bec8"
+          },
+          {
+            "id": "chunk_9dd2b13878065b4f671aee40c14a7e6fc54aa180c73095e2b0188805707638ee",
+            "file": "libs/py-core/src/agentruntime_core/adapters/qdrant.py",
+            "start_line": 343,
+            "end_line": 356,
+            "quote_sha256": "ec6a42e0e327abd5d7b59c8a08c847c9c2a4f5dca09e84d0f53157858feb5043"
+          },
+          {
+            "id": "chunk_fea5269b10c5b062364ea5964a8c498cad3542cebb386d3647d13d56c4dc5c3e",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/bfcl.py",
+            "start_line": 72,
+            "end_line": 92,
+            "quote_sha256": "78a89eae543dc8357ef33d9bc4d206ea8ead060186e34d89188acac2008cdc50"
+          }
+        ],
+        "search_ms": [
+          66.553,
+          45.006,
+          44.88
+        ]
+      },
+      "B": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_9dec56cd935bbe2c321969bb4ba5bcca055d69b2bf10c4e0475ae0efa98dfafd",
+            "file": "services/py-learning/src/agentruntime_learning/evals/scoring.py",
+            "start_line": 205,
+            "end_line": 230,
+            "quote_sha256": "8daefa2c5a3c5eac7184a14a1f7d0a4371c052232ec9794e0108e43022471a84"
+          },
+          {
+            "id": "chunk_3659269a836b167bea8a859af144a1ba23d934b01e2d1e7345628135f8b04303",
+            "file": "services/py-worker/src/agentruntime_worker/planner/planner.py",
+            "start_line": 239,
+            "end_line": 246,
+            "quote_sha256": "e648a98fc07fb2213879ff72fa1ea1eb70b65af26c5fe45231551aae3c082b78"
+          },
+          {
+            "id": "chunk_4ebaf7b6652f710b701768d72a00e6aa797da6f68afbbf120d5c5b248fbb879c",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/s09.py",
+            "start_line": 1,
+            "end_line": 36,
+            "quote_sha256": "76ba6946fb93d9c4c247f54ddb54abeaf9c104852376fb69862784cf287dd66d"
+          },
+          {
+            "id": "chunk_722997971f121cb42f1c8d4c3df394494fb011f22194b4f3aa52baae6d15d2e3",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/events.py",
+            "start_line": 160,
+            "end_line": 177,
+            "quote_sha256": "264ed76a7d1c4cc6c2d1e412584ae65c5573c696ffa1d65f5fd395a6a78ee7cc"
+          },
+          {
+            "id": "chunk_9eb2a0c15b26e4798f2affd096a8cabf2b5a9fe02dc2dacd0cd80508c7b9961a",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/summary.py",
+            "start_line": 63,
+            "end_line": 74,
+            "quote_sha256": "0d9061e94ed8078a243d39f59c5da11040c38955733773db41570dbb05b96642"
+          },
+          {
+            "id": "chunk_02a265c8e91da95ed998ea3ba6c9d6991f442338fb72bb2960dfb182bb35c2a0",
+            "file": "services/py-learning/src/agentruntime_learning/evals/deepeval_metrics.py",
+            "start_line": 211,
+            "end_line": 246,
+            "quote_sha256": "fb24c8c82ec4d54fd5d474519d649242fe0a600dcc75d20a1cbed1ed49b5bec8"
+          },
+          {
+            "id": "chunk_9dd2b13878065b4f671aee40c14a7e6fc54aa180c73095e2b0188805707638ee",
+            "file": "libs/py-core/src/agentruntime_core/adapters/qdrant.py",
+            "start_line": 343,
+            "end_line": 356,
+            "quote_sha256": "ec6a42e0e327abd5d7b59c8a08c847c9c2a4f5dca09e84d0f53157858feb5043"
+          },
+          {
+            "id": "chunk_fea5269b10c5b062364ea5964a8c498cad3542cebb386d3647d13d56c4dc5c3e",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/bfcl.py",
+            "start_line": 72,
+            "end_line": 92,
+            "quote_sha256": "78a89eae543dc8357ef33d9bc4d206ea8ead060186e34d89188acac2008cdc50"
+          }
+        ],
+        "search_ms": [
+          45.213,
+          45.192,
+          46.108
+        ]
+      }
+    },
+    {
+      "id": "dev-06",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_8d4c54c5c1d5952640272682b278240969ed80289a6d5f9501063cec73a8efed",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 254,
+            "end_line": 290,
+            "quote_sha256": "258ecea22ac048349ac6d73ba242e06e1d24843e769563fb7b0bdcfc12aa0a30"
+          },
+          {
+            "id": "chunk_4854a7d92c84a0154f931c34f8fc452bf265f28d1e08709f6c8fd450272774df",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 414,
+            "end_line": 435,
+            "quote_sha256": "ad494f2c53154c5ca5b0d2d8b05221a4bdab39f0f4bf3726a381ea892c43de1a"
+          },
+          {
+            "id": "chunk_79a8342bfc758e5fdaddd2dd8e9923ba1930622c6e26510105113db8ecdb7bb2",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 89,
+            "end_line": 123,
+            "quote_sha256": "71c27360a476b37ae7a10609c4a4a4ff75fa284c67f60f396cd1a58464796cf0"
+          },
+          {
+            "id": "chunk_1c971f35285d8d95337a690853a004325d56a7841c296a342e2ab9245a1d5864",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/client.py",
+            "start_line": 241,
+            "end_line": 278,
+            "quote_sha256": "92e7a8ccf96cdd36e83fda3def6b325cabca7408e7b42ce9a091a6cfe6a89f7a"
+          },
+          {
+            "id": "chunk_6457d6e0ffea062bb8e333e4a53963bf51de10464686d182e5a37507f55dee49",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 246,
+            "end_line": 280,
+            "quote_sha256": "5b08b13e85150315f9a0519d32d47dfc535aa553393f7cf216d24274e9761342"
+          },
+          {
+            "id": "chunk_40c0e9f3c32a56a94140584779969f79df5e6268fca06acb319949c131dd7ee9",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 132,
+            "end_line": 175,
+            "quote_sha256": "a5934b4be3fe3eec513fa11f455b4d79c2df72019e48e0720d70303913171b00"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_330c9c4321af411dfeb727a1c950b71ed18e9d79f979735bdd075c0564541546",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 207,
+            "end_line": 220,
+            "quote_sha256": "56a3c80da0922186e2a70a2a97e45c71dec2b62d386369b31bbdf2a4e1816869"
+          }
+        ],
+        "search_ms": [
+          63.358,
+          42.598,
+          42.83
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_8d4c54c5c1d5952640272682b278240969ed80289a6d5f9501063cec73a8efed",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 254,
+            "end_line": 290,
+            "quote_sha256": "258ecea22ac048349ac6d73ba242e06e1d24843e769563fb7b0bdcfc12aa0a30"
+          },
+          {
+            "id": "chunk_4854a7d92c84a0154f931c34f8fc452bf265f28d1e08709f6c8fd450272774df",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 414,
+            "end_line": 435,
+            "quote_sha256": "ad494f2c53154c5ca5b0d2d8b05221a4bdab39f0f4bf3726a381ea892c43de1a"
+          },
+          {
+            "id": "chunk_79a8342bfc758e5fdaddd2dd8e9923ba1930622c6e26510105113db8ecdb7bb2",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 89,
+            "end_line": 123,
+            "quote_sha256": "71c27360a476b37ae7a10609c4a4a4ff75fa284c67f60f396cd1a58464796cf0"
+          },
+          {
+            "id": "chunk_1c971f35285d8d95337a690853a004325d56a7841c296a342e2ab9245a1d5864",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/client.py",
+            "start_line": 241,
+            "end_line": 278,
+            "quote_sha256": "92e7a8ccf96cdd36e83fda3def6b325cabca7408e7b42ce9a091a6cfe6a89f7a"
+          },
+          {
+            "id": "chunk_6457d6e0ffea062bb8e333e4a53963bf51de10464686d182e5a37507f55dee49",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 246,
+            "end_line": 280,
+            "quote_sha256": "5b08b13e85150315f9a0519d32d47dfc535aa553393f7cf216d24274e9761342"
+          },
+          {
+            "id": "chunk_40c0e9f3c32a56a94140584779969f79df5e6268fca06acb319949c131dd7ee9",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 132,
+            "end_line": 175,
+            "quote_sha256": "a5934b4be3fe3eec513fa11f455b4d79c2df72019e48e0720d70303913171b00"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_330c9c4321af411dfeb727a1c950b71ed18e9d79f979735bdd075c0564541546",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 207,
+            "end_line": 220,
+            "quote_sha256": "56a3c80da0922186e2a70a2a97e45c71dec2b62d386369b31bbdf2a4e1816869"
+          }
+        ],
+        "search_ms": [
+          42.788,
+          42.626,
+          44.36
+        ]
+      }
+    },
+    {
+      "id": "dev-07",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_c84208043ab67322fe2f2f377576476c0075546f7ad70653419c2b8cd6090f25",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 164,
+            "end_line": 200,
+            "quote_sha256": "ad6adb0ff68a2f2b720f8233b2118c071640922ba5b01b7da306dbf36554960b"
+          },
+          {
+            "id": "chunk_0377d4a4af2116a15dc4812040c5d5a0dab8f1aaf53fd65c0ddc616647512654",
+            "file": "services/py-worker/src/agentruntime_worker/executor/tool_gate.py",
+            "start_line": 15,
+            "end_line": 21,
+            "quote_sha256": "d06b25aa2dde5e9882ab75170d3a2276fbc8c44db587345a15eba2176cf7e1a2"
+          },
+          {
+            "id": "chunk_396f1f491d51fa5b5f42d680f46f33b4226603b6603c5bc5b86ad9a6baccb5f6",
+            "file": "libs/py-core/src/agentruntime_core/dev/workdir.py",
+            "start_line": 135,
+            "end_line": 177,
+            "quote_sha256": "8dd3389e2aed2194def1b732ee80f008a869b9370cc956546d292129ab977f32"
+          },
+          {
+            "id": "chunk_13754cf83f8f4327f1129310929d33c784ddce73e39cd016f23408c7202e8589",
+            "file": "libs/py-core/src/agentruntime_core/enums.py",
+            "start_line": 8,
+            "end_line": 16,
+            "quote_sha256": "effa76981d4837b5970df2b1b5db1147eeb47842c07c35338ac384be5741f1f8"
+          },
+          {
+            "id": "chunk_0e128411d0b583436361850afae52e50450db39434fdfe25aba3273ddf03467f",
+            "file": "libs/py-core/src/agentruntime_core/conformance/common.py",
+            "start_line": 37,
+            "end_line": 46,
+            "quote_sha256": "433698ecb430024cc92484015c53bb3e8c1bcaea8995ae75fbc2569c283ccf44"
+          },
+          {
+            "id": "chunk_0d10b1f2a22483de5b4650fa5665a446a4b6a4246ae0b910bf114dc10b1504d0",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 337,
+            "end_line": 341,
+            "quote_sha256": "878a9b8227994b2da5d95e8e9e7dcd4b9bf1905a68ad049d640aeeac2742e5af"
+          },
+          {
+            "id": "chunk_bc39651c053f84cfa065b91f2149c986687721fc1b1ecac8b044607573121929",
+            "file": "services/py-worker/src/agentruntime_worker/files/models.py",
+            "start_line": 124,
+            "end_line": 132,
+            "quote_sha256": "bb400521d5ff8aaba790d5c0de18fe87e40ea5ec296d7050a966dc4a48f76c1e"
+          },
+          {
+            "id": "chunk_258b4513c7eeb989221ba70af73c0cde12085d456f0c1a1f19b41b3a28d34f16",
+            "file": "services/py-learning/src/agentruntime_learning/pipeline/run.py",
+            "start_line": 181,
+            "end_line": 223,
+            "quote_sha256": "f9ae84e829273b0a44f4a7bc8bdfd57fa9e1c1da3b156f8d26ff36cc4aeb7324"
+          }
+        ],
+        "search_ms": [
+          43.749,
+          43.246,
+          42.786
+        ]
+      },
+      "B": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_65a0c6309e62983507f75ba26b08e40ed0343475dad5e872580263fece0de58d",
+            "file": "services/py-worker/src/agentruntime_worker/activities/types.py",
+            "start_line": 62,
+            "end_line": 68,
+            "quote_sha256": "9eb3a3664fd911f0bab9ca4d0090966bbcdf060ec627c790a2b6fab63df87dbd"
+          },
+          {
+            "id": "chunk_c84208043ab67322fe2f2f377576476c0075546f7ad70653419c2b8cd6090f25",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 164,
+            "end_line": 200,
+            "quote_sha256": "ad6adb0ff68a2f2b720f8233b2118c071640922ba5b01b7da306dbf36554960b"
+          },
+          {
+            "id": "chunk_0377d4a4af2116a15dc4812040c5d5a0dab8f1aaf53fd65c0ddc616647512654",
+            "file": "services/py-worker/src/agentruntime_worker/executor/tool_gate.py",
+            "start_line": 15,
+            "end_line": 21,
+            "quote_sha256": "d06b25aa2dde5e9882ab75170d3a2276fbc8c44db587345a15eba2176cf7e1a2"
+          },
+          {
+            "id": "chunk_396f1f491d51fa5b5f42d680f46f33b4226603b6603c5bc5b86ad9a6baccb5f6",
+            "file": "libs/py-core/src/agentruntime_core/dev/workdir.py",
+            "start_line": 135,
+            "end_line": 177,
+            "quote_sha256": "8dd3389e2aed2194def1b732ee80f008a869b9370cc956546d292129ab977f32"
+          },
+          {
+            "id": "chunk_13754cf83f8f4327f1129310929d33c784ddce73e39cd016f23408c7202e8589",
+            "file": "libs/py-core/src/agentruntime_core/enums.py",
+            "start_line": 8,
+            "end_line": 16,
+            "quote_sha256": "effa76981d4837b5970df2b1b5db1147eeb47842c07c35338ac384be5741f1f8"
+          },
+          {
+            "id": "chunk_0e128411d0b583436361850afae52e50450db39434fdfe25aba3273ddf03467f",
+            "file": "libs/py-core/src/agentruntime_core/conformance/common.py",
+            "start_line": 37,
+            "end_line": 46,
+            "quote_sha256": "433698ecb430024cc92484015c53bb3e8c1bcaea8995ae75fbc2569c283ccf44"
+          },
+          {
+            "id": "chunk_0d10b1f2a22483de5b4650fa5665a446a4b6a4246ae0b910bf114dc10b1504d0",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 337,
+            "end_line": 341,
+            "quote_sha256": "878a9b8227994b2da5d95e8e9e7dcd4b9bf1905a68ad049d640aeeac2742e5af"
+          },
+          {
+            "id": "chunk_bc39651c053f84cfa065b91f2149c986687721fc1b1ecac8b044607573121929",
+            "file": "services/py-worker/src/agentruntime_worker/files/models.py",
+            "start_line": 124,
+            "end_line": 132,
+            "quote_sha256": "bb400521d5ff8aaba790d5c0de18fe87e40ea5ec296d7050a966dc4a48f76c1e"
+          }
+        ],
+        "search_ms": [
+          42.769,
+          42.803,
+          43.392
+        ]
+      }
+    },
+    {
+      "id": "dev-08",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          },
+          {
+            "id": "chunk_f420e64c71005b6f4badc45ee586409e9264b87ae71242ef963c1e6f9200ca1f",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/frames.py",
+            "start_line": 1,
+            "end_line": 40,
+            "quote_sha256": "87a8e90da91357c45e113c21975272ce68f9acb2040d2b0cc25dc4a259e7f21a"
+          },
+          {
+            "id": "chunk_9b0fb57c6dcd86a4327444efaae265e6048bb39fd426bd55e5f5e67f0766eaca",
+            "file": "services/py-learning/src/agentruntime_learning/evals/provider_gateway.py",
+            "start_line": 1,
+            "end_line": 33,
+            "quote_sha256": "08ad06e356239113cf4f5fb7c248c4446365c4725127600332fa739f5c861816"
+          },
+          {
+            "id": "chunk_8c45c112dda290a4d3a5bea2cc705afb838a3912f14d2a8af397e51cbb4480ec",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_cohorts.py",
+            "start_line": 32,
+            "end_line": 58,
+            "quote_sha256": "9bf6567c6e0d7aa1f2598edd06ac4aab67bfaa25905d59f4f192ed1283c0fd5e"
+          }
+        ],
+        "search_ms": [
+          64.749,
+          43.262,
+          43.501
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          },
+          {
+            "id": "chunk_f420e64c71005b6f4badc45ee586409e9264b87ae71242ef963c1e6f9200ca1f",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/frames.py",
+            "start_line": 1,
+            "end_line": 40,
+            "quote_sha256": "87a8e90da91357c45e113c21975272ce68f9acb2040d2b0cc25dc4a259e7f21a"
+          },
+          {
+            "id": "chunk_9b0fb57c6dcd86a4327444efaae265e6048bb39fd426bd55e5f5e67f0766eaca",
+            "file": "services/py-learning/src/agentruntime_learning/evals/provider_gateway.py",
+            "start_line": 1,
+            "end_line": 33,
+            "quote_sha256": "08ad06e356239113cf4f5fb7c248c4446365c4725127600332fa739f5c861816"
+          },
+          {
+            "id": "chunk_8c45c112dda290a4d3a5bea2cc705afb838a3912f14d2a8af397e51cbb4480ec",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_cohorts.py",
+            "start_line": 32,
+            "end_line": 58,
+            "quote_sha256": "9bf6567c6e0d7aa1f2598edd06ac4aab67bfaa25905d59f4f192ed1283c0fd5e"
+          }
+        ],
+        "search_ms": [
+          43.642,
+          43.407,
+          44.434
+        ]
+      }
+    },
+    {
+      "id": "dev-09",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_b7f8dce7e97c9e766f3dce01f100df71a235b696b760cf5eef90382b0e37de50",
+            "file": "services/py-worker/src/agentruntime_worker/executor/tool_loop.py",
+            "start_line": 132,
+            "end_line": 161,
+            "quote_sha256": "537ccc0b1526fa1f43fbbdff705dd571e7f8ec77343107134946d8ac888f8b19"
+          },
+          {
+            "id": "chunk_bfc76018fc0b47fac9cd478d612958836b04ff108600e1d28dbd5160bab12229",
+            "file": "services/py-worker/src/agentruntime_worker/worker.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "8932c92b5304fbc92b9081b723810147b10989dbe6f59e259f474a66e68d06b8"
+          },
+          {
+            "id": "chunk_9df28d366dd55333c7422406e9666c9f19b186d0fba8d857052d9f32caa4fcba",
+            "file": "services/py-worker/src/agentruntime_worker/files/code.py",
+            "start_line": 197,
+            "end_line": 220,
+            "quote_sha256": "350a262344ad3ca98eaf797d5a50e5a5ce788774726177a486bac9b5551db2e8"
+          },
+          {
+            "id": "chunk_197d3926063156d78cb8c0eea41090ae84f86ba97e90c6f39561fde62191704e",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/wrap_up.py",
+            "start_line": 198,
+            "end_line": 212,
+            "quote_sha256": "4c352176dacbf0fcb89b2cd0eec8ce437cd7adc3c7019baa50e4e1ccc1c8650e"
+          },
+          {
+            "id": "chunk_4854a7d92c84a0154f931c34f8fc452bf265f28d1e08709f6c8fd450272774df",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 414,
+            "end_line": 435,
+            "quote_sha256": "ad494f2c53154c5ca5b0d2d8b05221a4bdab39f0f4bf3726a381ea892c43de1a"
+          },
+          {
+            "id": "chunk_80557c3e3c9649f2c51f5f7b2b13eea8dabd864618ac3317a191788948e94822",
+            "file": "services/py-learning/src/agentruntime_learning/evals/cases.py",
+            "start_line": 224,
+            "end_line": 277,
+            "quote_sha256": "710c7a50c54742894e1cf9047c360b5bb6317b8555681ef14e0780103d0b8e96"
+          },
+          {
+            "id": "chunk_9fd7c2e7b78630e28885c49822c2a4a0c5f5cc143b816fae7a4d7e8c964c6eeb",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 59,
+            "end_line": 74,
+            "quote_sha256": "e32574a5d75693db6e0c4405767a3d150d5e06b8eb77f8be456c6a7d2d150978"
+          },
+          {
+            "id": "chunk_2526df1977f440b5e9819742b3b9e9d6860e7c2dba6d6b1bcde5d9d55c2a7b55",
+            "file": "services/py-memory/src/agentruntime_memory/retrieval/engine.py",
+            "start_line": 219,
+            "end_line": 242,
+            "quote_sha256": "86fff31fe8bb5d074c277f3cc7d0dbdb859405dbf5ac73d905553f2f8417b34d"
+          }
+        ],
+        "search_ms": [
+          46.607,
+          46.316,
+          46.446
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_b7f8dce7e97c9e766f3dce01f100df71a235b696b760cf5eef90382b0e37de50",
+            "file": "services/py-worker/src/agentruntime_worker/executor/tool_loop.py",
+            "start_line": 132,
+            "end_line": 161,
+            "quote_sha256": "537ccc0b1526fa1f43fbbdff705dd571e7f8ec77343107134946d8ac888f8b19"
+          },
+          {
+            "id": "chunk_bfc76018fc0b47fac9cd478d612958836b04ff108600e1d28dbd5160bab12229",
+            "file": "services/py-worker/src/agentruntime_worker/worker.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "8932c92b5304fbc92b9081b723810147b10989dbe6f59e259f474a66e68d06b8"
+          },
+          {
+            "id": "chunk_9df28d366dd55333c7422406e9666c9f19b186d0fba8d857052d9f32caa4fcba",
+            "file": "services/py-worker/src/agentruntime_worker/files/code.py",
+            "start_line": 197,
+            "end_line": 220,
+            "quote_sha256": "350a262344ad3ca98eaf797d5a50e5a5ce788774726177a486bac9b5551db2e8"
+          },
+          {
+            "id": "chunk_197d3926063156d78cb8c0eea41090ae84f86ba97e90c6f39561fde62191704e",
+            "file": "services/py-worker/src/agentruntime_worker/reviewer/wrap_up.py",
+            "start_line": 198,
+            "end_line": 212,
+            "quote_sha256": "4c352176dacbf0fcb89b2cd0eec8ce437cd7adc3c7019baa50e4e1ccc1c8650e"
+          },
+          {
+            "id": "chunk_4854a7d92c84a0154f931c34f8fc452bf265f28d1e08709f6c8fd450272774df",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 414,
+            "end_line": 435,
+            "quote_sha256": "ad494f2c53154c5ca5b0d2d8b05221a4bdab39f0f4bf3726a381ea892c43de1a"
+          },
+          {
+            "id": "chunk_80557c3e3c9649f2c51f5f7b2b13eea8dabd864618ac3317a191788948e94822",
+            "file": "services/py-learning/src/agentruntime_learning/evals/cases.py",
+            "start_line": 224,
+            "end_line": 277,
+            "quote_sha256": "710c7a50c54742894e1cf9047c360b5bb6317b8555681ef14e0780103d0b8e96"
+          },
+          {
+            "id": "chunk_9fd7c2e7b78630e28885c49822c2a4a0c5f5cc143b816fae7a4d7e8c964c6eeb",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 59,
+            "end_line": 74,
+            "quote_sha256": "e32574a5d75693db6e0c4405767a3d150d5e06b8eb77f8be456c6a7d2d150978"
+          },
+          {
+            "id": "chunk_2526df1977f440b5e9819742b3b9e9d6860e7c2dba6d6b1bcde5d9d55c2a7b55",
+            "file": "services/py-memory/src/agentruntime_memory/retrieval/engine.py",
+            "start_line": 219,
+            "end_line": 242,
+            "quote_sha256": "86fff31fe8bb5d074c277f3cc7d0dbdb859405dbf5ac73d905553f2f8417b34d"
+          }
+        ],
+        "search_ms": [
+          47.261,
+          46.4,
+          46.397
+        ]
+      }
+    },
+    {
+      "id": "dev-10",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_c253eb1d9746c6cbb5850e754de7260ba608e933248bcba60a2dcc332570cb1e",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_admission.py",
+            "start_line": 232,
+            "end_line": 262,
+            "quote_sha256": "d79abef5069f784d9da6c9aca6a43f4af2c2c77fb9cf4cd55fe7cfd3f5aa8307"
+          },
+          {
+            "id": "chunk_b5ba3aa5cc01a3e124bd987823ac82be97a34bbb8e44c4e623e139b9859fd49b",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 143,
+            "end_line": 181,
+            "quote_sha256": "9153f1ec5737cec1963024c2d93c93c2001b47e70ff7ee6aa986186a3926e73b"
+          },
+          {
+            "id": "chunk_60dab2eaafe4da2b990baad7eb58fcf181f946c6e7741239252062ecdc17de97",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 382,
+            "end_line": 419,
+            "quote_sha256": "bf2ef5a0088475f441bd072194fe0c8d937c5dc3e35220da7222c3f8408d0c7d"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_f8287ec0654b8ef82527fa7a75d13fd8289d8628e770a323876b6e657ece2560",
+            "file": "services/py-learning/src/agentruntime_learning/pipeline/run.py",
+            "start_line": 130,
+            "end_line": 181,
+            "quote_sha256": "7bd392a0f8fcbe1d2ca3af7bf53118376383214a497a036903f16e361c76c7a8"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          },
+          {
+            "id": "chunk_60dd1dfdb5cd7441d0848ef9ac220321da543eb935313103f7e9c09ba6b188a4",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_comparison.py",
+            "start_line": 107,
+            "end_line": 141,
+            "quote_sha256": "661b628473ecceea19982aa9df961c0c3161698785d921193b5a46dc0f6c2909"
+          }
+        ],
+        "search_ms": [
+          43.289,
+          42.992,
+          43.378
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_c253eb1d9746c6cbb5850e754de7260ba608e933248bcba60a2dcc332570cb1e",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_admission.py",
+            "start_line": 232,
+            "end_line": 262,
+            "quote_sha256": "d79abef5069f784d9da6c9aca6a43f4af2c2c77fb9cf4cd55fe7cfd3f5aa8307"
+          },
+          {
+            "id": "chunk_b5ba3aa5cc01a3e124bd987823ac82be97a34bbb8e44c4e623e139b9859fd49b",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 143,
+            "end_line": 181,
+            "quote_sha256": "9153f1ec5737cec1963024c2d93c93c2001b47e70ff7ee6aa986186a3926e73b"
+          },
+          {
+            "id": "chunk_60dab2eaafe4da2b990baad7eb58fcf181f946c6e7741239252062ecdc17de97",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 382,
+            "end_line": 419,
+            "quote_sha256": "bf2ef5a0088475f441bd072194fe0c8d937c5dc3e35220da7222c3f8408d0c7d"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_f8287ec0654b8ef82527fa7a75d13fd8289d8628e770a323876b6e657ece2560",
+            "file": "services/py-learning/src/agentruntime_learning/pipeline/run.py",
+            "start_line": 130,
+            "end_line": 181,
+            "quote_sha256": "7bd392a0f8fcbe1d2ca3af7bf53118376383214a497a036903f16e361c76c7a8"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          },
+          {
+            "id": "chunk_60dd1dfdb5cd7441d0848ef9ac220321da543eb935313103f7e9c09ba6b188a4",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_comparison.py",
+            "start_line": 107,
+            "end_line": 141,
+            "quote_sha256": "661b628473ecceea19982aa9df961c0c3161698785d921193b5a46dc0f6c2909"
+          }
+        ],
+        "search_ms": [
+          43.057,
+          43.097,
+          43.685
+        ]
+      }
+    },
+    {
+      "id": "dev-11",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_e628433390720a3f25dff0d88ca542f8f5d3c3237e522658851fc783624d2d79",
+            "file": "services/py-worker/src/agentruntime_worker/worker.py",
+            "start_line": 122,
+            "end_line": 130,
+            "quote_sha256": "bdbbf77ba0cd9719543be4d91d883aaf442b4d6d5693798395997e807e263736"
+          },
+          {
+            "id": "chunk_c5a8e18c929047cb5e907dd45d54ead48b6955058da68da30ab2cbaa577b0396",
+            "file": "services/py-learning/src/agentruntime_learning/evals/gates.py",
+            "start_line": 48,
+            "end_line": 55,
+            "quote_sha256": "3c394233a38ea44a62af980cef385acf8a86fe729a17fa0e12150c4b0a05fe56"
+          },
+          {
+            "id": "chunk_9c789a6b180a0369d5745c9777ae1d28cc5d9d5677ebada4bfe0996836e5642e",
+            "file": "libs/py-core/src/agentruntime_core/adapters/claim_check.py",
+            "start_line": 366,
+            "end_line": 369,
+            "quote_sha256": "2a4666b286c602b3da1dcbbba403ce0e9c6b62a2565e0c2eb9d779ff2946e1ff"
+          },
+          {
+            "id": "chunk_578601ee385d4e499c3d9df2e561418886065ba83341e4952277b1580709fb53",
+            "file": "services/py-worker/src/agentruntime_worker/policy/hooks.py",
+            "start_line": 209,
+            "end_line": 221,
+            "quote_sha256": "63e7615d923d54c3e350bde079fb315a7b2884ea34c97fbeb6b55ba14f431ad0"
+          },
+          {
+            "id": "chunk_edca35d22b0e6c3d5f18d4e32361fabbe7df116dfdf483be12ed103503b8f490",
+            "file": "services/py-worker/src/agentruntime_worker/replay.py",
+            "start_line": 50,
+            "end_line": 64,
+            "quote_sha256": "08c720a33635c0c17191e79a460e6ca7aefad419c8bec4441df58b8cde52a6b0"
+          },
+          {
+            "id": "chunk_07440823f666143bd35b87f24e60d100511a4b8ccb98c471f79e227aa04e9e62",
+            "file": "services/py-worker/src/agentruntime_worker/replay.py",
+            "start_line": 42,
+            "end_line": 47,
+            "quote_sha256": "9a1f3f43d996f391bd8f9984c1ac1de2faee95d1ce06dc7f3eb850ea301818c9"
+          },
+          {
+            "id": "chunk_42502917d1af6e387894285d5696fa8c33a32b28583519fc45a3a52ea408a970",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 417,
+            "end_line": 428,
+            "quote_sha256": "3d038d74654d820b9f1fe139550714e1ee53f0e39b50ec8afa388b9c7b71912d"
+          },
+          {
+            "id": "chunk_53c06418b3bb18f8a900078f7f53ed0e5517af025aa8571f7f37b8bd40204725",
+            "file": "libs/py-core/src/agentruntime_core/adapters/claim_check.py",
+            "start_line": 1,
+            "end_line": 28,
+            "quote_sha256": "dc98dd039aad9179f8c203b05c554396ff99615dac41ad053c0bf5c1e65cd14a"
+          }
+        ],
+        "search_ms": [
+          63.89,
+          42.726,
+          42.627
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_e628433390720a3f25dff0d88ca542f8f5d3c3237e522658851fc783624d2d79",
+            "file": "services/py-worker/src/agentruntime_worker/worker.py",
+            "start_line": 122,
+            "end_line": 130,
+            "quote_sha256": "bdbbf77ba0cd9719543be4d91d883aaf442b4d6d5693798395997e807e263736"
+          },
+          {
+            "id": "chunk_c5a8e18c929047cb5e907dd45d54ead48b6955058da68da30ab2cbaa577b0396",
+            "file": "services/py-learning/src/agentruntime_learning/evals/gates.py",
+            "start_line": 48,
+            "end_line": 55,
+            "quote_sha256": "3c394233a38ea44a62af980cef385acf8a86fe729a17fa0e12150c4b0a05fe56"
+          },
+          {
+            "id": "chunk_9c789a6b180a0369d5745c9777ae1d28cc5d9d5677ebada4bfe0996836e5642e",
+            "file": "libs/py-core/src/agentruntime_core/adapters/claim_check.py",
+            "start_line": 366,
+            "end_line": 369,
+            "quote_sha256": "2a4666b286c602b3da1dcbbba403ce0e9c6b62a2565e0c2eb9d779ff2946e1ff"
+          },
+          {
+            "id": "chunk_578601ee385d4e499c3d9df2e561418886065ba83341e4952277b1580709fb53",
+            "file": "services/py-worker/src/agentruntime_worker/policy/hooks.py",
+            "start_line": 209,
+            "end_line": 221,
+            "quote_sha256": "63e7615d923d54c3e350bde079fb315a7b2884ea34c97fbeb6b55ba14f431ad0"
+          },
+          {
+            "id": "chunk_edca35d22b0e6c3d5f18d4e32361fabbe7df116dfdf483be12ed103503b8f490",
+            "file": "services/py-worker/src/agentruntime_worker/replay.py",
+            "start_line": 50,
+            "end_line": 64,
+            "quote_sha256": "08c720a33635c0c17191e79a460e6ca7aefad419c8bec4441df58b8cde52a6b0"
+          },
+          {
+            "id": "chunk_07440823f666143bd35b87f24e60d100511a4b8ccb98c471f79e227aa04e9e62",
+            "file": "services/py-worker/src/agentruntime_worker/replay.py",
+            "start_line": 42,
+            "end_line": 47,
+            "quote_sha256": "9a1f3f43d996f391bd8f9984c1ac1de2faee95d1ce06dc7f3eb850ea301818c9"
+          },
+          {
+            "id": "chunk_42502917d1af6e387894285d5696fa8c33a32b28583519fc45a3a52ea408a970",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 417,
+            "end_line": 428,
+            "quote_sha256": "3d038d74654d820b9f1fe139550714e1ee53f0e39b50ec8afa388b9c7b71912d"
+          },
+          {
+            "id": "chunk_53c06418b3bb18f8a900078f7f53ed0e5517af025aa8571f7f37b8bd40204725",
+            "file": "libs/py-core/src/agentruntime_core/adapters/claim_check.py",
+            "start_line": 1,
+            "end_line": 28,
+            "quote_sha256": "dc98dd039aad9179f8c203b05c554396ff99615dac41ad053c0bf5c1e65cd14a"
+          }
+        ],
+        "search_ms": [
+          43.375,
+          42.706,
+          42.776
+        ]
+      }
+    },
+    {
+      "id": "dev-12",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_57a881b2c3cb409bac445ba6cb14cbafc9821a29980115ea311d77ef7c3c5ae9",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/s09.py",
+            "start_line": 127,
+            "end_line": 150,
+            "quote_sha256": "8d53a2f2a625b0e837dd0b708202238ffb88a10d05005b5bf575871667649481"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_51ad08073a2b6f3b747e4d3dd9965b254c2e4fb945cd33556f268bacbd49910d",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 355,
+            "end_line": 388,
+            "quote_sha256": "a72cb665ebc711ef713151651ace9efcc2a1bb4826589894b0e8cc4a87ca769b"
+          },
+          {
+            "id": "chunk_18660135b150d2ad5225d3d36500f64f06bf7ddc0462b3f5be4b945833fbc044",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 477,
+            "end_line": 491,
+            "quote_sha256": "cc27b284f63b1dc48ee7cfe77e186739ff5cb783fe58297b4792cd3ef113ae5f"
+          },
+          {
+            "id": "chunk_4f49093848721053149c9920b00828a48df79585933f0e8e93267b2485693cce",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 391,
+            "end_line": 421,
+            "quote_sha256": "b04b64888315cb36f1df0d70e5a6d2bbab45cdbcdd2f8a918aee62561ff32a4c"
+          }
+        ],
+        "search_ms": [
+          43.855,
+          44.367,
+          44.557
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_57a881b2c3cb409bac445ba6cb14cbafc9821a29980115ea311d77ef7c3c5ae9",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/s09.py",
+            "start_line": 127,
+            "end_line": 150,
+            "quote_sha256": "8d53a2f2a625b0e837dd0b708202238ffb88a10d05005b5bf575871667649481"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_51ad08073a2b6f3b747e4d3dd9965b254c2e4fb945cd33556f268bacbd49910d",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 355,
+            "end_line": 388,
+            "quote_sha256": "a72cb665ebc711ef713151651ace9efcc2a1bb4826589894b0e8cc4a87ca769b"
+          },
+          {
+            "id": "chunk_18660135b150d2ad5225d3d36500f64f06bf7ddc0462b3f5be4b945833fbc044",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 477,
+            "end_line": 491,
+            "quote_sha256": "cc27b284f63b1dc48ee7cfe77e186739ff5cb783fe58297b4792cd3ef113ae5f"
+          },
+          {
+            "id": "chunk_4f49093848721053149c9920b00828a48df79585933f0e8e93267b2485693cce",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 391,
+            "end_line": 421,
+            "quote_sha256": "b04b64888315cb36f1df0d70e5a6d2bbab45cdbcdd2f8a918aee62561ff32a4c"
+          }
+        ],
+        "search_ms": [
+          44.134,
+          44.195,
+          44.082
+        ]
+      }
+    },
+    {
+      "id": "dev-13",
+      "A": {
+        "rank": 6,
+        "top8": [
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_4a318156c43489b5764ffe4db47bcff50f460656f0935f1e9c07eae2b2c54c8a",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 236,
+            "end_line": 273,
+            "quote_sha256": "1193f5905efa18b12a081caa8c27bf9d22465f04995dfb9f4eddc3b7e1a38a71"
+          },
+          {
+            "id": "chunk_8c45c112dda290a4d3a5bea2cc705afb838a3912f14d2a8af397e51cbb4480ec",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_cohorts.py",
+            "start_line": 32,
+            "end_line": 58,
+            "quote_sha256": "9bf6567c6e0d7aa1f2598edd06ac4aab67bfaa25905d59f4f192ed1283c0fd5e"
+          },
+          {
+            "id": "chunk_694132eac7ab292d195b9de800ea58bc6960e7296bc26dde624250101b672b36",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 421,
+            "end_line": 440,
+            "quote_sha256": "e4d0a33c576508e1a90bbdfd2e0dc296a707b1d98fd40283d9c02f123b853b33"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_9a16570aff33a423ccad06f0be02f8d754db0816bf7ca208e562bb826fd6a98f",
+            "file": "services/py-memory/src/agentruntime_memory/safety.py",
+            "start_line": 157,
+            "end_line": 187,
+            "quote_sha256": "c05331c0a0d7eccaaf2d9dd694ca5e5cbf2606b61f0d4e95734082ca84b63bdd"
+          },
+          {
+            "id": "chunk_0ebc8f8bf8946d7a4a075215f077689d54a1557f6a26367e5864bffaaecb5016",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 230,
+            "end_line": 244,
+            "quote_sha256": "11b1aaac2e9ce8c9236c0a9bee5715dfb3b5e2b282d4cc8ecd2983607e064562"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          }
+        ],
+        "search_ms": [
+          66.753,
+          43.882,
+          43.982
+        ]
+      },
+      "B": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_9a16570aff33a423ccad06f0be02f8d754db0816bf7ca208e562bb826fd6a98f",
+            "file": "services/py-memory/src/agentruntime_memory/safety.py",
+            "start_line": 157,
+            "end_line": 187,
+            "quote_sha256": "c05331c0a0d7eccaaf2d9dd694ca5e5cbf2606b61f0d4e95734082ca84b63bdd"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_4a318156c43489b5764ffe4db47bcff50f460656f0935f1e9c07eae2b2c54c8a",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 236,
+            "end_line": 273,
+            "quote_sha256": "1193f5905efa18b12a081caa8c27bf9d22465f04995dfb9f4eddc3b7e1a38a71"
+          },
+          {
+            "id": "chunk_8c45c112dda290a4d3a5bea2cc705afb838a3912f14d2a8af397e51cbb4480ec",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_cohorts.py",
+            "start_line": 32,
+            "end_line": 58,
+            "quote_sha256": "9bf6567c6e0d7aa1f2598edd06ac4aab67bfaa25905d59f4f192ed1283c0fd5e"
+          },
+          {
+            "id": "chunk_694132eac7ab292d195b9de800ea58bc6960e7296bc26dde624250101b672b36",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 421,
+            "end_line": 440,
+            "quote_sha256": "e4d0a33c576508e1a90bbdfd2e0dc296a707b1d98fd40283d9c02f123b853b33"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_0ebc8f8bf8946d7a4a075215f077689d54a1557f6a26367e5864bffaaecb5016",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 230,
+            "end_line": 244,
+            "quote_sha256": "11b1aaac2e9ce8c9236c0a9bee5715dfb3b5e2b282d4cc8ecd2983607e064562"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          }
+        ],
+        "search_ms": [
+          44.021,
+          43.997,
+          43.957
+        ]
+      }
+    },
+    {
+      "id": "dev-14",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_ee41e5d6d69bfd6c8664a25fc82625720987e4c9d50648b45bf37a0f8a1d4b77",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 158,
+            "end_line": 190,
+            "quote_sha256": "4221a3fed9814ab74823a40f984f0051fbc306e90279a51041c23cd9c5e2a442"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          },
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_6fc199b0d154215810970c42daa17aedf46dd5c21927dacf9c41f81b1d0a98dd",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 126,
+            "end_line": 153,
+            "quote_sha256": "8fd8146e87398615d02942e21d436252cf8826786d5a72e1f733d144901da356"
+          },
+          {
+            "id": "chunk_e1df8b94c8154369c3ce4732dabce43901ea67897edd58d5328ea05fffff1418",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 183,
+            "end_line": 205,
+            "quote_sha256": "91870f817a3eecc42a4181843904aa2218b07bddc7c1168d8faff087e97f8c20"
+          },
+          {
+            "id": "chunk_2ba1bf11414bf8a48d144a8ebd7bd3c8bea705c475261efef898939c638cc831",
+            "file": "services/py-worker/src/agentruntime_worker/files/activity.py",
+            "start_line": 31,
+            "end_line": 46,
+            "quote_sha256": "323b0c672186801928834ea007ace27a1d95cb833a68afbf4504e6dd9b3f7fc8"
+          }
+        ],
+        "search_ms": [
+          64.3,
+          42.886,
+          42.562
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_ee41e5d6d69bfd6c8664a25fc82625720987e4c9d50648b45bf37a0f8a1d4b77",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 158,
+            "end_line": 190,
+            "quote_sha256": "4221a3fed9814ab74823a40f984f0051fbc306e90279a51041c23cd9c5e2a442"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          },
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_6fc199b0d154215810970c42daa17aedf46dd5c21927dacf9c41f81b1d0a98dd",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 126,
+            "end_line": 153,
+            "quote_sha256": "8fd8146e87398615d02942e21d436252cf8826786d5a72e1f733d144901da356"
+          },
+          {
+            "id": "chunk_e1df8b94c8154369c3ce4732dabce43901ea67897edd58d5328ea05fffff1418",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 183,
+            "end_line": 205,
+            "quote_sha256": "91870f817a3eecc42a4181843904aa2218b07bddc7c1168d8faff087e97f8c20"
+          },
+          {
+            "id": "chunk_2ba1bf11414bf8a48d144a8ebd7bd3c8bea705c475261efef898939c638cc831",
+            "file": "services/py-worker/src/agentruntime_worker/files/activity.py",
+            "start_line": 31,
+            "end_line": 46,
+            "quote_sha256": "323b0c672186801928834ea007ace27a1d95cb833a68afbf4504e6dd9b3f7fc8"
+          }
+        ],
+        "search_ms": [
+          43.288,
+          42.793,
+          43.086
+        ]
+      }
+    },
+    {
+      "id": "dev-15",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_b0e5d351be7697b6c5d6a1b0186407f71e2ff79692c97c7baeb72ab1990d0aaf",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 152,
+            "end_line": 181,
+            "quote_sha256": "a2bb7d7e649cc5eaeda78d0811fb8ac43a045449b76bea777e076ec5601053fc"
+          },
+          {
+            "id": "chunk_836be07bda8f3ef476e34899202e0432b2230960fada677b5fc1a9078b961ab6",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_comparison.py",
+            "start_line": 62,
+            "end_line": 95,
+            "quote_sha256": "3a6037522b0d89d79c824dbdc71ae9ed0ec03e2ab5155b743e0d91faf3909aa5"
+          },
+          {
+            "id": "chunk_f1d4397d79ab0803f53e726b1787ccd3afb16941b285b819e25527a964077c71",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 65,
+            "end_line": 97,
+            "quote_sha256": "a4b9118d5423b3e0c91a6829a79e071204dd602a21382fe24fde9057dc15a673"
+          },
+          {
+            "id": "chunk_7314cc628018df50a2f8a4ed27f2ca037e408bc517f67683ddf783c15933b5d9",
+            "file": "services/py-worker/src/agentruntime_worker/files/compute.py",
+            "start_line": 186,
+            "end_line": 221,
+            "quote_sha256": "6761fd8f15b1e8f2d0502c16b66674b6151a84938c7821dea0423e7b4a574a80"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          },
+          {
+            "id": "chunk_c253eb1d9746c6cbb5850e754de7260ba608e933248bcba60a2dcc332570cb1e",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_admission.py",
+            "start_line": 232,
+            "end_line": 262,
+            "quote_sha256": "d79abef5069f784d9da6c9aca6a43f4af2c2c77fb9cf4cd55fe7cfd3f5aa8307"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          }
+        ],
+        "search_ms": [
+          43.243,
+          43.173,
+          43.448
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_b0e5d351be7697b6c5d6a1b0186407f71e2ff79692c97c7baeb72ab1990d0aaf",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 152,
+            "end_line": 181,
+            "quote_sha256": "a2bb7d7e649cc5eaeda78d0811fb8ac43a045449b76bea777e076ec5601053fc"
+          },
+          {
+            "id": "chunk_836be07bda8f3ef476e34899202e0432b2230960fada677b5fc1a9078b961ab6",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_comparison.py",
+            "start_line": 62,
+            "end_line": 95,
+            "quote_sha256": "3a6037522b0d89d79c824dbdc71ae9ed0ec03e2ab5155b743e0d91faf3909aa5"
+          },
+          {
+            "id": "chunk_f1d4397d79ab0803f53e726b1787ccd3afb16941b285b819e25527a964077c71",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 65,
+            "end_line": 97,
+            "quote_sha256": "a4b9118d5423b3e0c91a6829a79e071204dd602a21382fe24fde9057dc15a673"
+          },
+          {
+            "id": "chunk_7314cc628018df50a2f8a4ed27f2ca037e408bc517f67683ddf783c15933b5d9",
+            "file": "services/py-worker/src/agentruntime_worker/files/compute.py",
+            "start_line": 186,
+            "end_line": 221,
+            "quote_sha256": "6761fd8f15b1e8f2d0502c16b66674b6151a84938c7821dea0423e7b4a574a80"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          },
+          {
+            "id": "chunk_c253eb1d9746c6cbb5850e754de7260ba608e933248bcba60a2dcc332570cb1e",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_admission.py",
+            "start_line": 232,
+            "end_line": 262,
+            "quote_sha256": "d79abef5069f784d9da6c9aca6a43f4af2c2c77fb9cf4cd55fe7cfd3f5aa8307"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          }
+        ],
+        "search_ms": [
+          43.411,
+          43.033,
+          43.245
+        ]
+      }
+    },
+    {
+      "id": "dev-16",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_4e3434d391e4b5da17a1e4ee771ab699a256aabe77dd8f3f331835cbe4310075",
+            "file": "services/py-worker/src/agentruntime_worker/tools/deliver.py",
+            "start_line": 43,
+            "end_line": 77,
+            "quote_sha256": "56ebac6d84915ea8af3fbb2b3278e4ddd394d90aca8bd6823b6b8d5294f8d237"
+          },
+          {
+            "id": "chunk_02b7b3bb68114b578b93f7e6f72cebad7a5a44c7edc5c2540641fc2a8f3aec4b",
+            "file": "libs/py-core/src/agentruntime_core/dev/event_stream.py",
+            "start_line": 88,
+            "end_line": 112,
+            "quote_sha256": "437964a74d023813a0e87ce2ec462709dc957d0069ab17cc176b0d9455f101e3"
+          },
+          {
+            "id": "chunk_628f536a65da597be7cc90e9da57b07d2545dcf759703cbeb81159887d68be40",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 91,
+            "end_line": 110,
+            "quote_sha256": "cced1828a09e265cb6a13bfd0aad771a3aed92f9885a256fd28137b4deeca748"
+          },
+          {
+            "id": "chunk_43baa83c446851e1ef3003d97179fd0229a108b5f4f0b95ae196fee32ddc40d0",
+            "file": "libs/py-core/src/agentruntime_core/dev/telemetry.py",
+            "start_line": 101,
+            "end_line": 112,
+            "quote_sha256": "10fcb15b92fa519c4289dd70a348425adcbe46c2e56f72327e009a87159b593c"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          }
+        ],
+        "search_ms": [
+          65.378,
+          43.345,
+          44.32
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_4e3434d391e4b5da17a1e4ee771ab699a256aabe77dd8f3f331835cbe4310075",
+            "file": "services/py-worker/src/agentruntime_worker/tools/deliver.py",
+            "start_line": 43,
+            "end_line": 77,
+            "quote_sha256": "56ebac6d84915ea8af3fbb2b3278e4ddd394d90aca8bd6823b6b8d5294f8d237"
+          },
+          {
+            "id": "chunk_02b7b3bb68114b578b93f7e6f72cebad7a5a44c7edc5c2540641fc2a8f3aec4b",
+            "file": "libs/py-core/src/agentruntime_core/dev/event_stream.py",
+            "start_line": 88,
+            "end_line": 112,
+            "quote_sha256": "437964a74d023813a0e87ce2ec462709dc957d0069ab17cc176b0d9455f101e3"
+          },
+          {
+            "id": "chunk_628f536a65da597be7cc90e9da57b07d2545dcf759703cbeb81159887d68be40",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 91,
+            "end_line": 110,
+            "quote_sha256": "cced1828a09e265cb6a13bfd0aad771a3aed92f9885a256fd28137b4deeca748"
+          },
+          {
+            "id": "chunk_43baa83c446851e1ef3003d97179fd0229a108b5f4f0b95ae196fee32ddc40d0",
+            "file": "libs/py-core/src/agentruntime_core/dev/telemetry.py",
+            "start_line": 101,
+            "end_line": 112,
+            "quote_sha256": "10fcb15b92fa519c4289dd70a348425adcbe46c2e56f72327e009a87159b593c"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          }
+        ],
+        "search_ms": [
+          43.787,
+          44.481,
+          44.361
+        ]
+      }
+    },
+    {
+      "id": "dev-17",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_8813377ccceac3ced9a6d5ccf45e7b592a7690ca25407f9dc2098e4c2ec342a3",
+            "file": "services/py-learning/src/agentruntime_learning/evals/rag.py",
+            "start_line": 128,
+            "end_line": 166,
+            "quote_sha256": "7c4654acd175e21c651dcc02fec1e94e0b943d67f468558751015b73425cd558"
+          },
+          {
+            "id": "chunk_4a318156c43489b5764ffe4db47bcff50f460656f0935f1e9c07eae2b2c54c8a",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 236,
+            "end_line": 273,
+            "quote_sha256": "1193f5905efa18b12a081caa8c27bf9d22465f04995dfb9f4eddc3b7e1a38a71"
+          },
+          {
+            "id": "chunk_8a88d5804eff7027388713af0d7752e4649b755b7420ff66e57de6c23d2db1e1",
+            "file": "libs/py-core/src/agentruntime_core/dev/secret_store.py",
+            "start_line": 1,
+            "end_line": 44,
+            "quote_sha256": "f06a77163161f492355f3ac5b75a33d8259c83b64b042b0395c7ac9d76f7690b"
+          },
+          {
+            "id": "chunk_7988738a3c9950d14a5adb9c4364c48682d3a22d72c270bf9937d13c34ec0d1b",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/longmemeval.py",
+            "start_line": 97,
+            "end_line": 117,
+            "quote_sha256": "809aede8aabc4e71e3124ed4cd0d57f3988c93ea6b2bcfcd43cda9fbd9c3bc53"
+          },
+          {
+            "id": "chunk_d67d2bab5f95bed952c8d364a4643067ac435be5e13c0170f30f1bec06ea9f3c",
+            "file": "services/py-learning/src/agentruntime_learning/capability/scoring.py",
+            "start_line": 130,
+            "end_line": 168,
+            "quote_sha256": "cf38275d3efbc1de5f5aa4b76179a1303e1ccdb1f35de62279ed9742a3a04b79"
+          },
+          {
+            "id": "chunk_46128e1e84d5f3c3f4d31c0515be4c751fbf8d9475b17f76e16538861b617e0d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 115,
+            "end_line": 146,
+            "quote_sha256": "82d55ba07ccac52c03a880f7958ab1fafb93e45c9d3c3acafd7076d61b2563b6"
+          },
+          {
+            "id": "chunk_10d5312365dde4b9ee4af17750b638b84302a9ebe315b1a4e4c7513a36509f30",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 514,
+            "end_line": 551,
+            "quote_sha256": "e6200014b93bed752079cb588de9bd8a5f960e050d7c6ad54c3bff0e8173a4c7"
+          },
+          {
+            "id": "chunk_03883d356ef6cfa41a232b9e943b3920cf56ddd0cc79f3f7df70753118aa1118",
+            "file": "services/py-learning/src/agentruntime_learning/evals/audited_gateway.py",
+            "start_line": 34,
+            "end_line": 67,
+            "quote_sha256": "c2f82cf892f0b256a20bd5a0267e0c0ecbd9760bc1e46ed858f4c9a064bd612d"
+          }
+        ],
+        "search_ms": [
+          44.002,
+          44.212,
+          43.953
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_8813377ccceac3ced9a6d5ccf45e7b592a7690ca25407f9dc2098e4c2ec342a3",
+            "file": "services/py-learning/src/agentruntime_learning/evals/rag.py",
+            "start_line": 128,
+            "end_line": 166,
+            "quote_sha256": "7c4654acd175e21c651dcc02fec1e94e0b943d67f468558751015b73425cd558"
+          },
+          {
+            "id": "chunk_4a318156c43489b5764ffe4db47bcff50f460656f0935f1e9c07eae2b2c54c8a",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 236,
+            "end_line": 273,
+            "quote_sha256": "1193f5905efa18b12a081caa8c27bf9d22465f04995dfb9f4eddc3b7e1a38a71"
+          },
+          {
+            "id": "chunk_8a88d5804eff7027388713af0d7752e4649b755b7420ff66e57de6c23d2db1e1",
+            "file": "libs/py-core/src/agentruntime_core/dev/secret_store.py",
+            "start_line": 1,
+            "end_line": 44,
+            "quote_sha256": "f06a77163161f492355f3ac5b75a33d8259c83b64b042b0395c7ac9d76f7690b"
+          },
+          {
+            "id": "chunk_7988738a3c9950d14a5adb9c4364c48682d3a22d72c270bf9937d13c34ec0d1b",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/longmemeval.py",
+            "start_line": 97,
+            "end_line": 117,
+            "quote_sha256": "809aede8aabc4e71e3124ed4cd0d57f3988c93ea6b2bcfcd43cda9fbd9c3bc53"
+          },
+          {
+            "id": "chunk_d67d2bab5f95bed952c8d364a4643067ac435be5e13c0170f30f1bec06ea9f3c",
+            "file": "services/py-learning/src/agentruntime_learning/capability/scoring.py",
+            "start_line": 130,
+            "end_line": 168,
+            "quote_sha256": "cf38275d3efbc1de5f5aa4b76179a1303e1ccdb1f35de62279ed9742a3a04b79"
+          },
+          {
+            "id": "chunk_46128e1e84d5f3c3f4d31c0515be4c751fbf8d9475b17f76e16538861b617e0d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 115,
+            "end_line": 146,
+            "quote_sha256": "82d55ba07ccac52c03a880f7958ab1fafb93e45c9d3c3acafd7076d61b2563b6"
+          },
+          {
+            "id": "chunk_10d5312365dde4b9ee4af17750b638b84302a9ebe315b1a4e4c7513a36509f30",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 514,
+            "end_line": 551,
+            "quote_sha256": "e6200014b93bed752079cb588de9bd8a5f960e050d7c6ad54c3bff0e8173a4c7"
+          },
+          {
+            "id": "chunk_03883d356ef6cfa41a232b9e943b3920cf56ddd0cc79f3f7df70753118aa1118",
+            "file": "services/py-learning/src/agentruntime_learning/evals/audited_gateway.py",
+            "start_line": 34,
+            "end_line": 67,
+            "quote_sha256": "c2f82cf892f0b256a20bd5a0267e0c0ecbd9760bc1e46ed858f4c9a064bd612d"
+          }
+        ],
+        "search_ms": [
+          43.794,
+          44.497,
+          44.443
+        ]
+      }
+    },
+    {
+      "id": "dev-18",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          },
+          {
+            "id": "chunk_1badedfc024ae03450da41f2c123bfde1a9bd1b7ad343a6c5ed688b4e3391dbd",
+            "file": "libs/py-core/src/agentruntime_core/adapters/postgres.py",
+            "start_line": 258,
+            "end_line": 284,
+            "quote_sha256": "25c423cc5551a9ea47c1f5b926d450b8e88b09e70fc3582990966c1275037c37"
+          },
+          {
+            "id": "chunk_9e3bdf40659a11d5a318793369842b0d322bb1465faaf6c2821188d02fff0ecc",
+            "file": "libs/py-core/src/agentruntime_core/adapters/qdrant.py",
+            "start_line": 297,
+            "end_line": 339,
+            "quote_sha256": "4353938cdb21646e182efba38b5d62d049ce75a8a5cf6ca66755cb2b99a6a350"
+          },
+          {
+            "id": "chunk_c8bec8af2b27d400f7917e5fd2f56e0a66f5bee636d70bb18d7d06c1a2babe43",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 362,
+            "end_line": 399,
+            "quote_sha256": "554a9e9164462b17d88367be7f4e10509e33ae95fe77c9a5ec480c672fd5d419"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          }
+        ],
+        "search_ms": [
+          43.687,
+          45.26,
+          46.39
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_c9cda5744554127981d3586356dc5d42a784e1a301eced983fff2f9dd4229230",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_context_optimization.py",
+            "start_line": 202,
+            "end_line": 217,
+            "quote_sha256": "369e7af1cf444498b9ac66f75108e6571f242b11da2d27a25d1a23689e4e8258"
+          },
+          {
+            "id": "chunk_1badedfc024ae03450da41f2c123bfde1a9bd1b7ad343a6c5ed688b4e3391dbd",
+            "file": "libs/py-core/src/agentruntime_core/adapters/postgres.py",
+            "start_line": 258,
+            "end_line": 284,
+            "quote_sha256": "25c423cc5551a9ea47c1f5b926d450b8e88b09e70fc3582990966c1275037c37"
+          },
+          {
+            "id": "chunk_9e3bdf40659a11d5a318793369842b0d322bb1465faaf6c2821188d02fff0ecc",
+            "file": "libs/py-core/src/agentruntime_core/adapters/qdrant.py",
+            "start_line": 297,
+            "end_line": 339,
+            "quote_sha256": "4353938cdb21646e182efba38b5d62d049ce75a8a5cf6ca66755cb2b99a6a350"
+          },
+          {
+            "id": "chunk_c8bec8af2b27d400f7917e5fd2f56e0a66f5bee636d70bb18d7d06c1a2babe43",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 362,
+            "end_line": 399,
+            "quote_sha256": "554a9e9164462b17d88367be7f4e10509e33ae95fe77c9a5ec480c672fd5d419"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          }
+        ],
+        "search_ms": [
+          43.268,
+          43.563,
+          44.079
+        ]
+      }
+    },
+    {
+      "id": "dev-19",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_e93223f3536f219c1d786132faf2eb1fd2fe8adfe77d3b48f57f33f9cdbc1319",
+            "file": "services/py-learning/src/agentruntime_learning/evals/deepeval_acceptance.py",
+            "start_line": 94,
+            "end_line": 99,
+            "quote_sha256": "1b1750bdca3d417ee878f747b2edccc377c043098ce2e84e4c3767d4c9ae6998"
+          },
+          {
+            "id": "chunk_d64a3a31e029fddcd10c2848c3375494f6e8b534ca62d4bafa1e71ca7342c931",
+            "file": "services/py-worker/src/agentruntime_worker/planner/validate.py",
+            "start_line": 153,
+            "end_line": 172,
+            "quote_sha256": "5a1f6a96918e25dd96a4c7d377ed5335112f11ece7525bfa5bcee828d1e750d2"
+          },
+          {
+            "id": "chunk_d477e5843716a622f19feaf7df553f9f14e546b5a1eb6306b3d43334a93c95f0",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_semantic_judge.py",
+            "start_line": 408,
+            "end_line": 440,
+            "quote_sha256": "bb4fd946af4a44007eaa55cd7cf08a28da97e79942a19625fff047d5c69a278e"
+          },
+          {
+            "id": "chunk_65b0539428efc4427910f0c832b108190a733c460f4f96efc4395d0e20128d9f",
+            "file": "services/py-learning/src/agentruntime_learning/evals/ragas.py",
+            "start_line": 328,
+            "end_line": 346,
+            "quote_sha256": "80f54b0ccfd98151cf0852a878d0027d4cb53828ac3d0f245577300c6f8ae257"
+          },
+          {
+            "id": "chunk_922a1d961af36d1aa3aa7f94098c7654dec1dc4a95b533a0856ff146c6616341",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/longmemeval.py",
+            "start_line": 203,
+            "end_line": 237,
+            "quote_sha256": "f7416d3fc245f1aaf8614df244c86817da9e8afc95039a3246df48d0fdc3e374"
+          },
+          {
+            "id": "chunk_ffa3ec378560f2d95e547bba57cd80f0c4f1bfd48415f515c572bb67cf9991c1",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 154,
+            "end_line": 167,
+            "quote_sha256": "f478c7092d4315d9fd8c7faa01911e52285f2f6f14760dd043f5b91e7fcabfc2"
+          }
+        ],
+        "search_ms": [
+          44.728,
+          43.106,
+          42.691
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_e93223f3536f219c1d786132faf2eb1fd2fe8adfe77d3b48f57f33f9cdbc1319",
+            "file": "services/py-learning/src/agentruntime_learning/evals/deepeval_acceptance.py",
+            "start_line": 94,
+            "end_line": 99,
+            "quote_sha256": "1b1750bdca3d417ee878f747b2edccc377c043098ce2e84e4c3767d4c9ae6998"
+          },
+          {
+            "id": "chunk_d64a3a31e029fddcd10c2848c3375494f6e8b534ca62d4bafa1e71ca7342c931",
+            "file": "services/py-worker/src/agentruntime_worker/planner/validate.py",
+            "start_line": 153,
+            "end_line": 172,
+            "quote_sha256": "5a1f6a96918e25dd96a4c7d377ed5335112f11ece7525bfa5bcee828d1e750d2"
+          },
+          {
+            "id": "chunk_d477e5843716a622f19feaf7df553f9f14e546b5a1eb6306b3d43334a93c95f0",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_semantic_judge.py",
+            "start_line": 408,
+            "end_line": 440,
+            "quote_sha256": "bb4fd946af4a44007eaa55cd7cf08a28da97e79942a19625fff047d5c69a278e"
+          },
+          {
+            "id": "chunk_65b0539428efc4427910f0c832b108190a733c460f4f96efc4395d0e20128d9f",
+            "file": "services/py-learning/src/agentruntime_learning/evals/ragas.py",
+            "start_line": 328,
+            "end_line": 346,
+            "quote_sha256": "80f54b0ccfd98151cf0852a878d0027d4cb53828ac3d0f245577300c6f8ae257"
+          },
+          {
+            "id": "chunk_922a1d961af36d1aa3aa7f94098c7654dec1dc4a95b533a0856ff146c6616341",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/longmemeval.py",
+            "start_line": 203,
+            "end_line": 237,
+            "quote_sha256": "f7416d3fc245f1aaf8614df244c86817da9e8afc95039a3246df48d0fdc3e374"
+          },
+          {
+            "id": "chunk_ffa3ec378560f2d95e547bba57cd80f0c4f1bfd48415f515c572bb67cf9991c1",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 154,
+            "end_line": 167,
+            "quote_sha256": "f478c7092d4315d9fd8c7faa01911e52285f2f6f14760dd043f5b91e7fcabfc2"
+          }
+        ],
+        "search_ms": [
+          65.036,
+          43.395,
+          42.813
+        ]
+      }
+    },
+    {
+      "id": "dev-20",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          },
+          {
+            "id": "chunk_89849d749f1b705e2f5e68664b7703e90d5894c2802105a6f0c522b70027ebeb",
+            "file": "libs/py-core/src/agentruntime_core/tenancy.py",
+            "start_line": 68,
+            "end_line": 93,
+            "quote_sha256": "8f00e80a3ab2025228a3bfd5a898c201e7f58b023981ebd846a037c3b32005f4"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_e7f4be627f46bda1ecac00cd02ae0c853edc505be5a3e319ab0af8b36a7a62ee",
+            "file": "services/py-worker/src/agentruntime_worker/delivery.py",
+            "start_line": 1,
+            "end_line": 25,
+            "quote_sha256": "b575ab1bf09f7ff6bbb9589fa94d51b320c2897a6c5b46ee8890794ef118c886"
+          },
+          {
+            "id": "chunk_31edf6254c5cea66b74fdaa4fa94c89925c3e2a7a1e9f224f4878eaa1eaf2013",
+            "file": "services/py-worker/src/agentruntime_worker/delivery.py",
+            "start_line": 65,
+            "end_line": 111,
+            "quote_sha256": "b514e8e5cc6a7bb99681d62a846c5157b23ca724cad738784384dbc952598cfa"
+          }
+        ],
+        "search_ms": [
+          42.904,
+          42.943,
+          43.319
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_6470cd46bed794dfb53142a0bd04393c24a283ef5fcc1119e5c5a81267995678",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/judgebench.py",
+            "start_line": 36,
+            "end_line": 74,
+            "quote_sha256": "91ee6bf3f2ff79a8233527602306a603efcf311c1e1dc783ee629015e99818d4"
+          },
+          {
+            "id": "chunk_5f796fa5ada750cd59cf16ac37e059a5e0316d70a7a0f0bc792f9a83f658c005",
+            "file": "services/py-learning/src/agentruntime_learning/capability/evals/rewardbench2.py",
+            "start_line": 40,
+            "end_line": 73,
+            "quote_sha256": "c667d22fd461510e195577b638f0535e4af2318df7731478aca0e4cbe12a0770"
+          },
+          {
+            "id": "chunk_1f142994af2a3865f1d6b4b2fda0075e050ad9464f6b15aba627b95e788dc7b7",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 58,
+            "end_line": 70,
+            "quote_sha256": "744bb3812c9bfc04b190d06b024bc0ebe54ae4792149a5700818ccbe7b8b8491"
+          },
+          {
+            "id": "chunk_a79e51f306f8166365162bfc995f381cdf4fa604235a688fad03c2b12238a982",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tbench_harbor.py",
+            "start_line": 1,
+            "end_line": 45,
+            "quote_sha256": "931e68193f92b8a050939ecac6ae934172bff516f16ba588eccc9116c80c9614"
+          },
+          {
+            "id": "chunk_89849d749f1b705e2f5e68664b7703e90d5894c2802105a6f0c522b70027ebeb",
+            "file": "libs/py-core/src/agentruntime_core/tenancy.py",
+            "start_line": 68,
+            "end_line": 93,
+            "quote_sha256": "8f00e80a3ab2025228a3bfd5a898c201e7f58b023981ebd846a037c3b32005f4"
+          },
+          {
+            "id": "chunk_ba3556751f3e7800ec159b51a11d87014834203d0169678b594364a7d5b4b465",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 262,
+            "end_line": 281,
+            "quote_sha256": "c4c5af05cc778b30c4bda3bea5dfdd196d0c36b771cdf51ca6db56938609dafb"
+          },
+          {
+            "id": "chunk_e7f4be627f46bda1ecac00cd02ae0c853edc505be5a3e319ab0af8b36a7a62ee",
+            "file": "services/py-worker/src/agentruntime_worker/delivery.py",
+            "start_line": 1,
+            "end_line": 25,
+            "quote_sha256": "b575ab1bf09f7ff6bbb9589fa94d51b320c2897a6c5b46ee8890794ef118c886"
+          },
+          {
+            "id": "chunk_31edf6254c5cea66b74fdaa4fa94c89925c3e2a7a1e9f224f4878eaa1eaf2013",
+            "file": "services/py-worker/src/agentruntime_worker/delivery.py",
+            "start_line": 65,
+            "end_line": 111,
+            "quote_sha256": "b514e8e5cc6a7bb99681d62a846c5157b23ca724cad738784384dbc952598cfa"
+          }
+        ],
+        "search_ms": [
+          42.913,
+          42.646,
+          43.017
+        ]
+      }
+    },
+    {
+      "id": "dev-21",
+      "A": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_a40a98767bec6cde4fb9434ace5696c6c8e5175ad1003db3fe4fde36d92ecbe5",
+            "file": "libs/py-core/src/agentruntime_core/testing.py",
+            "start_line": 16,
+            "end_line": 19,
+            "quote_sha256": "4fc99e8dd392d80ca41c13712a71230523a9b4946e6a20715bb2a03ac13d9e53"
+          },
+          {
+            "id": "chunk_be35939eac4179ed15abc8e63ca18cd59804c36c775f6cefb89dde53c58685ad",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 74,
+            "end_line": 89,
+            "quote_sha256": "721364c832220c47fe441c7ec7c0ba21d6de1427d40bf084d5fecd287bf17b90"
+          },
+          {
+            "id": "chunk_004ebbd52e7fa37a88174ef23b8c06eab9d4c171334d2975c0ac813f7cffb25a",
+            "file": "services/py-worker/src/agentruntime_worker/tools/deliver.py",
+            "start_line": 332,
+            "end_line": 334,
+            "quote_sha256": "ee5bc82165b5a8e169375918613678ae75199859da79430649f0409f6b919512"
+          },
+          {
+            "id": "chunk_8a88d5804eff7027388713af0d7752e4649b755b7420ff66e57de6c23d2db1e1",
+            "file": "libs/py-core/src/agentruntime_core/dev/secret_store.py",
+            "start_line": 1,
+            "end_line": 44,
+            "quote_sha256": "f06a77163161f492355f3ac5b75a33d8259c83b64b042b0395c7ac9d76f7690b"
+          },
+          {
+            "id": "chunk_af022927ce49a4efa97216c18c260f987a0635d8ed4749ea25f2215443b14afd",
+            "file": "services/py-worker/src/agentruntime_worker/tools/deliver.py",
+            "start_line": 206,
+            "end_line": 225,
+            "quote_sha256": "e7a31295ee0f6af632f38a8665ddc594074a5955c5b9ec64627c69f9d2f34120"
+          },
+          {
+            "id": "chunk_8e6e39233cffae6ce9e797404a0337bfebae8399bfcf6e15db4e2b9b3b16f039",
+            "file": "services/py-worker/src/agentruntime_worker/tools/attachments.py",
+            "start_line": 118,
+            "end_line": 125,
+            "quote_sha256": "76a426df789898bb7572bbf0ecf8472b30c072db5d77d5b388b897d38e1f4663"
+          },
+          {
+            "id": "chunk_36b3949b3324bf8be9430142850ca088962223f86ab4f43875ac8ec8119f029a",
+            "file": "libs/py-core/src/agentruntime_core/dev/secret_store.py",
+            "start_line": 106,
+            "end_line": 113,
+            "quote_sha256": "8e8a2c29fb76b45b14b75a0cc5e8fbb4da20bde132fa4a9464221c973771b939"
+          },
+          {
+            "id": "chunk_9fd7c2e7b78630e28885c49822c2a4a0c5f5cc143b816fae7a4d7e8c964c6eeb",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 59,
+            "end_line": 74,
+            "quote_sha256": "e32574a5d75693db6e0c4405767a3d150d5e06b8eb77f8be456c6a7d2d150978"
+          }
+        ],
+        "search_ms": [
+          44.095,
+          44.707,
+          44.215
+        ]
+      },
+      "B": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_a40a98767bec6cde4fb9434ace5696c6c8e5175ad1003db3fe4fde36d92ecbe5",
+            "file": "libs/py-core/src/agentruntime_core/testing.py",
+            "start_line": 16,
+            "end_line": 19,
+            "quote_sha256": "4fc99e8dd392d80ca41c13712a71230523a9b4946e6a20715bb2a03ac13d9e53"
+          },
+          {
+            "id": "chunk_be35939eac4179ed15abc8e63ca18cd59804c36c775f6cefb89dde53c58685ad",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 74,
+            "end_line": 89,
+            "quote_sha256": "721364c832220c47fe441c7ec7c0ba21d6de1427d40bf084d5fecd287bf17b90"
+          },
+          {
+            "id": "chunk_004ebbd52e7fa37a88174ef23b8c06eab9d4c171334d2975c0ac813f7cffb25a",
+            "file": "services/py-worker/src/agentruntime_worker/tools/deliver.py",
+            "start_line": 332,
+            "end_line": 334,
+            "quote_sha256": "ee5bc82165b5a8e169375918613678ae75199859da79430649f0409f6b919512"
+          },
+          {
+            "id": "chunk_8a88d5804eff7027388713af0d7752e4649b755b7420ff66e57de6c23d2db1e1",
+            "file": "libs/py-core/src/agentruntime_core/dev/secret_store.py",
+            "start_line": 1,
+            "end_line": 44,
+            "quote_sha256": "f06a77163161f492355f3ac5b75a33d8259c83b64b042b0395c7ac9d76f7690b"
+          },
+          {
+            "id": "chunk_af022927ce49a4efa97216c18c260f987a0635d8ed4749ea25f2215443b14afd",
+            "file": "services/py-worker/src/agentruntime_worker/tools/deliver.py",
+            "start_line": 206,
+            "end_line": 225,
+            "quote_sha256": "e7a31295ee0f6af632f38a8665ddc594074a5955c5b9ec64627c69f9d2f34120"
+          },
+          {
+            "id": "chunk_8e6e39233cffae6ce9e797404a0337bfebae8399bfcf6e15db4e2b9b3b16f039",
+            "file": "services/py-worker/src/agentruntime_worker/tools/attachments.py",
+            "start_line": 118,
+            "end_line": 125,
+            "quote_sha256": "76a426df789898bb7572bbf0ecf8472b30c072db5d77d5b388b897d38e1f4663"
+          },
+          {
+            "id": "chunk_36b3949b3324bf8be9430142850ca088962223f86ab4f43875ac8ec8119f029a",
+            "file": "libs/py-core/src/agentruntime_core/dev/secret_store.py",
+            "start_line": 106,
+            "end_line": 113,
+            "quote_sha256": "8e8a2c29fb76b45b14b75a0cc5e8fbb4da20bde132fa4a9464221c973771b939"
+          },
+          {
+            "id": "chunk_9fd7c2e7b78630e28885c49822c2a4a0c5f5cc143b816fae7a4d7e8c964c6eeb",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 59,
+            "end_line": 74,
+            "quote_sha256": "e32574a5d75693db6e0c4405767a3d150d5e06b8eb77f8be456c6a7d2d150978"
+          }
+        ],
+        "search_ms": [
+          65.884,
+          45.948,
+          44.289
+        ]
+      }
+    },
+    {
+      "id": "dev-22",
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_e1df8b94c8154369c3ce4732dabce43901ea67897edd58d5328ea05fffff1418",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 183,
+            "end_line": 205,
+            "quote_sha256": "91870f817a3eecc42a4181843904aa2218b07bddc7c1168d8faff087e97f8c20"
+          },
+          {
+            "id": "chunk_426e4d3e5cb22b7c89c9b5dee8f63a238ff59222f01e52b40ea76581298fc411",
+            "file": "services/py-worker/src/agentruntime_worker/files/compute.py",
+            "start_line": 107,
+            "end_line": 133,
+            "quote_sha256": "573a30248da2ab84535a73682c1024a1ea3343f7f4d3ef9260cb9d5b0ec8abc1"
+          },
+          {
+            "id": "chunk_46128e1e84d5f3c3f4d31c0515be4c751fbf8d9475b17f76e16538861b617e0d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 115,
+            "end_line": 146,
+            "quote_sha256": "82d55ba07ccac52c03a880f7958ab1fafb93e45c9d3c3acafd7076d61b2563b6"
+          },
+          {
+            "id": "chunk_a33d9adce2b098e5c716f02a3879965b0fa3d834509deb06a7a28bc557b1d3ef",
+            "file": "services/py-learning/src/agentruntime_learning/pipeline/__main__.py",
+            "start_line": 227,
+            "end_line": 261,
+            "quote_sha256": "fb9a5d14b235b874661f89495fc04e2d559b76ba14b5dfd1c7d8b16fcbe45864"
+          },
+          {
+            "id": "chunk_ee41e5d6d69bfd6c8664a25fc82625720987e4c9d50648b45bf37a0f8a1d4b77",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 158,
+            "end_line": 190,
+            "quote_sha256": "4221a3fed9814ab74823a40f984f0051fbc306e90279a51041c23cd9c5e2a442"
+          },
+          {
+            "id": "chunk_c8bec8af2b27d400f7917e5fd2f56e0a66f5bee636d70bb18d7d06c1a2babe43",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 362,
+            "end_line": 399,
+            "quote_sha256": "554a9e9164462b17d88367be7f4e10509e33ae95fe77c9a5ec480c672fd5d419"
+          }
+        ],
+        "search_ms": [
+          43.351,
+          43.469,
+          43.244
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_37660477805538ccb8ad81b3aba77bb3526a931c8ec981694f9107377559137d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/provenance.py",
+            "start_line": 131,
+            "end_line": 155,
+            "quote_sha256": "5f9375e85794fc5e988933b895bc18ebd8542aa2f77d9150c57211588d304382"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_e1df8b94c8154369c3ce4732dabce43901ea67897edd58d5328ea05fffff1418",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 183,
+            "end_line": 205,
+            "quote_sha256": "91870f817a3eecc42a4181843904aa2218b07bddc7c1168d8faff087e97f8c20"
+          },
+          {
+            "id": "chunk_426e4d3e5cb22b7c89c9b5dee8f63a238ff59222f01e52b40ea76581298fc411",
+            "file": "services/py-worker/src/agentruntime_worker/files/compute.py",
+            "start_line": 107,
+            "end_line": 133,
+            "quote_sha256": "573a30248da2ab84535a73682c1024a1ea3343f7f4d3ef9260cb9d5b0ec8abc1"
+          },
+          {
+            "id": "chunk_46128e1e84d5f3c3f4d31c0515be4c751fbf8d9475b17f76e16538861b617e0d",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired_prepare.py",
+            "start_line": 115,
+            "end_line": 146,
+            "quote_sha256": "82d55ba07ccac52c03a880f7958ab1fafb93e45c9d3c3acafd7076d61b2563b6"
+          },
+          {
+            "id": "chunk_a33d9adce2b098e5c716f02a3879965b0fa3d834509deb06a7a28bc557b1d3ef",
+            "file": "services/py-learning/src/agentruntime_learning/pipeline/__main__.py",
+            "start_line": 227,
+            "end_line": 261,
+            "quote_sha256": "fb9a5d14b235b874661f89495fc04e2d559b76ba14b5dfd1c7d8b16fcbe45864"
+          },
+          {
+            "id": "chunk_ee41e5d6d69bfd6c8664a25fc82625720987e4c9d50648b45bf37a0f8a1d4b77",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 158,
+            "end_line": 190,
+            "quote_sha256": "4221a3fed9814ab74823a40f984f0051fbc306e90279a51041c23cd9c5e2a442"
+          },
+          {
+            "id": "chunk_c8bec8af2b27d400f7917e5fd2f56e0a66f5bee636d70bb18d7d06c1a2babe43",
+            "file": "libs/py-core/src/agentruntime_core/adapters/milvus.py",
+            "start_line": 362,
+            "end_line": 399,
+            "quote_sha256": "554a9e9164462b17d88367be7f4e10509e33ae95fe77c9a5ec480c672fd5d419"
+          }
+        ],
+        "search_ms": [
+          64.276,
+          43.722,
+          43.167
+        ]
+      }
+    },
+    {
+      "id": "dev-23",
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_c84208043ab67322fe2f2f377576476c0075546f7ad70653419c2b8cd6090f25",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 164,
+            "end_line": 200,
+            "quote_sha256": "ad6adb0ff68a2f2b720f8233b2118c071640922ba5b01b7da306dbf36554960b"
+          },
+          {
+            "id": "chunk_10d5312365dde4b9ee4af17750b638b84302a9ebe315b1a4e4c7513a36509f30",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 514,
+            "end_line": 551,
+            "quote_sha256": "e6200014b93bed752079cb588de9bd8a5f960e050d7c6ad54c3bff0e8173a4c7"
+          },
+          {
+            "id": "chunk_03b8a57bd8f9cd815c85653afbf07681d028e51700237b3c1174f5f02da03991",
+            "file": "services/py-worker/src/agentruntime_worker/context/probe.py",
+            "start_line": 104,
+            "end_line": 121,
+            "quote_sha256": "23d71e979eb75111e3fea64325014101510340db68f6b0b82464720435ec62e2"
+          },
+          {
+            "id": "chunk_ee41e5d6d69bfd6c8664a25fc82625720987e4c9d50648b45bf37a0f8a1d4b77",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 158,
+            "end_line": 190,
+            "quote_sha256": "4221a3fed9814ab74823a40f984f0051fbc306e90279a51041c23cd9c5e2a442"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_58b8937e5291a82dd4600f92d0455d428621173504319bac6d8bce4928403770",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/experiment_audit.py",
+            "start_line": 56,
+            "end_line": 81,
+            "quote_sha256": "93aade1d48da7f9bd0a36e03afe413d8a624593d147c1b1ba07f19d19f8db49c"
+          },
+          {
+            "id": "chunk_8cfa550393ffa6e29feabb8df93474876a926a63f5b6de13f5edd7451bd1d3e0",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 153,
+            "end_line": 182,
+            "quote_sha256": "0e625d0fef98dd3e3e4ac180b195b08fb9f452e71151288ab1812e0013a539d6"
+          },
+          {
+            "id": "chunk_e1df8b94c8154369c3ce4732dabce43901ea67897edd58d5328ea05fffff1418",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 183,
+            "end_line": 205,
+            "quote_sha256": "91870f817a3eecc42a4181843904aa2218b07bddc7c1168d8faff087e97f8c20"
+          }
+        ],
+        "search_ms": [
+          43.7,
+          43.16,
+          42.936
+        ]
+      },
+      "B": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_c84208043ab67322fe2f2f377576476c0075546f7ad70653419c2b8cd6090f25",
+            "file": "services/py-learning/src/agentruntime_learning/evals/public_longbench.py",
+            "start_line": 164,
+            "end_line": 200,
+            "quote_sha256": "ad6adb0ff68a2f2b720f8233b2118c071640922ba5b01b7da306dbf36554960b"
+          },
+          {
+            "id": "chunk_10d5312365dde4b9ee4af17750b638b84302a9ebe315b1a4e4c7513a36509f30",
+            "file": "services/py-learning/src/agentruntime_learning/evals/runner.py",
+            "start_line": 514,
+            "end_line": 551,
+            "quote_sha256": "e6200014b93bed752079cb588de9bd8a5f960e050d7c6ad54c3bff0e8173a4c7"
+          },
+          {
+            "id": "chunk_03b8a57bd8f9cd815c85653afbf07681d028e51700237b3c1174f5f02da03991",
+            "file": "services/py-worker/src/agentruntime_worker/context/probe.py",
+            "start_line": 104,
+            "end_line": 121,
+            "quote_sha256": "23d71e979eb75111e3fea64325014101510340db68f6b0b82464720435ec62e2"
+          },
+          {
+            "id": "chunk_ee41e5d6d69bfd6c8664a25fc82625720987e4c9d50648b45bf37a0f8a1d4b77",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/paired.py",
+            "start_line": 158,
+            "end_line": 190,
+            "quote_sha256": "4221a3fed9814ab74823a40f984f0051fbc306e90279a51041c23cd9c5e2a442"
+          },
+          {
+            "id": "chunk_81b306f5c30bb089783389c4a27ce2d0a89674e38be0d0643926c327f3055dda",
+            "file": "libs/py-core/src/agentruntime_core/dev/vector_store.py",
+            "start_line": 124,
+            "end_line": 169,
+            "quote_sha256": "92e902485d8414935987c7369b38ffd9d98128edd1ee8c92f859bcaad26bf392"
+          },
+          {
+            "id": "chunk_58b8937e5291a82dd4600f92d0455d428621173504319bac6d8bce4928403770",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/experiment_audit.py",
+            "start_line": 56,
+            "end_line": 81,
+            "quote_sha256": "93aade1d48da7f9bd0a36e03afe413d8a624593d147c1b1ba07f19d19f8db49c"
+          },
+          {
+            "id": "chunk_8cfa550393ffa6e29feabb8df93474876a926a63f5b6de13f5edd7451bd1d3e0",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 153,
+            "end_line": 182,
+            "quote_sha256": "0e625d0fef98dd3e3e4ac180b195b08fb9f452e71151288ab1812e0013a539d6"
+          },
+          {
+            "id": "chunk_e1df8b94c8154369c3ce4732dabce43901ea67897edd58d5328ea05fffff1418",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_focus.py",
+            "start_line": 183,
+            "end_line": 205,
+            "quote_sha256": "91870f817a3eecc42a4181843904aa2218b07bddc7c1168d8faff087e97f8c20"
+          }
+        ],
+        "search_ms": [
+          43.564,
+          43.606,
+          43.983
+        ]
+      }
+    },
+    {
+      "id": "dev-24",
+      "B": {
+        "rank": 1,
+        "top8": [
+          {
+            "id": "chunk_d8dfd4385f8170432962b99216bff55cd07990c2398fd879669be468572e8c18",
+            "file": "services/py-worker/src/agentruntime_worker/memory.py",
+            "start_line": 128,
+            "end_line": 142,
+            "quote_sha256": "e056801dfeb0d819045cb4d8375f2b938195218c47016ac96856c31db7fd6422"
+          },
+          {
+            "id": "chunk_f223447859d1515458ca2792176c393d81d35e7bf17abda003799ed83b0004c5",
+            "file": "services/py-worker/src/agentruntime_worker/files/code.py",
+            "start_line": 95,
+            "end_line": 123,
+            "quote_sha256": "5d890600b5acd0ae0a925eaffe94544286f70e1db45f3022e6fa8d23e805211b"
+          },
+          {
+            "id": "chunk_bfafe6f7f77e2a3e4333c2045e99628e58ed85aaffa9f8f51eeb1c0fe99edaa8",
+            "file": "services/py-worker/src/agentruntime_worker/files/code.py",
+            "start_line": 161,
+            "end_line": 194,
+            "quote_sha256": "fec72bee779fceb8653ef5991096caa9f9d6e06a964b5f89c5f1e0adf72d1cc0"
+          },
+          {
+            "id": "chunk_c8c83106d03b802827c89e6ac18e34c54cc6d64155efe1430980b455da569065",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/stage_plan.py",
+            "start_line": 214,
+            "end_line": 241,
+            "quote_sha256": "e8a8def85893b3fe1ccd7f15f707dad74c01985825299e667b9974a166662c55"
+          },
+          {
+            "id": "chunk_c6e53358aeda189730196e26cb74ceade4a1b59d0e542de0ec92d885a049959b",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/events.py",
+            "start_line": 195,
+            "end_line": 207,
+            "quote_sha256": "2359f949d91257b97c7639cace0bccc9fceb467d0b68a86763ed7e8ab6488ea0"
+          },
+          {
+            "id": "chunk_7d3437ff29ad588f195f67629d7b44efe080bfa5c7812f734704bc819e1ec7ee",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 175,
+            "end_line": 207,
+            "quote_sha256": "db67e2a058f83482371ed0fd6ed99861b85b55cd363679fca2f1c4d08682d057"
+          },
+          {
+            "id": "chunk_fbef322ad4073565d5bf71d0f91e0b60b7971a168ae877e9ca30a4f3b28f588c",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 36,
+            "end_line": 43,
+            "quote_sha256": "efcce071cf795f6f87de0770be9dba62df43de2a88370d0bcb17ee510c828fd5"
+          },
+          {
+            "id": "chunk_4fc4f09e53e55d8955716a00f8ec1cf6585e232ce10beeeaa59e3d4371cef066",
+            "file": "services/py-worker/src/agentruntime_worker/planner/validate.py",
+            "start_line": 73,
+            "end_line": 85,
+            "quote_sha256": "0cd480e07afa89b73e4ce1a82d241799355877693cbd3947026613b2f6a91078"
+          }
+        ],
+        "search_ms": [
+          43.195,
+          43.529,
+          43.276
+        ]
+      },
+      "A": {
+        "rank": null,
+        "top8": [
+          {
+            "id": "chunk_f223447859d1515458ca2792176c393d81d35e7bf17abda003799ed83b0004c5",
+            "file": "services/py-worker/src/agentruntime_worker/files/code.py",
+            "start_line": 95,
+            "end_line": 123,
+            "quote_sha256": "5d890600b5acd0ae0a925eaffe94544286f70e1db45f3022e6fa8d23e805211b"
+          },
+          {
+            "id": "chunk_bfafe6f7f77e2a3e4333c2045e99628e58ed85aaffa9f8f51eeb1c0fe99edaa8",
+            "file": "services/py-worker/src/agentruntime_worker/files/code.py",
+            "start_line": 161,
+            "end_line": 194,
+            "quote_sha256": "fec72bee779fceb8653ef5991096caa9f9d6e06a964b5f89c5f1e0adf72d1cc0"
+          },
+          {
+            "id": "chunk_c8c83106d03b802827c89e6ac18e34c54cc6d64155efe1430980b455da569065",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/stage_plan.py",
+            "start_line": 214,
+            "end_line": 241,
+            "quote_sha256": "e8a8def85893b3fe1ccd7f15f707dad74c01985825299e667b9974a166662c55"
+          },
+          {
+            "id": "chunk_c6e53358aeda189730196e26cb74ceade4a1b59d0e542de0ec92d885a049959b",
+            "file": "services/py-worker/src/agentruntime_worker/workflows/events.py",
+            "start_line": 195,
+            "end_line": 207,
+            "quote_sha256": "2359f949d91257b97c7639cace0bccc9fceb467d0b68a86763ed7e8ab6488ea0"
+          },
+          {
+            "id": "chunk_7d3437ff29ad588f195f67629d7b44efe080bfa5c7812f734704bc819e1ec7ee",
+            "file": "services/py-learning/src/agentruntime_learning/benchmarks/tool_history_evidence.py",
+            "start_line": 175,
+            "end_line": 207,
+            "quote_sha256": "db67e2a058f83482371ed0fd6ed99861b85b55cd363679fca2f1c4d08682d057"
+          },
+          {
+            "id": "chunk_fbef322ad4073565d5bf71d0f91e0b60b7971a168ae877e9ca30a4f3b28f588c",
+            "file": "services/py-worker/src/agentruntime_worker/planner/prompts.py",
+            "start_line": 36,
+            "end_line": 43,
+            "quote_sha256": "efcce071cf795f6f87de0770be9dba62df43de2a88370d0bcb17ee510c828fd5"
+          },
+          {
+            "id": "chunk_4fc4f09e53e55d8955716a00f8ec1cf6585e232ce10beeeaa59e3d4371cef066",
+            "file": "services/py-worker/src/agentruntime_worker/planner/validate.py",
+            "start_line": 73,
+            "end_line": 85,
+            "quote_sha256": "0cd480e07afa89b73e4ce1a82d241799355877693cbd3947026613b2f6a91078"
+          },
+          {
+            "id": "chunk_cd3416c5176b81d5aa6ba934142972592c023e81a232dc31ab0374a7b9f22427",
+            "file": "services/py-learning/src/agentruntime_learning/evals/live_context_comparison.py",
+            "start_line": 1,
+            "end_line": 31,
+            "quote_sha256": "1f9d05aa19164a70e9a8a3c7fa2210b3e3846f0ba6c8c39926bae8012bcd925c"
+          }
+        ],
+        "search_ms": [
+          64.685,
+          43.607,
+          44.211
+        ]
+      }
+    }
+  ]
+}

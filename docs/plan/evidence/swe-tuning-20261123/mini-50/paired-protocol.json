@@ -1,0 +1,153 @@
+{
+  "run_id": "mini50-tuned-c-gpt62-20261123",
+  "arm": "c",
+  "model_label": "runtime-c-gpt-6.2-sol-fixed",
+  "model_profile": "a6api/gpt-6.2-sol@2026-11",
+  "tier": "strong@medium",
+  "runtime_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032",
+  "conditions": {
+    "runtime_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032",
+    "candidate_files": {
+      "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+      "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+      "executor/tool_loop.py": "aaa729b98731b9c88caf2cde36d79b1eaf73baa2bff1ecd57420651450b3d8f0"
+    },
+    "images": {
+      "task": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "decision": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "model": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "program": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "workspace": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "api": "sha256:ed447bb4a873b9c837eebc99220bd17ba4c2dc1cf43d0505d58e74819cca242a",
+      "gateway": "sha256:8ea10ccd09d73cd6f3facba8b811e855849e00532cc0a5c1f5121ea7d4a8c9df"
+    },
+    "catalog_sha256": "95032f5ca0d5e93f77e4b0207460621af1f401f6589912e51729d937dd371d39",
+    "policy_sha256": "75555a6bd61079600ac3ade73501602b2a936f59ef194f4c508b04a6ca8bdd86"
+  },
+  "requested_routes": {
+    "act": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "aggregate": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "deliver": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "embedding": {
+      "profile": "a6api/text-embedding-3-large@2026-10",
+      "tier": "embed@default"
+    },
+    "fetch": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "gate": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "judge": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "plan": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "probe": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "route": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "summary": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "transform": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    }
+  },
+  "prewarm_sha256": "2fa482b89ed5732ba9318ac46e1eb213888addea86d2c970add2b98f542edb8e",
+  "input": {
+    "dataset_name": "SWE-bench/SWE-bench_Verified",
+    "dataset_split": "test",
+    "population_count": 500,
+    "cohort_file_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+    "public_cohort": "MariusHobbhahn/swe-bench-verified-mini",
+    "source_commit": "1ce432065d9ed226017ef1ac88b5f91818383c64",
+    "method_description": "Published size-optimized list, 25 Django and 25 Sphinx in original order",
+    "reference_url": "https://github.com/MariusHobbhahn/SWEBench-verified-mini/blob/1ce432065d9ed226017ef1ac88b5f91818383c64/data/subsets/size_optimized_sample_ids.json",
+    "baseline_run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+    "runtime_batch": "mini-50",
+    "runtime_version": "C",
+    "instances_sha256": "2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52",
+    "ids_file": "/opt/swebench/cache/mini50-20261121-runtime-arm/mini50.ids",
+    "runtime_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032"
+  },
+  "instance_ids": [
+    "django__django-11790",
+    "django__django-12050",
+    "django__django-12262",
+    "django__django-12713",
+    "sphinx-doc__sphinx-8475",
+    "sphinx-doc__sphinx-8721",
+    "sphinx-doc__sphinx-9320",
+    "sphinx-doc__sphinx-9698",
+    "django__django-11848",
+    "django__django-12774",
+    "sphinx-doc__sphinx-7748",
+    "sphinx-doc__sphinx-8035",
+    "sphinx-doc__sphinx-8548",
+    "sphinx-doc__sphinx-9229",
+    "django__django-11880",
+    "django__django-12143",
+    "django__django-12155",
+    "sphinx-doc__sphinx-9367",
+    "django__django-12209",
+    "django__django-11951",
+    "django__django-12193",
+    "django__django-12276",
+    "django__django-12304",
+    "django__django-9296",
+    "sphinx-doc__sphinx-10466",
+    "django__django-11999",
+    "django__django-12039",
+    "django__django-12273",
+    "django__django-12325",
+    "django__django-12406",
+    "sphinx-doc__sphinx-10673",
+    "sphinx-doc__sphinx-11510",
+    "sphinx-doc__sphinx-7757",
+    "sphinx-doc__sphinx-8265",
+    "sphinx-doc__sphinx-8551",
+    "sphinx-doc__sphinx-8638",
+    "django__django-11815",
+    "django__django-11885",
+    "django__django-12708",
+    "sphinx-doc__sphinx-7590",
+    "sphinx-doc__sphinx-7985",
+    "sphinx-doc__sphinx-8056",
+    "sphinx-doc__sphinx-9461",
+    "django__django-11964",
+    "django__django-12308",
+    "sphinx-doc__sphinx-10323",
+    "sphinx-doc__sphinx-10435",
+    "sphinx-doc__sphinx-8269",
+    "sphinx-doc__sphinx-9230",
+    "sphinx-doc__sphinx-9281"
+  ],
+  "hints": false,
+  "official_grader": true,
+  "single_generation_attempt": true,
+  "budget_usd": 150.0,
+  "task_usd_limit": 3.0,
+  "task_timeout_s": 3600,
+  "concurrency": 2
+}

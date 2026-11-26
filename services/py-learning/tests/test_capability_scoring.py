@@ -97,6 +97,15 @@ def test_the_tournament_stops_expensive_candidates_that_cannot_lead() -> None:
     assert cell.leader in ("leader", "strong") and cell.leader != "weak"
 
 
+def test_tournament_quota_is_per_evaluator():
+    data = []
+    for evaluator in ("first", "second"):
+        data.extend(rows("leader", binary(40, 1, r=3), eval_name=evaluator))
+        data.extend(rows("weak", binary(20, 0), eval_name=evaluator))
+    cell = sc.score_cell(data, ["leader","weak"], expensive=["weak"])
+    assert cell.candidates["weak"].status == sc.NOT_LEADING
+
+
 def test_mixed_eval_versions_make_the_cell_unpublishable() -> None:
     data = rows("a", binary(50, 0.8), version="v1") + rows("b", binary(50, 0.8), version="v2")
     cell = sc.score_cell(data, ["a", "b"])

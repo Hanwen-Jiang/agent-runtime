@@ -1,0 +1,60 @@
+{
+  "schema": "matrix-user-stop-v1",
+  "capture": "user-stop-20261123T075640Z",
+  "runs": {
+    "core": {
+      "schema": "matrix-user-stop-v1",
+      "state": "user_paused",
+      "reason": "user_requested_change_of_work",
+      "stopped_at_utc": "2026-11-23T07:56:40.722467+00:00",
+      "run_id": "capability-resume-20261123-core",
+      "freeze_sha256": "05c4f84d77af3fa5a39d0d5e9d300589bf3a417c7b5e792d3eedf77162d73395",
+      "results_sha256": "5d85b15536f7df64697a41f0f53101aa042b12af09ed935166659019a5d4a3eb",
+      "original_retained_rows": 415,
+      "resume_added_rows": 39,
+      "resume_clean_rows": 39,
+      "resume_reported_cost_usd": 0.980871,
+      "resume_unknown_cost_rows": 0,
+      "unreceipted_budget_files_with_spend_or_pending": 23,
+      "previous_quota_pause_active": false,
+      "current_total_rows": 454,
+      "current_total_clean": 218
+    },
+    "transform": {
+      "schema": "matrix-user-stop-v1",
+      "state": "user_paused",
+      "reason": "user_requested_change_of_work",
+      "stopped_at_utc": "2026-11-23T07:56:40.722467+00:00",
+      "run_id": "capability-resume-20261123-transform",
+      "freeze_sha256": "76b84c8ddd91836eb2c08df72c46a879339bd410c6fb5a3958eee165a7d27474",
+      "results_sha256": "9a4f934fb70d5f1aac70d7e7031ba4914e901f78fcf589f92131d846f32cac84",
+      "original_retained_rows": 260,
+      "resume_added_rows": 37,
+      "resume_clean_rows": 36,
+      "resume_reported_cost_usd": 0.300378,
+      "resume_unknown_cost_rows": 1,
+      "unreceipted_budget_files_with_spend_or_pending": 8,
+      "previous_quota_pause_active": false,
+      "current_total_rows": 297,
+      "current_total_clean": 119
+    },
+    "judge-v2": {
+      "schema": "matrix-user-stop-v1",
+      "state": "user_paused",
+      "reason": "user_requested_change_of_work",
+      "stopped_at_utc": "2026-11-23T07:56:40.722467+00:00",
+      "run_id": "capability-resume-20261123-judge-v2",
+      "freeze_sha256": "6e147fd93a173b79a94ba1c6e28228f07a01e0141880209306a7f1aeb1094716",
+      "results_sha256": "383b8013acb0ed72dce635c1d2b5cb6d29c12f385f6bba4cf49f4dbbffff8348",
+      "original_retained_rows": 767,
+      "resume_added_rows": 5,
+      "resume_clean_rows": 5,
+      "resume_reported_cost_usd": 0.294883,
+      "resume_unknown_cost_rows": 0,
+      "unreceipted_budget_files_with_spend_or_pending": 14,
+      "previous_quota_pause_active": false,
+      "current_total_rows": 772,
+      "current_total_clean": 376
+    }
+  }
+}

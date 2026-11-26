@@ -1,0 +1,17 @@
+花费估算（每格 ≈ 候选数 × n × r × 每题花费；追加样本另计）：
+  general.unclassified/plan/medium · s09 · a6api/claude-opus-5-5@2026-10：120 次（已做 0），$0.0723/次（约 8000+2000 token × 单价），还要约 $8.68
+  general.unclassified/plan/medium · s09 · a6api/claude-fable-5-1@2026-11：120 次（已做 0），$0.1803/次（约 8000+2000 token × 单价），还要约 $21.64
+  general.unclassified/plan/medium · s09 · a6api/gpt-6-astra@2026-11：120 次（已做 0），$0.1803/次（约 8000+2000 token × 单价），还要约 $21.64
+  general.unclassified/act/medium · bfcl-v4 · a6api/claude-opus-5-5@2026-10：100 次（已做 0），$0.0044/次（约 600+100 token × 单价），还要约 $0.44
+  general.unclassified/act/medium · bfcl-v4 · a6api/claude-fable-5-1@2026-11：100 次（已做 0），$0.0110/次（约 600+100 token × 单价），还要约 $1.10
+  general.unclassified/act/medium · bfcl-v4 · a6api/gpt-6-astra@2026-11：100 次（已做 0），$0.0110/次（约 600+100 token × 单价），还要约 $1.10
+  general.unclassified/route/low · s09-route · a6api/claude-haiku-5-5@2026-10：120 次（已做 0），$0.0002/次（约 1500+100 token × 单价），还要约 $0.02
+  general.unclassified/route/low · s09-route · a6api/deepseek-v4-flash@2026-10：120 次（已做 0），$0.0003/次（约 1500+100 token × 单价），还要约 $0.03
+  general.unclassified/route/low · s09-route · a6api/gemini-3.5-flash-lite@2026-10：120 次（已做 0），$0.0007/次（约 1500+100 token × 单价），还要约 $0.08
+  general.unclassified/route/low · s09-route · a6api/gemini-3.8-flash@2026-11：120 次（已做 0），$0.0015/次（约 1500+100 token × 单价），还要约 $0.18
+  general.unclassified/route/low · s09-route · a6api/glm-5.3-flash@2026-11：120 次（已做 0），$0.0002/次（约 1500+100 token × 单价），还要约 $0.03
+  general.unclassified/route/low · s09-route · a6api/gpt-6-luna@2026-11：120 次（已做 0），$0.0002/次（约 1500+100 token × 单价），还要约 $0.02
+  general.unclassified/route/low · s09-route · a6api/gpt-6.1-terra@2026-11：120 次（已做 0），$0.0020/次（约 1500+100 token × 单价），还要约 $0.24
+  general.unclassified/route/low · s09-route · a6api/qwen3.8-flash@2026-11：120 次（已做 0），$0.0003/次（约 1500+100 token × 单价），还要约 $0.03
+  general.unclassified/route/low · s09-route · a6api/gemini-4-hydrogen@2026-11：120 次（已做 0），$0.0030/次（约 1500+100 token × 单价），还要约 $0.36
+合计还要约 $55.59（已花 $0.00）

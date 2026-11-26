@@ -1,0 +1,12 @@
+{
+  "corpus_revision": "5af1d890195dda4524634b33fd81beb414467079",
+  "cohort_sha256": "3e7a5b1d69baaa288292d7dc497b132c46e07bc5252d82a7e4715c97397f7907",
+  "scope": "All tracked .py blobs <=32000 bytes under four production src roots. Test files, current worktree edits and question text are excluded from the index.",
+  "labels": "Accept only a real direct from-import and matching ast.Call, resolving to a top-level class/def/async def in the frozen corpus. A hit must return the imported file and cover its declaration line. One per gold path, test function and queried symbol after seeded SHA-256 order. These are constructed navigation tasks, not user ticket logs.",
+  "allocation": "105 eligible distinct targets, first 24 development, next 48 validation, remaining 33 unused. Per split round-robin four templates. No shared gold file between splits. No outcome used for selection.",
+  "arms": "A uses the committed KnowledgeService.search. B extends exact code-symbol priority to explicit definition navigation containing one inline-code identifier, scoped to the same authorized retrieval pool. Corpus, provider, query, embedding and k are fixed.",
+  "endpoint": "In-process KnowledgeService.execute(index/search/resolve); production Tree-sitter file reader, SQLite and in-memory vector providers, offline HashingEmbedder(dims=64), default RRF candidate pool 40, no reranker/generative answer.",
+  "primary": "First returned citation includes gold file and declaration line (Hit@1); additionally Hit@8, first reciprocal rank@8, transitions, resolved source bytes and P95 search-only.",
+  "accept_if": "Validation gains >=5 percentage points Hit@1, no net loss on Hit@8, P95 B/A <=1.25, all source quotes byte-correct, bare-symbol and non-navigation controls A/B identical; no unapproved source for separate reader.",
+  "timing": "Warm index, single-process and concurrency 1. Per question three measurements per arm, alternating first arm across queries and repeats; use nearest-rank P95 across all measured searches. Resolve validation and index build excluded from search time."
+}

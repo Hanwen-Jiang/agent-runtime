@@ -1,0 +1,617 @@
+{
+  "core": {
+    "run": "capability-resume-20261123-core",
+    "results_sha256": "ba2737b19233eeeb766ce141b36cd0ac6168537e87ada7a729fdff841ac1a8bf",
+    "cells": [
+      {
+        "role": "plan",
+        "tier": "medium",
+        "model": "a6api/claude-opus-5-5@2026-10",
+        "planned": 120,
+        "receipts": 61,
+        "clean_pinned": 20,
+        "quota_refusals": 41,
+        "known_spend_lower_bound_usd": 9.247815,
+        "unknown_cost_rows": 41,
+        "components": {
+          "s09": {
+            "clean_trials": 20,
+            "unique_clean_items": 7,
+            "clean_item_mean": 0.19047619047619047,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "plan",
+        "tier": "medium",
+        "model": "a6api/claude-fable-5-1@2026-11",
+        "planned": 120,
+        "receipts": 61,
+        "clean_pinned": 19,
+        "quota_refusals": 42,
+        "known_spend_lower_bound_usd": 17.123752,
+        "unknown_cost_rows": 42,
+        "components": {
+          "s09": {
+            "clean_trials": 19,
+            "unique_clean_items": 7,
+            "clean_item_mean": 0.2857142857142857,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "plan",
+        "tier": "medium",
+        "model": "a6api/gpt-6-astra@2026-11",
+        "planned": 120,
+        "receipts": 61,
+        "clean_pinned": 19,
+        "quota_refusals": 42,
+        "known_spend_lower_bound_usd": 3.27563,
+        "unknown_cost_rows": 42,
+        "components": {
+          "s09": {
+            "clean_trials": 19,
+            "unique_clean_items": 7,
+            "clean_item_mean": 0.14285714285714285,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "act",
+        "tier": "medium",
+        "model": "a6api/claude-opus-5-5@2026-10",
+        "planned": 100,
+        "receipts": 61,
+        "clean_pinned": 23,
+        "quota_refusals": 38,
+        "known_spend_lower_bound_usd": 0.167608,
+        "unknown_cost_rows": 38,
+        "components": {
+          "bfcl-v4": {
+            "clean_trials": 23,
+            "unique_clean_items": 23,
+            "clean_item_mean": 0.782608695652174,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "act",
+        "tier": "medium",
+        "model": "a6api/claude-fable-5-1@2026-11",
+        "planned": 100,
+        "receipts": 62,
+        "clean_pinned": 20,
+        "quota_refusals": 42,
+        "known_spend_lower_bound_usd": 3.530896,
+        "unknown_cost_rows": 42,
+        "components": {
+          "bfcl-v4": {
+            "clean_trials": 20,
+            "unique_clean_items": 20,
+            "clean_item_mean": 0.95,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "act",
+        "tier": "medium",
+        "model": "a6api/gpt-6-astra@2026-11",
+        "planned": 100,
+        "receipts": 61,
+        "clean_pinned": 20,
+        "quota_refusals": 41,
+        "known_spend_lower_bound_usd": 0.94216,
+        "unknown_cost_rows": 41,
+        "components": {
+          "bfcl-v4": {
+            "clean_trials": 20,
+            "unique_clean_items": 20,
+            "clean_item_mean": 0.8,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/claude-haiku-5-5@2026-10",
+        "planned": 120,
+        "receipts": 21,
+        "clean_pinned": 7,
+        "quota_refusals": 14,
+        "known_spend_lower_bound_usd": 0.000723,
+        "unknown_cost_rows": 14,
+        "components": {
+          "s09-route": {
+            "clean_trials": 7,
+            "unique_clean_items": 3,
+            "clean_item_mean": 0.6666666666666666,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/deepseek-v4-flash@2026-10",
+        "planned": 120,
+        "receipts": 21,
+        "clean_pinned": 7,
+        "quota_refusals": 14,
+        "known_spend_lower_bound_usd": 0.001406,
+        "unknown_cost_rows": 14,
+        "components": {
+          "s09-route": {
+            "clean_trials": 7,
+            "unique_clean_items": 3,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/gemini-3.5-flash-lite@2026-10",
+        "planned": 120,
+        "receipts": 21,
+        "clean_pinned": 7,
+        "quota_refusals": 14,
+        "known_spend_lower_bound_usd": 0.017035,
+        "unknown_cost_rows": 14,
+        "components": {
+          "s09-route": {
+            "clean_trials": 7,
+            "unique_clean_items": 3,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/gemini-3.8-flash@2026-11",
+        "planned": 120,
+        "receipts": 20,
+        "clean_pinned": 7,
+        "quota_refusals": 13,
+        "known_spend_lower_bound_usd": 0.003833,
+        "unknown_cost_rows": 13,
+        "components": {
+          "s09-route": {
+            "clean_trials": 7,
+            "unique_clean_items": 3,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/glm-5.3-flash@2026-11",
+        "planned": 120,
+        "receipts": 20,
+        "clean_pinned": 12,
+        "quota_refusals": 8,
+        "known_spend_lower_bound_usd": 0.004062,
+        "unknown_cost_rows": 8,
+        "components": {
+          "s09-route": {
+            "clean_trials": 12,
+            "unique_clean_items": 5,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/gpt-6-luna@2026-11",
+        "planned": 120,
+        "receipts": 20,
+        "clean_pinned": 0,
+        "quota_refusals": 10,
+        "known_spend_lower_bound_usd": 0.000365,
+        "unknown_cost_rows": 10,
+        "components": {
+          "s09-route": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/gpt-6.1-terra@2026-11",
+        "planned": 120,
+        "receipts": 20,
+        "clean_pinned": 6,
+        "quota_refusals": 14,
+        "known_spend_lower_bound_usd": 0.008371,
+        "unknown_cost_rows": 14,
+        "components": {
+          "s09-route": {
+            "clean_trials": 6,
+            "unique_clean_items": 2,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/qwen3.8-flash@2026-11",
+        "planned": 120,
+        "receipts": 20,
+        "clean_pinned": 7,
+        "quota_refusals": 13,
+        "known_spend_lower_bound_usd": 0.00212,
+        "unknown_cost_rows": 13,
+        "components": {
+          "s09-route": {
+            "clean_trials": 7,
+            "unique_clean_items": 3,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "route",
+        "tier": "low",
+        "model": "a6api/gemini-4-hydrogen@2026-11",
+        "planned": 120,
+        "receipts": 20,
+        "clean_pinned": 5,
+        "quota_refusals": 14,
+        "known_spend_lower_bound_usd": 0.009133,
+        "unknown_cost_rows": 15,
+        "components": {
+          "s09-route": {
+            "clean_trials": 5,
+            "unique_clean_items": 2,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          }
+        }
+      }
+    ],
+    "status": "paused",
+    "selected_after_observing_scores": false
+  },
+  "transform": {
+    "run": "capability-resume-20261123-transform",
+    "results_sha256": "b2cdafc2435a02cfa925cdf8e0098367b16489dee7e3e65f6b5e13c82682205d",
+    "cells": [
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/claude-haiku-5-5@2026-10",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 17,
+        "quota_refusals": 40,
+        "known_spend_lower_bound_usd": 0.400409,
+        "unknown_cost_rows": 42,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 17,
+            "unique_clean_items": 7,
+            "clean_item_mean": 0.8436507936507937,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/deepseek-v4-flash@2026-10",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 20,
+        "quota_refusals": 39,
+        "known_spend_lower_bound_usd": 0.823566,
+        "unknown_cost_rows": 41,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 1,
+            "unique_clean_items": 1,
+            "clean_item_mean": 1.0,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 19,
+            "unique_clean_items": 7,
+            "clean_item_mean": 0.9468253968253969,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/gemini-3.5-flash-lite@2026-10",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 14,
+        "quota_refusals": 40,
+        "known_spend_lower_bound_usd": 2.051725,
+        "unknown_cost_rows": 45,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 14,
+            "unique_clean_items": 5,
+            "clean_item_mean": 0.7472222222222222,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/gemini-3.8-flash@2026-11",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 15,
+        "quota_refusals": 39,
+        "known_spend_lower_bound_usd": 2.233983,
+        "unknown_cost_rows": 46,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 15,
+            "unique_clean_items": 7,
+            "clean_item_mean": 0.8833333333333334,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/glm-5.3-flash@2026-11",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 17,
+        "quota_refusals": 40,
+        "known_spend_lower_bound_usd": 2.171165,
+        "unknown_cost_rows": 44,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 17,
+            "unique_clean_items": 7,
+            "clean_item_mean": 0.9634920634920635,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/gpt-6-luna@2026-11",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 0,
+        "quota_refusals": 40,
+        "known_spend_lower_bound_usd": 0.006646,
+        "unknown_cost_rows": 40,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/gpt-6.1-terra@2026-11",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 0,
+        "quota_refusals": 52,
+        "known_spend_lower_bound_usd": 0.381365,
+        "unknown_cost_rows": 61,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/qwen3.8-flash@2026-11",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 0,
+        "quota_refusals": 61,
+        "known_spend_lower_bound_usd": 0.0078,
+        "unknown_cost_rows": 61,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "transform",
+        "tier": "low",
+        "model": "a6api/gemini-4-hydrogen@2026-11",
+        "planned": 61,
+        "receipts": 61,
+        "clean_pinned": 0,
+        "quota_refusals": 49,
+        "known_spend_lower_bound_usd": 0.0,
+        "unknown_cost_rows": 61,
+        "components": {
+          "longbench-v2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s11": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          }
+        }
+      }
+    ],
+    "status": "paused",
+    "selected_after_observing_scores": false
+  },
+  "judge-v2": {
+    "run": "capability-resume-20261123-judge-v2",
+    "results_sha256": "917d9f77abe28a61a3e7f309a6706fb41d073d25556de8d4cbf8b0d2f2b9d6cf",
+    "cells": [
+      {
+        "role": "judge",
+        "tier": "medium",
+        "model": "a6api/claude-opus-5-5@2026-10",
+        "planned": 360,
+        "receipts": 287,
+        "clean_pinned": 152,
+        "quota_refusals": 134,
+        "known_spend_lower_bound_usd": 28.411257,
+        "unknown_cost_rows": 134,
+        "components": {
+          "judgebench": {
+            "clean_trials": 33,
+            "unique_clean_items": 12,
+            "clean_item_mean": 0.75,
+            "draft_clean_trials": 0
+          },
+          "rewardbench2": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s10": {
+            "clean_trials": 119,
+            "unique_clean_items": 40,
+            "clean_item_mean": 0.7416666666666667,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "judge",
+        "tier": "medium",
+        "model": "a6api/claude-fable-5-1@2026-11",
+        "planned": 360,
+        "receipts": 240,
+        "clean_pinned": 99,
+        "quota_refusals": 120,
+        "known_spend_lower_bound_usd": 9.318068,
+        "unknown_cost_rows": 120,
+        "components": {
+          "judgebench": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s10": {
+            "clean_trials": 99,
+            "unique_clean_items": 38,
+            "clean_item_mean": 0.9078947368421053,
+            "draft_clean_trials": 0
+          }
+        }
+      },
+      {
+        "role": "judge",
+        "tier": "medium",
+        "model": "a6api/gpt-6-astra@2026-11",
+        "planned": 360,
+        "receipts": 240,
+        "clean_pinned": 120,
+        "quota_refusals": 120,
+        "known_spend_lower_bound_usd": 5.245134,
+        "unknown_cost_rows": 120,
+        "components": {
+          "judgebench": {
+            "clean_trials": 0,
+            "unique_clean_items": 0,
+            "clean_item_mean": null,
+            "draft_clean_trials": 0
+          },
+          "s10": {
+            "clean_trials": 120,
+            "unique_clean_items": 40,
+            "clean_item_mean": 0.6416666666666667,
+            "draft_clean_trials": 0
+          }
+        }
+      }
+    ],
+    "status": "paused",
+    "selected_after_observing_scores": false
+  }
+}

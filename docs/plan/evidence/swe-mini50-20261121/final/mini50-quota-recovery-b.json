@@ -1,0 +1,459 @@
+{
+  "run_id": "mini50-quota-20261122-b",
+  "deployed_reviewer": {
+    "observed": "2026-11-22T13:14:09.395494+00:00",
+    "reviewer_sha256": {
+      "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+      "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2"
+    },
+    "matches_freeze": true
+  },
+  "settled_ledger_usd": 15.868226,
+  "ledger_pending_reservations": 0,
+  "selected_task_ledger": [
+    {
+      "task_id": "tsk_01M81P1N4S73MSWBT8FGPAMZDA",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 26,
+      "with_settled_amount": 26,
+      "sum_settled_usd_micros": 762596
+    },
+    {
+      "task_id": "tsk_01M81P1N4S73MSWBT8FGPAMZDA",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 44022
+    },
+    {
+      "task_id": "tsk_01M81PQK5FPYNN1FHKXJSWRK71",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 31,
+      "with_settled_amount": 31,
+      "sum_settled_usd_micros": 837084
+    },
+    {
+      "task_id": "tsk_01M81PQK5FPYNN1FHKXJSWRK71",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 40358
+    },
+    {
+      "task_id": "tsk_01M81QNEP4FB3EXNTDTWQ3KTKP",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 59,
+      "with_settled_amount": 59,
+      "sum_settled_usd_micros": 3038206
+    },
+    {
+      "task_id": "tsk_01M81QNEP4FB3EXNTDTWQ3KTKP",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 1,
+      "with_settled_amount": 1,
+      "sum_settled_usd_micros": 21402
+    },
+    {
+      "task_id": "tsk_01M81S2CB37BPRFC73Y6FV6P52",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 40,
+      "with_settled_amount": 40,
+      "sum_settled_usd_micros": 1420770
+    },
+    {
+      "task_id": "tsk_01M81S2CB37BPRFC73Y6FV6P52",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 50000
+    },
+    {
+      "task_id": "tsk_01M81TCJJFJ1T5WBHTY4ZYKH73",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 29,
+      "with_settled_amount": 29,
+      "sum_settled_usd_micros": 881912
+    },
+    {
+      "task_id": "tsk_01M81TCJJFJ1T5WBHTY4ZYKH73",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 43142
+    },
+    {
+      "task_id": "tsk_01M81V2N69PP2FT7M408KW3SHW",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 45,
+      "with_settled_amount": 45,
+      "sum_settled_usd_micros": 2108890
+    },
+    {
+      "task_id": "tsk_01M81V2N69PP2FT7M408KW3SHW",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 40660
+    },
+    {
+      "task_id": "tsk_01M81W1KKAYKSKG1AJHZYNR99Q",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 32,
+      "with_settled_amount": 32,
+      "sum_settled_usd_micros": 1169356
+    },
+    {
+      "task_id": "tsk_01M81W1KKAYKSKG1AJHZYNR99Q",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 40124
+    },
+    {
+      "task_id": "tsk_01M81WPPRMC6ZJFQQAP7SE6M32",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 38,
+      "with_settled_amount": 38,
+      "sum_settled_usd_micros": 1120046
+    },
+    {
+      "task_id": "tsk_01M81WPPRMC6ZJFQQAP7SE6M32",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 41538
+    },
+    {
+      "task_id": "tsk_01M81XHT1CXWGTANZJRJJF9FE6",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 37,
+      "with_settled_amount": 37,
+      "sum_settled_usd_micros": 1146490
+    },
+    {
+      "task_id": "tsk_01M81XHT1CXWGTANZJRJJF9FE6",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "reservations": 2,
+      "with_settled_amount": 2,
+      "sum_settled_usd_micros": 41788
+    },
+    {
+      "task_id": "tsk_01M81YBHKKEAAZT4MWFB62SXXB",
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 48,
+      "with_settled_amount": 48,
+      "sum_settled_usd_micros": 3019842
+    }
+  ],
+  "original_sha256": {
+    "report": "2417beafbe83fac8cd4e77ff3241ca8f746b705fd3c7d048c65a94556973bfa5",
+    "protocol": "271b3b6ac893dc62397ecccbaa560f80b1a38ed3f5f9ec1679bca70dea6c6cff",
+    "grader": "7ece51cc637933f93dd3542782d7975d6b04ee3ed5c2c73b7c7366e39b2a6eff",
+    "predictions": "8d47daa5902f51ebe111bd6b9a7d91884b186876c5c9d9bcfa87611ecf2d0961"
+  },
+  "grader_filename": "runtime-b-gpt-6.2-sol-quota-retry.mini50-quota-20261122-b.json",
+  "protocol": {
+    "mode": "second_attempt_quota_recovery",
+    "arm": "b",
+    "ids": [
+      "django__django-11964",
+      "django__django-12308",
+      "django__django-12708",
+      "sphinx-doc__sphinx-10323",
+      "sphinx-doc__sphinx-10435",
+      "sphinx-doc__sphinx-7590",
+      "sphinx-doc__sphinx-7985",
+      "sphinx-doc__sphinx-8269",
+      "sphinx-doc__sphinx-9230",
+      "sphinx-doc__sphinx-9461"
+    ],
+    "profile": "a6api/gpt-6.2-sol@2026-11",
+    "tier": "strong@medium",
+    "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+    "original_tasks": {
+      "django__django-11964": "tsk_01M7ZWZ8E2DF0PTVD2W0WS6J10",
+      "django__django-12308": "tsk_01M7ZWZ8E0XED9KPERYPC51QE8",
+      "django__django-12708": "tsk_01M7ZV7GZBHHNN2DAKEVYHS6VF",
+      "sphinx-doc__sphinx-10323": "tsk_01M7ZX3B4DKJHN69GW7B99F4T1",
+      "sphinx-doc__sphinx-10435": "tsk_01M7ZXPCY21XH6ZB2D5TAAYRQ1",
+      "sphinx-doc__sphinx-7590": "tsk_01M7ZW7DCMS7Y5BRGX194E4HXR",
+      "sphinx-doc__sphinx-7985": "tsk_01M7ZW7DW9WHZDT9YP38R31ZRW",
+      "sphinx-doc__sphinx-8269": "tsk_01M7ZXNZ0TJGNJVJDSEHKTFSHK",
+      "sphinx-doc__sphinx-9230": "tsk_01M7ZXRX3FJ8YXRTM2XSEGC4CB",
+      "sphinx-doc__sphinx-9461": "tsk_01M7ZWBH7MDJMZQ0M65G495GGT"
+    },
+    "price_scope": "Gateway reported model cost",
+    "usd_per_task": 3,
+    "timeout_seconds": 3600,
+    "concurrency": 1,
+    "prewarm_sha256": "0be37aff3ab29887836eedd3f6e340a69b3c0be1e2cda8ccef402f4f96bf75ee"
+  },
+  "grader": {
+    "total_instances": 10,
+    "submitted_instances": 10,
+    "completed_instances": 10,
+    "resolved_instances": 5,
+    "unresolved_instances": 5,
+    "infra_failure_instances": 0,
+    "ambiguous_failure_instances": 0,
+    "empty_patch_instances": 0,
+    "error_instances": 0,
+    "completed_ids": [
+      "django__django-11964",
+      "django__django-12308",
+      "django__django-12708",
+      "sphinx-doc__sphinx-10323",
+      "sphinx-doc__sphinx-10435",
+      "sphinx-doc__sphinx-7590",
+      "sphinx-doc__sphinx-7985",
+      "sphinx-doc__sphinx-8269",
+      "sphinx-doc__sphinx-9230",
+      "sphinx-doc__sphinx-9461"
+    ],
+    "incomplete_ids": [],
+    "empty_patch_ids": [],
+    "submitted_ids": [
+      "django__django-11964",
+      "django__django-12308",
+      "django__django-12708",
+      "sphinx-doc__sphinx-10323",
+      "sphinx-doc__sphinx-10435",
+      "sphinx-doc__sphinx-7590",
+      "sphinx-doc__sphinx-7985",
+      "sphinx-doc__sphinx-8269",
+      "sphinx-doc__sphinx-9230",
+      "sphinx-doc__sphinx-9461"
+    ],
+    "resolved_ids": [
+      "django__django-11964",
+      "django__django-12708",
+      "sphinx-doc__sphinx-10323",
+      "sphinx-doc__sphinx-8269",
+      "sphinx-doc__sphinx-9230"
+    ],
+    "unresolved_ids": [
+      "django__django-12308",
+      "sphinx-doc__sphinx-10435",
+      "sphinx-doc__sphinx-7590",
+      "sphinx-doc__sphinx-7985",
+      "sphinx-doc__sphinx-9461"
+    ],
+    "infra_failure_ids": [],
+    "ambiguous_failure_ids": [],
+    "failure_reasons": {},
+    "error_ids": [],
+    "schema_version": 2,
+    "unstopped_instances": 0,
+    "unstopped_containers": [],
+    "unremoved_images": [
+      "swebench/sweb.eval.x86_64.django_1776_django-11964:latest",
+      "swebench/sweb.eval.x86_64.django_1776_django-12308:latest",
+      "swebench/sweb.eval.x86_64.django_1776_django-12708:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10323:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-10435:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7590:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-7985:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8269:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9230:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9461:latest"
+    ]
+  },
+  "records": {
+    "django__django-11964": {
+      "instance_id": "django__django-11964",
+      "task_id": "tsk_01M81P1N4S73MSWBT8FGPAMZDA",
+      "status": "done",
+      "state": "finished",
+      "rounds": 4,
+      "cost_usd": 0.806618,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "e7b475701d7f452813283a011d0cfd7120e47c1d5457c2f86340707313d6d63d",
+      "patch_bytes": 430,
+      "patch_sha256": "4c4f67a5b133800f12147cc337930fbb6816c8527783ff87da990d420e8d4d8a"
+    },
+    "django__django-12308": {
+      "instance_id": "django__django-12308",
+      "task_id": "tsk_01M81PQK5FPYNN1FHKXJSWRK71",
+      "status": "done",
+      "state": "finished",
+      "rounds": 4,
+      "cost_usd": 0.877442,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "d10e66191116b0a901245035437f5b39409164fce7a664faf535487a4c617421",
+      "patch_bytes": 609,
+      "patch_sha256": "49690bfc70068bd404bb120d5945504ee8c033d4fbbfac271da24ab2ea6f26ca"
+    },
+    "django__django-12708": {
+      "instance_id": "django__django-12708",
+      "task_id": "tsk_01M81QNEP4FB3EXNTDTWQ3KTKP",
+      "status": "cancelled",
+      "state": "finished",
+      "rounds": 4,
+      "cost_usd": 1.49248,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": "task_usd_limit",
+      "submission_attempts": 1,
+      "record_sha256": "0f8498abd7c15c3f6285d6a0d8ce267abf955c756771dc6d35e2698db8e97294",
+      "patch_bytes": 13997,
+      "patch_sha256": "2768795cff37894b0003b59321e74c7a02646a4c3ee89a3062364002cd8663d7"
+    },
+    "sphinx-doc__sphinx-10323": {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "task_id": "tsk_01M81S2CB37BPRFC73Y6FV6P52",
+      "status": "done",
+      "state": "finished",
+      "rounds": 3,
+      "cost_usd": 1.47077,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "e400dda2d977ca1c53b16ded8766e6a4514d7ad802132022b75e1462199a81cd",
+      "patch_bytes": 1474,
+      "patch_sha256": "bc4c0873dff48bba3b91674d170ac8cc33b991963ee1445c3730edf0b3b035f6"
+    },
+    "sphinx-doc__sphinx-10435": {
+      "instance_id": "sphinx-doc__sphinx-10435",
+      "task_id": "tsk_01M81TCJJFJ1T5WBHTY4ZYKH73",
+      "status": "done",
+      "state": "finished",
+      "rounds": 4,
+      "cost_usd": 0.925054,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "32a5bf0bb7f404c6a93ee86417172fa9afd1a92542e2825aa7d17ba341830d11",
+      "patch_bytes": 1097,
+      "patch_sha256": "8fa496997ea6f21b481bae19da0ac7cc1913c691f5c641eeae41b424d0daaddf"
+    },
+    "sphinx-doc__sphinx-7590": {
+      "instance_id": "sphinx-doc__sphinx-7590",
+      "task_id": "tsk_01M81V2N69PP2FT7M408KW3SHW",
+      "status": "done",
+      "state": "finished",
+      "rounds": 4,
+      "cost_usd": 2.14955,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "65be063ca44b0eb5d9c8b96871e185e8b009ee32a8bcf23bf349d109d4a73a63",
+      "patch_bytes": 8394,
+      "patch_sha256": "290a3ebea174fa0589695a9e986050b9de929a5e284e78cecf52f73e7bdd45cd"
+    },
+    "sphinx-doc__sphinx-7985": {
+      "instance_id": "sphinx-doc__sphinx-7985",
+      "task_id": "tsk_01M81W1KKAYKSKG1AJHZYNR99Q",
+      "status": "done",
+      "state": "finished",
+      "rounds": 4,
+      "cost_usd": 1.20948,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "716cb96c755ada59147a82d4ce1196e728fae36ebfdca8f53e17cf6991566c12",
+      "patch_bytes": 6048,
+      "patch_sha256": "5cba96f838b7a7cc3d3805a14733f83bf0ad1f8da38af4a8704358edc0dfc4b3"
+    },
+    "sphinx-doc__sphinx-8269": {
+      "instance_id": "sphinx-doc__sphinx-8269",
+      "task_id": "tsk_01M81WPPRMC6ZJFQQAP7SE6M32",
+      "status": "done",
+      "state": "finished",
+      "rounds": 5,
+      "cost_usd": 1.161584,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "be07cd453355285d0cccd302c1353da9e9881a4e426c88a0577122e34f262afe",
+      "patch_bytes": 629,
+      "patch_sha256": "9930867fb908ee61de61b9c00b4c164af96faef1d5d6a0b9fa8e956ea8a22c26"
+    },
+    "sphinx-doc__sphinx-9230": {
+      "instance_id": "sphinx-doc__sphinx-9230",
+      "task_id": "tsk_01M81XHT1CXWGTANZJRJJF9FE6",
+      "status": "done",
+      "state": "finished",
+      "rounds": 4,
+      "cost_usd": 1.188278,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": null,
+      "submission_attempts": 1,
+      "record_sha256": "a1a7dcdf4606469c40e49db0ac0e9652dba6ff46e0cf1561053e9673927f8c20",
+      "patch_bytes": 541,
+      "patch_sha256": "24d6ec070eb6620b4c79efb8cf1fcda3c8d64da0aa430779d796b90d1ee37ef4"
+    },
+    "sphinx-doc__sphinx-9461": {
+      "instance_id": "sphinx-doc__sphinx-9461",
+      "task_id": "tsk_01M81YBHKKEAAZT4MWFB62SXXB",
+      "status": "cancelled",
+      "state": "finished",
+      "rounds": 2,
+      "cost_usd": 0.413502,
+      "patch_error": null,
+      "environment_used": true,
+      "stop_reason": "task_usd_limit",
+      "submission_attempts": 1,
+      "record_sha256": "56abbb9675b0cce52253e742610ca81446ff704526bc3fcfb03350150e665803",
+      "patch_bytes": 14348,
+      "patch_sha256": "a14438017786108108b4bf5deea07bc40fa6d38ddd2295c808e572eba11ac7fe"
+    }
+  },
+  "reported_cost_usd": 11.694758,
+  "reconciliation": {
+    "original_run": "mini50-gpt62-formal-b-20261121T1930Z",
+    "original_resolved": 27,
+    "same_patch_regrade_resolved_ids": [
+      "django__django-12209"
+    ],
+    "retry_run": "mini50-quota-20261122-b",
+    "retry_selected": 10,
+    "retry_task_count": 10,
+    "retry_completed_by_grader": 10,
+    "all_selected_have_test_verdict": true,
+    "retry_without_test_verdict_ids": [],
+    "retry_record_states": {
+      "finished": 10
+    },
+    "retry_resolved_ids": [
+      "django__django-11964",
+      "django__django-12708",
+      "sphinx-doc__sphinx-10323",
+      "sphinx-doc__sphinx-8269",
+      "sphinx-doc__sphinx-9230"
+    ],
+    "cumulative_distinct_resolved": 33,
+    "original_denominator": 50,
+    "first_attempt_score": false
+  }
+}

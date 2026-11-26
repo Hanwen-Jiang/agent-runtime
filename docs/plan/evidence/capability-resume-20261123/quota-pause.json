@@ -1,0 +1,78 @@
+{
+  "core": {
+    "schema": "capability-provider-pause-v1",
+    "run_id": "capability-resume-20261123-core",
+    "reason": "insufficient_user_quota",
+    "active": true,
+    "detected_at": "2026-11-23T04:00:05.317615+00:00",
+    "results_sha256": "ba2737b19233eeeb766ce141b36cd0ac6168537e87ada7a729fdff841ac1a8bf",
+    "run_lock_sha256": "05c4f84d77af3fa5a39d0d5e9d300589bf3a417c7b5e792d3eedf77162d73395",
+    "observed_rows": 550,
+    "quota_rows": 360,
+    "first_quota_at": "2026-11-23T03:56:34+00:00",
+    "evidence_source": "frozen native results and stopped writer",
+    "planned": 1740,
+    "groups": {
+      "quota_no_successful_call_recorded": 356,
+      "clean_pinned_receipt": 179,
+      "no_receipt_no_observed_spend": 1179,
+      "no_receipt_preserve_reservation_or_spend": 11,
+      "quota_after_provider_observation": 4,
+      "other_existing_receipt": 11
+    },
+    "known_cost_lower_bound_usd": 34.334909,
+    "rows_with_unknown_cost": 361,
+    "complete": false,
+    "cost_note": "observed source charges only; outstanding amounts are unknown"
+  },
+  "transform": {
+    "schema": "capability-provider-pause-v1",
+    "run_id": "capability-resume-20261123-transform",
+    "reason": "insufficient_user_quota",
+    "active": true,
+    "detected_at": "2026-11-23T04:00:05.694470+00:00",
+    "results_sha256": "b2cdafc2435a02cfa925cdf8e0098367b16489dee7e3e65f6b5e13c82682205d",
+    "run_lock_sha256": "76b84c8ddd91836eb2c08df72c46a879339bd410c6fb5a3958eee165a7d27474",
+    "observed_rows": 549,
+    "quota_rows": 400,
+    "first_quota_at": "2026-11-23T03:56:33+00:00",
+    "evidence_source": "frozen native results and stopped writer",
+    "planned": 549,
+    "groups": {
+      "quota_no_successful_call_recorded": 396,
+      "clean_pinned_receipt": 83,
+      "other_existing_receipt": 66,
+      "quota_after_provider_observation": 4
+    },
+    "known_cost_lower_bound_usd": 8.076659,
+    "rows_with_unknown_cost": 441,
+    "complete": false,
+    "cost_note": "observed source charges only; outstanding amounts are unknown"
+  },
+  "judge-v2": {
+    "schema": "capability-provider-pause-v1",
+    "run_id": "capability-resume-20261123-judge-v2",
+    "reason": "insufficient_user_quota",
+    "active": true,
+    "detected_at": "2026-11-23T04:00:06.145812+00:00",
+    "results_sha256": "917d9f77abe28a61a3e7f309a6706fb41d073d25556de8d4cbf8b0d2f2b9d6cf",
+    "run_lock_sha256": "6e147fd93a173b79a94ba1c6e28228f07a01e0141880209306a7f1aeb1094716",
+    "observed_rows": 767,
+    "quota_rows": 374,
+    "first_quota_at": "2026-11-23T03:56:33+00:00",
+    "evidence_source": "frozen native results and stopped writer",
+    "planned": 1080,
+    "groups": {
+      "quota_no_successful_call_recorded": 370,
+      "clean_pinned_receipt": 371,
+      "quota_after_provider_observation": 4,
+      "no_receipt_no_observed_spend": 306,
+      "no_receipt_preserve_reservation_or_spend": 7,
+      "other_existing_receipt": 22
+    },
+    "known_cost_lower_bound_usd": 42.974459,
+    "rows_with_unknown_cost": 374,
+    "complete": false,
+    "cost_note": "observed source charges only; outstanding amounts are unknown"
+  }
+}

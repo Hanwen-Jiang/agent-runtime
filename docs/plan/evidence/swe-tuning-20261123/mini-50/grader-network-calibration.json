@@ -1,0 +1,34 @@
+{
+  "case": "sphinx-doc__sphinx-8475",
+  "run": "mini50-tuned-c-gpt62-20261123",
+  "model_generations_added_for_regrade": 0,
+  "frozen_image": {
+    "image_id": "sha256:36012a43df40098aa0e7027c9ae1f14d4ffde426e09b695bfe0b395f853fa4fa",
+    "repo_digests": [
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8475@sha256:36012a43df40098aa0e7027c9ae1f14d4ffde426e09b695bfe0b395f853fa4fa"
+    ]
+  },
+  "identical_patch_sha256": "1cc1f754670e656342160ca6e74649a33404bf52f144c10e26bfdd1ea1d89d49",
+  "discarded_prototype": {
+    "docker_host": "unix:///run/swe50-1123-grader/docker.sock",
+    "resolved": false,
+    "report_sha256": "ca1670566b803f82ebe0bc6cd06e684d19ba3b920c5ea3be2344c9d2a4f8897f",
+    "target_passed": 1,
+    "target_failed": 0,
+    "regressions_passed": 14,
+    "regression_failures": [
+      "tests/test_build_linkcheck.py::test_defaults",
+      "tests/test_build_linkcheck.py::test_defaults_json",
+      "tests/test_build_linkcheck.py::test_anchors_ignored"
+    ]
+  },
+  "formal_primary": {
+    "docker_host": "unix:///var/run/docker.sock",
+    "resolved": true,
+    "report_sha256": "92716c7b4900f1d5275733071868c448e9f130f6100172f3479c498418bdfa0d",
+    "target_passed": 1,
+    "target_failed": 0,
+    "regressions_passed": 17,
+    "regression_failures": []
+  }
+}

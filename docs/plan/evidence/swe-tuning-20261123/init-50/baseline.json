@@ -1,0 +1,483 @@
+{
+  "run_id": "t18-rev19",
+  "settings": {
+    "model_name": "agent-runtime-rev19",
+    "hints": false,
+    "environment": "official",
+    "repo_url_template": "https://github.com/{repo}.git",
+    "workspace_path": "/workspace"
+  },
+  "limits": {
+    "budget_usd": 80.0,
+    "task_usd_limit": 3.0,
+    "concurrency": 2,
+    "task_timeout_s": 3600.0
+  },
+  "source_sha256": {
+    "run.json": "c60934ef337f09fe7b9f5b4742de72f0e2be09d31e40693e127592fb67a0c1b8",
+    "report.json": "777c918be0df6e97fe9f6671ed27767a688cf5deca5bea2b04c3298fac78beb2",
+    "agent-runtime-rev19.t18-rev19.json": "305cd276021cba7553320a0837dd1a5e6ecc57d6baea37cb5589de2a08f79f67"
+  },
+  "selected": 50,
+  "resolved": 38,
+  "unresolved": 11,
+  "cost_usd": 29.769688,
+  "status_counts": {
+    "unresolved": 10,
+    "resolved": 38,
+    "run_error": 1,
+    "ambiguous_failure": 1
+  },
+  "instances": [
+    {
+      "instance_id": "astropy__astropy-13033",
+      "repo": "astropy/astropy",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.419228
+    },
+    {
+      "instance_id": "astropy__astropy-8707",
+      "repo": "astropy/astropy",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 5,
+      "stop_reason": null,
+      "cost_usd": 0.676303
+    },
+    {
+      "instance_id": "django__django-11163",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.366829
+    },
+    {
+      "instance_id": "django__django-11276",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.258162
+    },
+    {
+      "instance_id": "django__django-11292",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.369195
+    },
+    {
+      "instance_id": "django__django-11490",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.366412
+    },
+    {
+      "instance_id": "django__django-11740",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.632978
+    },
+    {
+      "instance_id": "django__django-11885",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 16,
+      "stop_reason": null,
+      "cost_usd": 2.477664
+    },
+    {
+      "instance_id": "django__django-11951",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.255796
+    },
+    {
+      "instance_id": "django__django-12262",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.230312
+    },
+    {
+      "instance_id": "django__django-13033",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.786066
+    },
+    {
+      "instance_id": "django__django-13741",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.359473
+    },
+    {
+      "instance_id": "django__django-13810",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.758437
+    },
+    {
+      "instance_id": "django__django-14155",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.208579
+    },
+    {
+      "instance_id": "django__django-14765",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.316347
+    },
+    {
+      "instance_id": "django__django-14771",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.335739
+    },
+    {
+      "instance_id": "django__django-15503",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.678589
+    },
+    {
+      "instance_id": "django__django-15561",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 4,
+      "stop_reason": null,
+      "cost_usd": 0.685579
+    },
+    {
+      "instance_id": "django__django-15569",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 4,
+      "stop_reason": null,
+      "cost_usd": 0.452955
+    },
+    {
+      "instance_id": "django__django-15814",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.217268
+    },
+    {
+      "instance_id": "django__django-15851",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.369498
+    },
+    {
+      "instance_id": "django__django-16145",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.401357
+    },
+    {
+      "instance_id": "django__django-16595",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.339929
+    },
+    {
+      "instance_id": "django__django-16661",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 8,
+      "stop_reason": null,
+      "cost_usd": 0.594689
+    },
+    {
+      "instance_id": "django__django-16877",
+      "repo": "django/django",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 6,
+      "stop_reason": null,
+      "cost_usd": 0.561049
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-13989",
+      "repo": "matplotlib/matplotlib",
+      "status": null,
+      "grading": "run_error",
+      "rounds": null,
+      "stop_reason": null,
+      "cost_usd": null
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-26342",
+      "repo": "matplotlib/matplotlib",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 4,
+      "stop_reason": null,
+      "cost_usd": 0.606659
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-26466",
+      "repo": "matplotlib/matplotlib",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.472587
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3187",
+      "repo": "mwaskom/seaborn",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.690445
+    },
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 1,
+      "stop_reason": null,
+      "cost_usd": 0.141529
+    },
+    {
+      "instance_id": "pydata__xarray-2905",
+      "repo": "pydata/xarray",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.528677
+    },
+    {
+      "instance_id": "pydata__xarray-7393",
+      "repo": "pydata/xarray",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 5,
+      "stop_reason": null,
+      "cost_usd": 1.48112
+    },
+    {
+      "instance_id": "pylint-dev__pylint-6528",
+      "repo": "pylint-dev/pylint",
+      "status": "done",
+      "grading": "ambiguous_failure",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 1.192811
+    },
+    {
+      "instance_id": "pytest-dev__pytest-7205",
+      "repo": "pytest-dev/pytest",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 7,
+      "stop_reason": null,
+      "cost_usd": 0.964048
+    },
+    {
+      "instance_id": "pytest-dev__pytest-7571",
+      "repo": "pytest-dev/pytest",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 10,
+      "stop_reason": null,
+      "cost_usd": 1.565734
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "repo": "scikit-learn/scikit-learn",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 10,
+      "stop_reason": null,
+      "cost_usd": 1.159124
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-13439",
+      "repo": "scikit-learn/scikit-learn",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.392439
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-14629",
+      "repo": "scikit-learn/scikit-learn",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.541736
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10673",
+      "repo": "sphinx-doc/sphinx",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 1.25558
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "repo": "sphinx-doc/sphinx",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.714583
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9367",
+      "repo": "sphinx-doc/sphinx",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.301261
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9711",
+      "repo": "sphinx-doc/sphinx",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 4,
+      "stop_reason": null,
+      "cost_usd": 0.509103
+    },
+    {
+      "instance_id": "sympy__sympy-12096",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.476937
+    },
+    {
+      "instance_id": "sympy__sympy-13615",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.311509
+    },
+    {
+      "instance_id": "sympy__sympy-14531",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 6,
+      "stop_reason": null,
+      "cost_usd": 0.981373
+    },
+    {
+      "instance_id": "sympy__sympy-15599",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 1,
+      "stop_reason": null,
+      "cost_usd": 0.11222
+    },
+    {
+      "instance_id": "sympy__sympy-15809",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 2,
+      "stop_reason": null,
+      "cost_usd": 0.27271
+    },
+    {
+      "instance_id": "sympy__sympy-17630",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "unresolved",
+      "rounds": 3,
+      "stop_reason": null,
+      "cost_usd": 0.818875
+    },
+    {
+      "instance_id": "sympy__sympy-23413",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 4,
+      "stop_reason": null,
+      "cost_usd": 0.615375
+    },
+    {
+      "instance_id": "sympy__sympy-24562",
+      "repo": "sympy/sympy",
+      "status": "done",
+      "grading": "resolved",
+      "rounds": 5,
+      "stop_reason": null,
+      "cost_usd": 0.54482
+    }
+  ]
+}

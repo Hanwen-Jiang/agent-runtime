@@ -1,0 +1,12 @@
+{
+  "observed_utc": "2026-11-23T07:53:20.561520+00:00",
+  "planned_probe_count": 1,
+  "requested": "a6api/claude-opus-5-5@2026-10",
+  "tier": "strong@medium",
+  "task_label": "capmatrix-resume-probe-ed541fa05b7c41bd9c25d980b52357d1",
+  "suite": "admission_only",
+  "served": "a6api/claude-opus-5-5@2026-10",
+  "returned_text": true,
+  "usage_present": true,
+  "observed_cost_micros": 472
+}

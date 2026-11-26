@@ -1,0 +1,69 @@
+{
+  "checked_utc": "2026-11-22T21:26:43.488943+00:00",
+  "official_final_daemon": "unix:///var/run/docker.sock",
+  "unmounted_tmpfs": "/run/swe50-1123-grader/data",
+  "confirmed_primary_bridge_ifindex_after_repair_and_cleanup": 7475,
+  "max_user_inotify_instances": 128,
+  "separate_network_namespace_removed": true,
+  "official_sphinx_9367_container_control": {
+    "www.google.com": {
+      "dns": true,
+      "http_head": 200
+    },
+    "www.sphinx-doc.org": {
+      "dns": true,
+      "http_head": 403
+    },
+    "registry-1.docker.io": {
+      "dns": true,
+      "http_head": 401
+    }
+  },
+  "affected": {
+    "astropy__astropy-13033": {
+      "run": "init50-gpt62-tuned-20261123",
+      "patch_sha256": "fba474608a51cbfb81d8f080a5f2079e3e21499255a789a5ed46f0bc92edc0b4",
+      "prototype_resolved": false,
+      "prototype_daemon": "unix:///run/swe50-1123-grader/docker.sock",
+      "official_resolved": false,
+      "official_daemon": "unix:///var/run/docker.sock",
+      "official_receipt_sha256": "ec7f7775b0afb8db2af86e4a105009cda51d49142ed20b1bc686bccbd69c2a04"
+    },
+    "django__django-11276": {
+      "run": "init50-gpt62-tuned-20261123",
+      "patch_sha256": "3e8d0c68043dc242c29e52e5eaf14ced66f3cd4f96a272ad2f32ee208b9d3dcb",
+      "prototype_resolved": true,
+      "prototype_daemon": "unix:///run/swe50-1123-grader/docker.sock",
+      "official_resolved": true,
+      "official_daemon": "unix:///var/run/docker.sock",
+      "official_receipt_sha256": "615272d1049e429f2fa4954a16e3adc5887810e6045d5487cfa8a3aa6201db2d"
+    },
+    "django__django-12713": {
+      "run": "mini50-tuned-c-gpt62-20261123",
+      "patch_sha256": "a6e4ca7baf68cf3c220de6c4a2cac765e5355778fc32cec94dea33c3400d8af4",
+      "prototype_resolved": true,
+      "prototype_daemon": "unix:///run/swe50-1123-grader/docker.sock",
+      "official_resolved": true,
+      "official_daemon": "unix:///var/run/docker.sock",
+      "official_receipt_sha256": "014c3a2fc081d13f1eadc5220464757fc58fd084ecf47d2bcc23d4d2655717c6"
+    },
+    "sphinx-doc__sphinx-8475": {
+      "run": "mini50-tuned-c-gpt62-20261123",
+      "patch_sha256": "1cc1f754670e656342160ca6e74649a33404bf52f144c10e26bfdd1ea1d89d49",
+      "prototype_resolved": false,
+      "prototype_daemon": "unix:///run/swe50-1123-grader/docker.sock",
+      "official_resolved": true,
+      "official_daemon": "unix:///var/run/docker.sock",
+      "official_receipt_sha256": "54bfae5f03305df42b1e72512c133b8e2303c19998b1579e980adfeeb82b3df3"
+    },
+    "sphinx-doc__sphinx-8721": {
+      "run": "mini50-tuned-c-gpt62-20261123",
+      "patch_sha256": "6434f24e6512f7a40b1a3a371ac015fe1e65a312f246d428ce91c638572b4f1d",
+      "prototype_resolved": true,
+      "prototype_daemon": "unix:///run/swe50-1123-grader/docker.sock",
+      "official_resolved": true,
+      "official_daemon": "unix:///var/run/docker.sock",
+      "official_receipt_sha256": "67724103a35b4aa3430a1e26847ffc57f473e428dec4f4268c37eef26dbc57f1"
+    }
+  }
+}

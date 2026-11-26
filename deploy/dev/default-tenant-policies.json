@@ -22,7 +22,9 @@
       "a6api/gpt-6.1-terra@2026-11",
       "a6api/gpt-6-luna@2026-11",
       "a6api/glm-5.3-flash@2026-11",
-      "a6api/qwen3.8-flash@2026-11"
+      "a6api/qwen3.8-flash@2026-11",
+      "a6api/gemini-4-carbon@2026-11",
+      "a6api/gemini-4-hydrogen@2026-11"
     ]
   },
   "tenants": {}

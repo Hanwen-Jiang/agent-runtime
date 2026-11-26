@@ -1,0 +1,45 @@
+{
+  "verified_utc": "2026-11-23T03:16:38.381582+00:00",
+  "runs": [
+    {
+      "run_id": "init50-gpt62-tuned-20261123",
+      "selection_sha256": "372512ce89782d3e439db13a3f084b70c9b009260f180ce39c1a4a4b124d3b72",
+      "report_sha256": "1de52432f7f23c8ccf72997a1defec4480fd204b86e98b023cbcb01c3410b093",
+      "official_grade_sha256": "c16b8ec48403a6f147ba1ff0bdddfc173900b5615be76cdad96ef76bc133561a",
+      "predictions_sha256": "184f4845d88bddc2dc4a622e45df5617e73b9d2f9b66c97770f189eb90699d24",
+      "unique_tasks": 50,
+      "production_docker_receipts": 50,
+      "legacy_main_receipts": [
+        "astropy__astropy-8707"
+      ],
+      "reviewed_official_annotations": {
+        "pytest-dev__pytest-7205": "no_tests_collected"
+      },
+      "resolved": 43,
+      "unresolved": 7,
+      "completed": 50,
+      "empty_patch_ids": []
+    },
+    {
+      "run_id": "mini50-tuned-c-gpt62-20261123",
+      "selection_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+      "report_sha256": "3a04f65ab58d8c9688568630cda19fb97581775fe171477331b8c68cb59d70fb",
+      "official_grade_sha256": "84dc16265d64818387d64e13532c7ce3ba46ecb58bacbaeac24853d1d24cda1c",
+      "predictions_sha256": "e6c9f02ef2ea94f067754153fc961f269933d30463b2ed0c07f768777fad1168",
+      "unique_tasks": 50,
+      "production_docker_receipts": 50,
+      "legacy_main_receipts": [
+        "django__django-11790",
+        "django__django-12050",
+        "django__django-12262"
+      ],
+      "reviewed_official_annotations": {},
+      "resolved": 34,
+      "unresolved": 15,
+      "completed": 49,
+      "empty_patch_ids": [
+        "sphinx-doc__sphinx-9461"
+      ]
+    }
+  ]
+}

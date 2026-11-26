@@ -32,6 +32,26 @@ MIGRATIONS = (Migration(421, "unified_retrieval_generations", (
 Authorize = Callable[[Identity, str, str, Sequence[str]], Awaitable[set[str]]]
 Rerank = Callable[[Identity, str, Sequence[str]], Awaitable[Sequence[float]]]
 _ID = re.compile(r"^[A-Za-z0-9_.:@-]{1,200}$")
+_SYMBOL = re.compile(r"[^\W\d]\w*(?:(?:::|\.)[^\W\d]\w*)*")
+
+
+def _definition_symbol(query: str) -> str | None:
+    query = query.strip()
+    if _SYMBOL.fullmatch(query):
+        return query
+    if query.count("`") != 2:
+        return None
+    before, symbol, after = (part.strip() for part in query.split("`"))
+    if not _SYMBOL.fullmatch(symbol):
+        return None
+    if (re.search(r"\b(?:find|locate|show|jump to|go to) (?:the )?(?:definition|declaration|implementation) of$", before, re.I)
+            or (re.search(r"\bwhere (?:is|was)$", before, re.I)
+                and re.match(r"(?:defined|declared|implemented)\b", after, re.I))
+            or re.match(r"(?:的)?(?:定义|声明|实现)(?:在(?:哪|何处)|位置)", after)
+            or re.match(r"在(?:哪里|哪儿|何处)(?:定义|声明|实现)", after)
+            or (re.search(r"(?:定位|跳转到|查看)$", before) and re.match(r"的(?:定义|声明|实现)", after))):
+        return symbol
+    return None
 
 
 def _id(value: Any, name: str) -> str:
@@ -54,8 +74,8 @@ def _prioritize_symbol(hits: list[dict[str, Any]], query: str) -> list[dict[str,
     No extra collection scan or authority from vector metadata is introduced;
     anchors here came from the scoped SQL ledger, after source ACL filtering.
     """
-    symbol = query.strip()
-    if not re.fullmatch(r"[^\W\d]\w*(?:(?:::|\.)[^\W\d]\w*)*", symbol):
+    symbol = _definition_symbol(query)
+    if symbol is None:
         return hits
     for hit in hits:
         anchor = hit.get("anchor", {})

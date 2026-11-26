@@ -90,11 +90,16 @@ async def test_clone_diff_commit_push(tmp_path: Path, mode: str) -> None:
     assert conflict.category == error_pb2.ERROR_CATEGORY_CONFLICT
 
     # 会话里改一个已跟踪的文件：API 的 diff 与沙箱里 git diff 的输出一致。
+    await s.tool("shell_run", {"argv": ["python", "-c",
+        "from pathlib import Path; Path('.git/agentruntime-diff.index.lock').write_text('other collector')"]})
     await s.tool("shell_run", {"argv": ["python", "-c", "open('app.py', 'ab').write(b'# changed\\n')"]})
     in_sandbox = (await s.tool("shell_run", {"argv": ["git", "-c", "safe.directory=*", "-c", "core.autocrlf=false", "diff", "--no-color", "HEAD"]}))["stdout"]
     diff = await s.run(Op.WORKSPACE_OPERATION_DIFF)
     assert diff["files"] == ["app.py"] and diff["diff"] == in_sandbox and "+# changed" in diff["diff"], diff
     assert diff["head"] == remote_head and diff["truncated"] is False
+    scratch = await s.tool("shell_run", {"argv": ["python", "-c",
+        "from pathlib import Path; print(sorted(p.name for p in Path('.git').glob('agentruntime-diff*')))"]})
+    assert scratch["stdout"].strip() == "['agentruntime-diff.index.lock']"
     if mode == "archive":
         writable = [(r["session_id"], r["state"]) for r in s.envs("t1") if r["writable"]]
         assert writable == [(S1, "ready")], "会话的可写环境存档后还在（diff 在只读的环境里做）"

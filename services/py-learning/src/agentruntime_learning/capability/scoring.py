@@ -57,8 +57,10 @@ def shrink(p: float, n: int, *, k: float = K, prior: float = PRIOR) -> float:
 def item_means(rows: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, float]]:
     """评测 → {题: 没被污染的那几次的平均}；全被污染的题不出现。"""
     scores: dict[tuple[str, str], list[float]] = defaultdict(list)
+    from .quota import is_quota_row
+
     for row in rows:
-        if not row.get("contaminated"):
+        if not row.get("contaminated") and not is_quota_row(row):
             scores[(str(row["eval"]), str(row["item"]))].append(float(row["score"]))
     out: dict[str, dict[str, float]] = defaultdict(dict)
     for (name, item), values in sorted(scores.items()):
@@ -225,7 +227,9 @@ def score_cell(
     regular_leader = leader_of(regular)
     for c in expensive:
         s = cell.candidates[c]
-        in_tournament = s.repeats <= 1 and s.items <= tournament_n
+        # The runner evaluates at most tournament_n questions *per evaluator*
+        # before deciding whether an expensive candidate merits another stage.
+        in_tournament = s.repeats <= 1 and all(n <= tournament_n for n in s.by_eval.values())
         if s.runs and in_tournament and regular_leader is not None and eliminated(s, regular_leader):
             s.status = NOT_LEADING
             s.reason = f"淘汰赛（n = {s.items}、r = 1）：区间上沿 {s.ci[1]:.3f} 低于领先者 {regular_leader.candidate} 的下沿 {regular_leader.ci[0]:.3f}"

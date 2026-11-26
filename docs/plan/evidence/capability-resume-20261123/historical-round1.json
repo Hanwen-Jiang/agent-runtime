@@ -1,0 +1,323 @@
+{
+  "plan_id": "round1",
+  "slots": {
+    "plan": {
+      "tier": "medium",
+      "planned_slots": 13,
+      "observed_slots": 13,
+      "candidates": {
+        "a6api/claude-sonnet-5-5@2026-10": {
+          "records": 75,
+          "distinct_scored_items": 24,
+          "historical_status": "contaminated"
+        },
+        "a6api/claude-opus-5-5@2026-10": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "ok"
+        },
+        "a6api/gpt-6.1-sol@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "contaminated"
+        },
+        "a6api/gpt-6-astra@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "ok"
+        },
+        "a6api/claude-fable-5-1@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "ok"
+        },
+        "a6api/gemini-4-argon@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "insufficient"
+        },
+        "a6api/deepseek-v4-pro@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "insufficient"
+        },
+        "a6api/grok-4.7@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "contaminated"
+        },
+        "a6api/kimi-k3.1-pro@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "contaminated"
+        },
+        "a6api/qwen3.8-max@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 24,
+          "historical_status": "contaminated"
+        },
+        "a6api/glm-5.3@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 24,
+          "historical_status": "contaminated"
+        },
+        "a6api/longcat-2.0@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 1,
+          "historical_status": "contaminated"
+        },
+        "a6api/mimo-v2.6-pro@2026-11": {
+          "records": 75,
+          "distinct_scored_items": 25,
+          "historical_status": "contaminated"
+        }
+      }
+    },
+    "act": {
+      "tier": "medium",
+      "planned_slots": 13,
+      "observed_slots": 13,
+      "candidates": {
+        "a6api/claude-sonnet-5-5@2026-10": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/claude-opus-5-5@2026-10": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/gpt-6.1-sol@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/gpt-6-astra@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/claude-fable-5-1@2026-11": {
+          "records": 20,
+          "distinct_scored_items": 20,
+          "historical_status": "not_leading"
+        },
+        "a6api/gemini-4-argon@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 99,
+          "historical_status": "ok"
+        },
+        "a6api/deepseek-v4-pro@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/grok-4.7@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/kimi-k3.1-pro@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/qwen3.8-max@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/glm-5.3@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/longcat-2.0@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        },
+        "a6api/mimo-v2.6-pro@2026-11": {
+          "records": 100,
+          "distinct_scored_items": 100,
+          "historical_status": "ok"
+        }
+      }
+    },
+    "route": {
+      "tier": "low",
+      "planned_slots": 8,
+      "observed_slots": 8,
+      "candidates": {
+        "a6api/gemini-3.5-flash-lite@2026-10": {
+          "records": 108,
+          "distinct_scored_items": 36,
+          "historical_status": "ok"
+        },
+        "a6api/claude-haiku-5-5@2026-10": {
+          "records": 108,
+          "distinct_scored_items": 36,
+          "historical_status": "ok"
+        },
+        "a6api/gpt-6-luna@2026-11": {
+          "records": 108,
+          "distinct_scored_items": 27,
+          "historical_status": "contaminated"
+        },
+        "a6api/glm-5.3-flash@2026-11": {
+          "records": 108,
+          "distinct_scored_items": 36,
+          "historical_status": "ok"
+        },
+        "a6api/qwen3.8-flash@2026-11": {
+          "records": 108,
+          "distinct_scored_items": 36,
+          "historical_status": "contaminated"
+        },
+        "a6api/deepseek-v4-flash@2026-10": {
+          "records": 108,
+          "distinct_scored_items": 36,
+          "historical_status": "ok"
+        },
+        "a6api/gemini-3.8-flash@2026-11": {
+          "records": 108,
+          "distinct_scored_items": 36,
+          "historical_status": "ok"
+        },
+        "a6api/gpt-6.1-terra@2026-11": {
+          "records": 108,
+          "distinct_scored_items": 36,
+          "historical_status": "ok"
+        }
+      }
+    },
+    "judge": {
+      "tier": "medium",
+      "planned_slots": 13,
+      "observed_slots": 10,
+      "candidates": {
+        "a6api/claude-sonnet-5-5@2026-10": {
+          "records": 360,
+          "distinct_scored_items": 86,
+          "historical_status": "contaminated"
+        },
+        "a6api/claude-opus-5-5@2026-10": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/gpt-6.1-sol@2026-11": {
+          "records": 360,
+          "distinct_scored_items": 80,
+          "historical_status": "contaminated"
+        },
+        "a6api/gpt-6-astra@2026-11": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/claude-fable-5-1@2026-11": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/gemini-4-argon@2026-11": {
+          "records": 283,
+          "distinct_scored_items": 89,
+          "historical_status": "contaminated"
+        },
+        "a6api/deepseek-v4-pro@2026-11": {
+          "records": 240,
+          "distinct_scored_items": 75,
+          "historical_status": "contaminated"
+        },
+        "a6api/grok-4.7@2026-11": {
+          "records": 240,
+          "distinct_scored_items": 62,
+          "historical_status": "contaminated"
+        },
+        "a6api/kimi-k3.1-pro@2026-11": {
+          "records": 240,
+          "distinct_scored_items": 40,
+          "historical_status": "contaminated"
+        },
+        "a6api/qwen3.8-max@2026-11": {
+          "records": 240,
+          "distinct_scored_items": 47,
+          "historical_status": "contaminated"
+        },
+        "a6api/glm-5.3@2026-11": {
+          "records": 240,
+          "distinct_scored_items": 80,
+          "historical_status": "ok"
+        },
+        "a6api/longcat-2.0@2026-11": {
+          "records": 240,
+          "distinct_scored_items": 24,
+          "historical_status": "contaminated"
+        },
+        "a6api/mimo-v2.6-pro@2026-11": {
+          "records": 240,
+          "distinct_scored_items": 80,
+          "historical_status": "ok"
+        }
+      }
+    },
+    "transform": {
+      "tier": "low",
+      "planned_slots": 8,
+      "observed_slots": 0,
+      "candidates": {
+        "a6api/gemini-3.5-flash-lite@2026-10": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/claude-haiku-5-5@2026-10": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/gpt-6-luna@2026-11": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/glm-5.3-flash@2026-11": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/qwen3.8-flash@2026-11": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/deepseek-v4-flash@2026-10": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/gemini-3.8-flash@2026-11": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        },
+        "a6api/gpt-6.1-terra@2026-11": {
+          "records": 0,
+          "distinct_scored_items": 0,
+          "historical_status": "no_results"
+        }
+      }
+    }
+  },
+  "observation_rows": 5742,
+  "unique_keys": 5742,
+  "recorded_usd": "120.085294",
+  "sha256": {
+    "plan.json": "6fa157159893dc74a7cf7bf9210af546fef09262faad753e4356f7798c9d5bb6",
+    "results.jsonl": "2afc10fdce46423d75655ed78f59705585f0f686686946db27fd062d8de577a4",
+    "scores.json": "c84cba2b9f27dfe605c352a3ebe37411779451535b320d88e44d5a12c3674995"
+  }
+}

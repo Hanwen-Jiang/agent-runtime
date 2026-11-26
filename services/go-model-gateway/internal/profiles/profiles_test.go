@@ -281,6 +281,10 @@ func TestDevProfilesFileLoads(t *testing.T) {
 		"gemini-3.8-flash": {"google", "mid", []string{"low"}},
 		"gpt-6.1-terra":    {"openai", "mid", []string{"low"}},
 		"gpt-6-luna":       {"openai", "small", []string{"low"}},
+
+		"gemini-4-carbon":   {"google", "strong", []string{"medium", "high"}},
+		"gemini-4-hydrogen": {"google", "mid", []string{"low"}},
+		"gemini-4-neon":     {"google", "strong", []string{"medium", "high"}},
 	}
 	seen := map[string]bool{}
 	for _, p := range c.All() {

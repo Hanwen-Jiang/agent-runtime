@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from agentruntime_learning.capability import matrix, publish
+from agentruntime_learning.capability import matrix, publish, quota
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -76,6 +76,7 @@ def _run(args: argparse.Namespace) -> int:
     from agentruntime_learning.evals.judging import gateway_from_env
 
     with matrix.output_owner(args.out) as owner:
+        quota.require_running(args.out)
         plan, profiles, evals = _load(args.plan, args.profiles)
         gateway = gateway_from_env()
 
@@ -94,29 +95,35 @@ def _run(args: argparse.Namespace) -> int:
         report = asyncio.run(_with_telemetry(go))
         print(matrix.scores_summary(report))
         print(f"结果：{args.out / matrix.RESULTS}；分数：{args.out / matrix.SCORES}")
-        return 0
+        return 75 if report.get("status") == "partial_billing_reconciliation" else 0
 
 
 def _score(args: argparse.Namespace) -> int:
     with matrix.output_owner(args.out) as owner:
+        quota.require_running(args.out)
         plan = matrix.load_plan(args.plan or args.out / matrix.PLAN_COPY)
         rows = matrix.read_results(args.out, owner=owner)
         matrix.verify_run_lock(args.out, plan, rows, owner=owner)
         report = matrix.score_results(plan, rows)
+        if quota.unreceipted_billing(args.out, rows):
+            report["status"] = "partial_billing_reconciliation"
         path = matrix.write_scores(args.out, report, owner=owner)
         print(matrix.scores_summary(report))
         print(f"分数：{path}")
-        return 0
+        return 75 if report.get("status") == "partial_billing_reconciliation" else 0
 
 
 def _publish(args: argparse.Namespace) -> int:
     with matrix.output_owner(args.out) as owner:
+        quota.require_running(args.out)
         # Never trust a stale or manually edited publishable flag. Re-evaluate the
         # original observations with the current, frozen publication policy.
         plan = matrix.load_plan(args.out / matrix.PLAN_COPY)
         rows = matrix.read_results(args.out, owner=owner)
         matrix.verify_run_lock(args.out, plan, rows, owner=owner)
         report = matrix.score_results(plan, rows)
+        if report.get("status") == "partial_billing_reconciliation" or quota.unreceipted_billing(args.out, rows):
+            raise quota.ProviderQuotaPaused("existing quota interruptions require reconciliation before publication")
         matrix.write_scores(args.out, report, owner=owner)
         today = dt.date.fromisoformat(args.date) if args.date else None
         result = publish.publish(report, profiles_path=args.profiles, seed_path=args.seed, today=today, dry_run=args.dry_run)
@@ -144,6 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     handlers = {"estimate": _estimate, "run": _run, "score": _score, "publish": _publish}
     try:
         return handlers[args.command](args)
+    except quota.ProviderQuotaPaused as exc:
+        print(str(exc), file=sys.stderr)
+        return 75
     except (matrix.PlanError, matrix.ResumeMismatch, publish.PublishError, ValueError, OSError) as exc:
         print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
         return 2

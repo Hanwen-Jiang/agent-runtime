@@ -1,0 +1,1046 @@
+{
+  "checked_at": "2026-11-23T02:59:00.034708+00:00",
+  "definition": "Identical visible shell command text containing a recognized test runner or assertion, observed before and after the first non-test repo_edit. This is neither proof of red-to-green nor evidence of no testing when absent. Shell-based edits and truncated commands can be missed.",
+  "cases": {
+    "django__django-11790": {
+      "b": {
+        "task_id": "tsk_01M7ZDF9YH4K6WTG0F45VVRATA",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": [
+          "1d4024847696ed6a653d99419abaf4b0ad0c5aeb3b4ca58f6cd8a9afccf3b190"
+        ]
+      },
+      "c": {
+        "task_id": "tsk_01M82GMMQBERV38N9R7QSXYGAG",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 2,
+        "repeated_visible_test_command_hashes": [
+          "0454bd7f70393fd86d788f802734f7e136e85211135f49c8b0e375f77a0af345"
+        ]
+      }
+    },
+    "django__django-12050": {
+      "b": {
+        "task_id": "tsk_01M7ZDFBKT1S1V8XXV6CPYDXVE",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 2,
+        "repeated_visible_test_command_hashes": [
+          "25b42ff4578ceb58990c1c18fe29487b1b2e904f844b633453ac4157ffaae3c2"
+        ]
+      },
+      "c": {
+        "task_id": "tsk_01M82GMQGAJ7EAMQD1AWBMEH10",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": [
+          "1dcfc882c76139b3581ada461aa3cf00041559e3c4f2fd1971e6c3983bc139fe"
+        ]
+      }
+    },
+    "django__django-12262": {
+      "b": {
+        "task_id": "tsk_01M7ZDFBNASNBCWEBXBG1G9ZEM",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 2,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82GY5DZ4HGN34H0TBERM4VE",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12713": {
+      "b": {
+        "task_id": "tsk_01M7ZEMPHHAX1AG7A6R262745G",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82H27BW8FYGWRXD12WJ4DM6",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 2,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8475": {
+      "b": {
+        "task_id": "tsk_01M7ZEHKXJ8AD8HD1N5E95GF2S",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82HC88VXZVJ9XXCHT4AYY8V",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": [
+          "9ebfe915c1c84808eead7ac3d5d09b566491a0955741ee9dc27848294b7ac669"
+        ]
+      }
+    },
+    "sphinx-doc__sphinx-8721": {
+      "b": {
+        "task_id": "tsk_01M7ZEKNMQS4A0EZJ588MMC75K",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 1,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82HDYQ6HDVM05BCR7B68TJP",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 4,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-9320": {
+      "b": {
+        "task_id": "tsk_01M7ZFBE0PPXR27ZXCZZGGP3SG",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 1,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82HMF0FVAQC295G9YRPFN03",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-9698": {
+      "b": {
+        "task_id": "tsk_01M7ZFBX41JRE8MJB8YY686B54",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82HV5BXEFDZG6WNQX7D78HQ",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": [
+          "93f0941eac071a4a9632e648276a27e7bae88a29cd46c98353fdf3e7f1a6eaf6"
+        ]
+      }
+    },
+    "django__django-11848": {
+      "b": {
+        "task_id": "tsk_01M7ZG164PA67M9R8F8HFZGRJF",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 8,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82J1AH2RKS4B18RA789N2XW",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": [
+          "fd1450966552113e7d9ce55ab6a5770b60f16dfbcc4a86fa14f8457c03928495"
+        ]
+      }
+    },
+    "django__django-12774": {
+      "b": {
+        "task_id": "tsk_01M7ZGF7A70K1PTVW348B6077Q",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 10,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82JAR86QD5Z80JBPWWD0SFF",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": [
+          "2599c61bd4f1d4b3b12afadeba25537d0a769e7bb5a4d15f0d25400d9956a36a"
+        ]
+      }
+    },
+    "sphinx-doc__sphinx-7748": {
+      "b": {
+        "task_id": "tsk_01M7ZGMTXW167HQDZS4YVK3PA5",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 9,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82JACSBCF7E5N4XDJ1E10E6",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8035": {
+      "b": {
+        "task_id": "tsk_01M7ZGYSRN344CCSR3922DV9FT",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82JQN39V9D8EKHDESP9DCBP",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 5,
+        "visible_test_invocations": 10,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8548": {
+      "b": {
+        "task_id": "tsk_01M7ZJ8GWETGS0JGT9HJ68EW1R",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82JS2S34RGM8D6A339871D6",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 8,
+        "visible_test_invocations": 22,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-9229": {
+      "b": {
+        "task_id": "tsk_01M7ZJ8SPK1HJPSV5H1WZ29BP8",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 7,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 9,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82KDP7MQM6RP2GX5VKY6MG4",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-11880": {
+      "b": {
+        "task_id": "tsk_01M7ZJV398A4MVSNNDQ51R9Q2D",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": [
+          "78be81d9e7a51a9c5b6cab3effdf15b973e79fe7c0b598d7d41da9e4065a384a"
+        ]
+      },
+      "c": {
+        "task_id": "tsk_01M82M168RXM4W8FMEKEWG92KR",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 1,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12143": {
+      "b": {
+        "task_id": "tsk_01M7ZKBPT4CFPP0DTWMHRR4QFC",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82M2843J8AJQQ2XKJ7JQ2K4",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": [
+          "b71649eded138b44e48f11c15aa1cedaaef9f98b6922679968c3829cf5bc188a"
+        ]
+      }
+    },
+    "django__django-12155": {
+      "b": {
+        "task_id": "tsk_01M7ZKG3XQDVDQGD6AQ4MVXTGQ",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82MD2PQTP6VX1MTG6YJPAN6",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-9367": {
+      "b": {
+        "task_id": "tsk_01M82EYT4MRHAF7HP34HHZMEJZ",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 1,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82MBY7BARF8ZSX8PSYX6NDJ",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": [
+          "4047b295d0ef801b85dc627b5f3f05f329723118972ee75d8cfb358d00e76c19"
+        ]
+      }
+    },
+    "django__django-12209": {
+      "b": {
+        "task_id": "tsk_01M7ZMW84P607SQBT5KSCXVTT6",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 6,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82MR9YWA6ERFJC6CBWAEMM8",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 11,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-11951": {
+      "b": {
+        "task_id": "tsk_01M7ZMW853B5Q1TKASKFX0J3WM",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82N8TZM2H0Z2501R7RFPSM4",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 3,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": [
+          "45b21a1eb9e9848669ae5d7d8d13450e15b12512c42185be9a5a4be699fa192e",
+          "f9528d7e066e179aa2917637a49d75f702afd0e35735a34eed6f6dab2f5df75f"
+        ]
+      }
+    },
+    "django__django-12193": {
+      "b": {
+        "task_id": "tsk_01M7ZMYABYYZJ1MBKFC5W4B3D8",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 8,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82P2348BP1HYTAH7CR97E27",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12276": {
+      "b": {
+        "task_id": "tsk_01M7ZNTTWBP1W70AA3P9DXREM7",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82PNYRXPD7V2CFKPV9PCAX8",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12304": {
+      "b": {
+        "task_id": "tsk_01M7ZNYXCF3WVJKTJJ76MWRR5E",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82QM0JJWSB053EX5PBMHWKW",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-9296": {
+      "b": {
+        "task_id": "tsk_01M7ZPEDXAZ3RZQ255QDWJ5PGW",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82QWZZ1Z62DVQE79NRENNVN",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": [
+          "cf474fa063aef4b1f124807ad2ac6ada37b6c30d55750c2d3ddaab042841592f",
+          "07d6c1715fa05b9ce61a82c8b95a5a67f949caa7ff4231c059c96dc44339b55e"
+        ]
+      }
+    },
+    "sphinx-doc__sphinx-10466": {
+      "b": {
+        "task_id": "tsk_01M7ZPJYFSGNYY7VF0F108F1KZ",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82R6D0HS7X6GX85K12ZAGPA",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-11999": {
+      "b": {
+        "task_id": "tsk_01M7ZPWEF50PN4FT4476J10CA2",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82RV9MKXENSK258DXSZ8G00",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 14,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12039": {
+      "b": {
+        "task_id": "tsk_01M7ZQ95T4MS9AGNBFPMRF0KSW",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82RV9R2HZ8NVGHJYJBXPN36",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12273": {
+      "b": {
+        "task_id": "tsk_01M7ZQJ7744925SAMTWSFFTEKH",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82SKZP09WFW19Q796J9QZ1S",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12325": {
+      "b": {
+        "task_id": "tsk_01M7ZQX67BDKC35A9ETQHAE1JC",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82TBDPCAZG9N6NDSK3FKRQW",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 8,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12406": {
+      "b": {
+        "task_id": "tsk_01M7ZR4DD3PXMP43ESEZR9ERD1",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": [
+          "3ec7915ba57e669d19d1beafa929a9d09d8b2bc57c397d56422420c23c8f435b"
+        ]
+      },
+      "c": {
+        "task_id": "tsk_01M82TCHF8WDBC1RFYEH25V2FM",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 9,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-10673": {
+      "b": {
+        "task_id": "tsk_01M7ZRSEFM7NCWAXKQZ4862PWV",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 9,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82V5F53AAZY95AZMWVNTVPY",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-11510": {
+      "b": {
+        "task_id": "tsk_01M7ZRYRSP2883VX82PB54MR2A",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 4,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 8,
+        "repeated_visible_test_command_hashes": [
+          "7e0c8f8effc99e8e9c0bcb4d91564384cef2696ccfb03e68396411032e76b4b0"
+        ]
+      },
+      "c": {
+        "task_id": "tsk_01M82W2MM5N4ZERQNSCG5JDJ58",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 7,
+        "visible_test_invocations": 9,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-7757": {
+      "b": {
+        "task_id": "tsk_01M7ZRZJEPZ2T23JZBGEJAK0SA",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82WTCGZA26FJNE8SEB3W2ZT",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 8,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8265": {
+      "b": {
+        "task_id": "tsk_01M7ZSXZACR1J54DNNHN652DT2",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 2,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82X96FAC1P59K8HSJ5BMPRD",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8551": {
+      "b": {
+        "task_id": "tsk_01M7ZT1EPFX527FZ89W4ZE8ZQH",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82XT0PQP47P9DPWJKQQNPDT",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 8,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8638": {
+      "b": {
+        "task_id": "tsk_01M7ZT8FZNKNDQGD27P1JNABRE",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": [
+          "18ab2f8890ae4fe2b502b0767238a79b6328ac1feed877b4983d55d7d14ebd2a"
+        ]
+      },
+      "c": {
+        "task_id": "tsk_01M82YR9Z81KFRV96YK9G8DD2R",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 12,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-11815": {
+      "b": {
+        "task_id": "tsk_01M7ZV5C41YSE59FHQH1XK85EJ",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 1,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82YY14PHR0M09K7RVDJCXT4",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 2,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-11885": {
+      "b": {
+        "task_id": "tsk_01M7ZV88E2NV7WA7DTV1VEZ769",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 0,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82ZMJEZH8ZKFWA317CG3YDB",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 9,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12708": {
+      "b": {
+        "task_id": "tsk_01M81QNEP4FB3EXNTDTWQ3KTKP",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 0,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M82ZQY20WV0R89S3C4CYCGY7",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-7590": {
+      "b": {
+        "task_id": "tsk_01M81V2N69PP2FT7M408KW3SHW",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 8,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M830TGX2GC1JDSQNY86920NB",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 3,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": [
+          "e86bd792f701b043eec9d8d22c248a33170134fb97b7c3cde3c70e952dd2211a"
+        ]
+      }
+    },
+    "sphinx-doc__sphinx-7985": {
+      "b": {
+        "task_id": "tsk_01M81W1KKAYKSKG1AJHZYNR99Q",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M831F3XSNXN42R4C130Q1K5J",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8056": {
+      "b": {
+        "task_id": "tsk_01M82F9C2YFXR9XKVG1B2YFKC9",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 1,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M831GXMK01NSQ4759807TES6",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 15,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-9461": {
+      "b": {
+        "task_id": "tsk_01M81YBHKKEAAZT4MWFB62SXXB",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 3,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M8321NB65X55FM23KYVFFAZ8",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-11964": {
+      "b": {
+        "task_id": "tsk_01M81P1N4S73MSWBT8FGPAMZDA",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M832VZ4X57SZBQNA9J0AS0WS",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "django__django-12308": {
+      "b": {
+        "task_id": "tsk_01M81PQK5FPYNN1FHKXJSWRK71",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 2,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M8336JRQ0K404THR07RB3234",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-10323": {
+      "b": {
+        "task_id": "tsk_01M81S2CB37BPRFC73Y6FV6P52",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M833JHPAW0V0RJXN8130NJER",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-10435": {
+      "b": {
+        "task_id": "tsk_01M81TCJJFJ1T5WBHTY4ZYKH73",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 5,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M833PXNRZ8CW5ASG2Q8X3F1N",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-8269": {
+      "b": {
+        "task_id": "tsk_01M81WPPRMC6ZJFQQAP7SE6M32",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 4,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 7,
+        "repeated_visible_test_command_hashes": [
+          "1575c291c01754849505f7e4e29edf12f27f6669946caf0828074b40b52b18ce"
+        ]
+      },
+      "c": {
+        "task_id": "tsk_01M8347H0KXGE8WM9FVCC6RZHG",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 4,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": [
+          "25dd75e059d1e204884622d21d1eb9b6e884d368b18c6fca068caabeed11cf53"
+        ]
+      }
+    },
+    "sphinx-doc__sphinx-9230": {
+      "b": {
+        "task_id": "tsk_01M81XHT1CXWGTANZJRJJF9FE6",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 3,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M834CEN1FRY053AHMNSK1XN7",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 6,
+        "repeated_visible_test_command_hashes": []
+      }
+    },
+    "sphinx-doc__sphinx-9281": {
+      "b": {
+        "task_id": "tsk_01M82ER7V07A1D4WN6VAMTRVT5",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": true,
+        "test_invocations_before": 2,
+        "test_invocations_after": 2,
+        "visible_test_invocations": 4,
+        "repeated_visible_test_command_hashes": []
+      },
+      "c": {
+        "task_id": "tsk_01M834KH183ZFCVGMJ3XRB864G",
+        "has_tool_targets": true,
+        "first_non_test_repo_edit_observed": false,
+        "test_invocations_before": 0,
+        "test_invocations_after": 0,
+        "visible_test_invocations": 9,
+        "repeated_visible_test_command_hashes": []
+      }
+    }
+  }
+}

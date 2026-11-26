@@ -1,0 +1,118 @@
+{
+  "benchmark": "swe-bench",
+  "run_id": "route2-20261122-native",
+  "model_name": "candidate-native-routing",
+  "settings": {
+    "model_name": "candidate-native-routing",
+    "hints": false,
+    "environment": "official",
+    "repo_url_template": "https://github.com/{repo}.git",
+    "workspace_path": "/workspace"
+  },
+  "selection": {
+    "dataset_name": "SWE-bench/SWE-bench_Verified",
+    "dataset_split": "test",
+    "instances_sha256": "2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52",
+    "population_count": 500,
+    "ids": true,
+    "ids_sha256": "13f05b6dd890148e434e002d1db4e64c868d471772f322e068db5b1ed2effc44",
+    "case_origins": {
+      "django__django-11490": "init50_only",
+      "sphinx-doc__sphinx-8721": "mini50_only"
+    }
+  },
+  "limits": {
+    "budget_usd": 6.0,
+    "task_usd_limit": 3.0,
+    "concurrency": 1,
+    "task_timeout_s": 3600
+  },
+  "selected": 2,
+  "ran": 1,
+  "not_run": 0,
+  "errors": 1,
+  "graded": true,
+  "graded_complete": true,
+  "resolved": 0,
+  "resolve_rate": 0.0,
+  "resolve_rate_ran": 0.0,
+  "cost_usd": 0.000717,
+  "cost_per_instance_usd": 0.000717,
+  "cost_per_resolved_usd": null,
+  "rounds": {
+    "median": 7,
+    "mean": 7.0,
+    "max": 7
+  },
+  "verdicts": {
+    "repair": 2,
+    "replan": 3,
+    "escalate": 1
+  },
+  "statuses": {
+    "cancelled": 1
+  },
+  "stop_reasons": {},
+  "auto_replies": 0,
+  "patch_errors": 0,
+  "by_repo": {
+    "django/django": {
+      "selected": 1,
+      "ran": 0,
+      "resolved": 0
+    },
+    "sphinx-doc/sphinx": {
+      "selected": 1,
+      "ran": 1,
+      "resolved": 0
+    }
+  },
+  "by_difficulty": {
+    "<15 min fix": {
+      "selected": 2,
+      "ran": 1,
+      "resolved": 0
+    }
+  },
+  "environment_fallback_ids": [
+    "sphinx-doc__sphinx-8721"
+  ],
+  "environment_unknown": 0,
+  "resolve_rate_with_environment": null,
+  "instances": [
+    {
+      "instance_id": "django__django-11490",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "error",
+      "status": null,
+      "final_verdict": null,
+      "rounds": null,
+      "cost_usd": null,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [],
+      "patch_error": null,
+      "error": "ApiError: 503 sandbox_unavailable: project image prewarm remained unavailable",
+      "grading": "run_error",
+      "environment_used": null
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8721",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "cancelled",
+      "final_verdict": null,
+      "rounds": 7,
+      "cost_usd": 0.000717,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [],
+      "patch_error": null,
+      "error": null,
+      "grading": "empty_patch",
+      "environment_used": false
+    }
+  ]
+}

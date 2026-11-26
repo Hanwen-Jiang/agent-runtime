@@ -1,0 +1,86 @@
+{
+  "instance_id": "django__django-15503",
+  "task_id": "tsk_01M82N7GHQMJAHDG8RMXKAN9GN",
+  "prior": "unresolved",
+  "new_resolved": true,
+  "terminal": "done",
+  "patch_files": [
+    "django/db/models/fields/json.py"
+  ],
+  "rounds": 2,
+  "tool_counts": {
+    "skill_read": 2,
+    "repo_list": 1,
+    "repo_grep": 9,
+    "repo_read": 11,
+    "shell_run": 13,
+    "repo_edit": 6
+  },
+  "first_repo_edit_sequence": 30,
+  "checks": [
+    {
+      "tool_sequence": 23,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 2,
+      "target_sha256": "a10e04a00dd2c5524f0a3fb65133ea72f94aeddbeabb19035aaa0d6e2a0e0a6a",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 25,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 2,
+      "target_sha256": "1421872835cdc46193f959f2ba13c3e29ff98ac7b0826c6fe828ca6ff7c0dc97",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 29,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 2,
+      "target_sha256": "11faf60c295132b091590686a50ade40bc4d18f468ed47e712b932bc74c9671f",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 36,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "1421872835cdc46193f959f2ba13c3e29ff98ac7b0826c6fe828ca6ff7c0dc97",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 37,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "11faf60c295132b091590686a50ade40bc4d18f468ed47e712b932bc74c9671f",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 41,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "bafdfdb0757a4f336ebf76d36a0ac6f5f9a7e84e9a558b79c2080b871957eb5e",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 42,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "bafdfdb0757a4f336ebf76d36a0ac6f5f9a7e84e9a558b79c2080b871957eb5e",
+      "command_type": "inline_python_check"
+    }
+  ],
+  "equal_recorded_shell_targets_across_first_repo_edit": [
+    "11faf60c295132b091590686a50ade40bc4d18f468ed47e712b932bc74c9671f",
+    "1421872835cdc46193f959f2ba13c3e29ff98ac7b0826c6fe828ca6ff7c0dc97"
+  ],
+  "official_tests": {
+    "FAIL_TO_PASS": {
+      "success": 2,
+      "failure": 0
+    },
+    "PASS_TO_PASS": {
+      "success": 78,
+      "failure": 0
+    }
+  },
+  "interpretation": "Matching targets are observed invocations; tool_status does not contain test stdout or a process exit code."
+}

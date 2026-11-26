@@ -1,0 +1,17 @@
+{
+  "registered_utc": "2026-11-23T03:44:56.477540+00:00",
+  "motivation": "In round 1 the correct declaration was present in the 40-candidate pool for only 16/48 questions. B surfaced all 16 within top 8.",
+  "target": "Explicit code-only jump-to-definition interaction; human action/query identifies one symbol. C sends the extracted symbol to the existing bare-symbol Knowledge search endpoint. No new index, model call or larger candidate pool. No silent rewrite of general documentation searches.",
+  "controls": "A natural sentence, old exact-only ranking. B same sentence, scoped definition priority (round 1). C same underlying API and B code, query canonicalized to symbol only for explicit definition navigation. All code-only documents, matched queries and labels.",
+  "cohort": "24 original dev reused; all 33 unused targets from round 1 form a new holdout with no reused gold_file or symbol. No substitutions.",
+  "metrics": "Hit@1 primary, Hit@8 and MRR@8, A/B/C top-8 source and hash checks, 3 counterbalanced search times/arm/question and P95.",
+  "accept_if": "C vs B adds >=5 percentage points of Hit@1 with nondecreasing aggregate Hit@8 and P95 ratio <=1.25; control queries must return identical rows, denied reader gets zero results. No claim about unconstrained natural-language QA.",
+  "fingerprints": {
+    "reserve.json": "cdec92e44a623406522b5d136a47601cd7ec367adee629f2a95abe2f54718035",
+    "reserve.py": "83e05fafce69ebcfbad778b7d0fbd663de65b2b7bd2dcffdf03d88b020d03e4a",
+    "symbol_query.py": "7d68f1f64ee5f22384bcbadaa25f1944bfc24e1641b4262d3c4c345ec4b61da6",
+    "cohort.json": "3e7a5b1d69baaa288292d7dc497b132c46e07bc5252d82a7e4715c97397f7907",
+    "diagnostics.json": "03c0784c04ae0c17611b05f2c14774c6235260d164e48c04c533e3a6aff72b10",
+    "priority.patch": "b9970cca55ae3d9a9e5d2727a3bd18bb60ca32a01c5470f0cfa0cbd03395570b"
+  }
+}

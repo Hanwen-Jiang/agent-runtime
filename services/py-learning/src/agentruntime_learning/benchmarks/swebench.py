@@ -27,6 +27,7 @@ import random
 import re
 import statistics
 import subprocess
+import sys
 import threading
 import time
 import urllib.parse
@@ -85,6 +86,48 @@ WAIT_FOR_ROOM = (QUOTA_FULL, "个工作区", "个未完成的 Task")
 # 克隆时连不上远端（400，Workspace API 的“取提交失败”）：出网网关连 GitHub 偶尔超时，隔一会儿再试。
 CLONE_UNREACHABLE = ("CONNECT tunnel failed", "Could not resolve host", "Connection timed out", "Failed to connect to")
 T = TypeVar("T")
+
+
+QUOTA_CODE = "insufficient_user_quota"
+_QUOTA_ERROR = re.compile(r"(?<![A-Za-z0-9_])insufficient_user_quota(?![A-Za-z0-9_])")
+
+
+class ProviderQuotaPaused(RuntimeError):
+    """The provider explicitly reported insufficient quota; the batch stopped admitting work."""
+
+
+class PreSubmissionError(RuntimeError):
+    """The local adapter stopped before sending SubmitTask."""
+
+
+def _quota_error(payload: Mapping[str, Any]) -> bool:
+    message = payload.get("error")
+    return payload.get("error_code") == QUOTA_CODE or (isinstance(message, str) and bool(_QUOTA_ERROR.search(message)))
+
+
+def _quota_event(event: Event) -> bool:
+    # Read runtime error metadata only. Successful answers, tool output and issue
+    # text can legitimately discuss quota errors without reporting a provider outage.
+    if event.name in ("node_finished", "decision_retry"):
+        return _quota_error(event.value)
+    if event.name != "task_finished" or _status(event.value.get("status")) not in ("failed", "aborted", "cancelled"):
+        return False
+    if _quota_error(event.value):
+        return True
+    body = event.value.get("deliverable")
+    if isinstance(body, Mapping) and "value" in body:
+        body = body["value"]
+    if isinstance(body, str):
+        try:
+            body = json.loads(body)
+        except ValueError:
+            return False
+    codes = body.get("codes") if isinstance(body, Mapping) else None
+    if not isinstance(codes, Mapping):
+        return False
+    return codes.get("reason_code") == QUOTA_CODE or any(
+        _quota_error(node) for node in (codes.get("nodes") or []) if isinstance(node, Mapping)
+    )
 
 
 class ResumeMismatch(ValueError):
@@ -375,9 +418,7 @@ def run(
         runner.go()
     finally:
         write_predictions(out_dir, instances, settings.model_name)
-    if live is not None:
-        live.finished(model=settings.model_name)
-    return runner.summary()
+    return runner.finish_run()
 
 
 def _manifest(out_dir: Path, instances: Sequence[Instance], settings: Settings, selection: Mapping[str, Any] | None) -> None:
@@ -425,6 +466,7 @@ class _Runner:
         self.records = read_records(out_dir)
         self.reserved: dict[str, float] = {}
         self.stopping = False
+        self.quota_pause: str | None = None
         self.submitted = 0
 
     # 记录
@@ -441,11 +483,26 @@ class _Runner:
         states = Counter(str((self.records.get(i.instance_id) or {}).get("state", "not_run")) for i in self.instances)
         return RunSummary(states["finished"], states["not_run"], states["error"], round(self._spent(), 6), self.submitted)
 
+    def finish_run(self) -> RunSummary:
+        # A resumed cohort can still contain provider failures from the first pass.
+        # Such a batch has outstanding infrastructure failures even after all its
+        # other cases have been collected.
+        blocked = any(r.get("state") == "error" and r.get("stop_reason") == QUOTA_CODE for r in self.records.values())
+        if self.live is not None and not blocked:
+            self.live.finished(model=self.s.model_name)
+        return self.summary()
+
     # 调度
 
     def go(self) -> None:
-        pending = [i for i in self.instances if (self.records.get(i.instance_id) or {}).get("state") != "finished"
-                   or (self.records.get(i.instance_id) or {}).get("cleanup_pending")]
+        # Terminal quota failures without a patch are preserved for a separately
+        # identified retry. Resuming this directory must not generate them twice.
+        pending = []
+        for inst in self.instances:
+            rec = self.records.get(inst.instance_id, {})
+            collected_quota_error = rec.get("state") == "error" and rec.get("stop_reason") == QUOTA_CODE and "patch" in rec
+            if rec.get("cleanup_pending") or (rec.get("state") != "finished" and not collected_quota_error):
+                pending.append(inst)
         if self.live is not None:
             done = [self.records.get(i.instance_id) or {} for i in self.instances if i not in pending]
             self.live.planned(len(self.instances), carried=len(done), carried_cost_usd=sum(float(r.get("cost_usd") or 0) for r in done))
@@ -482,6 +539,30 @@ class _Runner:
                 futures.append(pool.submit(self._one, inst))
         for f in futures:
             f.result()
+        if self.quota_pause:
+            raise ProviderQuotaPaused(self.quota_pause)
+
+    def _pause_for_quota(self, rec: dict[str, Any], event: Event | None = None) -> None:
+        with self.cond:
+            # An SSE reconnect can replay the original failure after a recharge.
+            # Only a newly observed event in this task pauses this invocation.
+            if event is not None:
+                if event.id <= rec.get("provider_quota_event_id", 0):
+                    return
+                rec["provider_quota_event_id"] = event.id
+                self._save(rec)
+            if self.quota_pause:
+                return
+            self.stopping = True
+            checkpoint = self.out / "provider-quota-pause.json"
+            evidence = {"run_id": self.s.run_id, "observed_at": datetime.now(UTC).isoformat(), "reason": QUOTA_CODE,
+                        "instance_id": rec["instance_id"], "task_id": rec.get("task_id"), "event": event.name if event else "api_error",
+                        "event_id": event.id if event else None}
+            _write_text(checkpoint, json.dumps(evidence, indent=2) + "\n")
+            self.quota_pause = (f"上游模型通道报告 {QUOTA_CODE}，已暂停新题调度。触发题 {rec['instance_id']}，Task {rec.get('task_id') or '待对账'}。"
+                                f"检查通道余额，充值且验证可用后重跑原命令续接未提交题。空补丁的额度中断题另开 run 补跑。记录见 {checkpoint}")
+            print(self.quota_pause, file=sys.stderr, flush=True)
+            self.cond.notify_all()
 
     def _release(self, iid: str, *, crashed: bool = False) -> None:
         with self.cond:
@@ -498,13 +579,20 @@ class _Runner:
         rec.update({"instance_id": iid, "repo": inst.repo})
         try:
             self._attempt(inst, rec)
+        except ProviderQuotaPaused:
+            self._release(iid)
         except Exception as err:  # noqa: BLE001 — 保存可恢复状态；未知提交必须先对账
-            if rec.get("task_id") and rec.get("state") == "submitted":
-                with contextlib.suppress(Exception):
-                    self.rt.cancel(rec["task_id"], "adapter_error")
-            rec.update({"state": "error", "error": f"{type(err).__name__}: {err}"[:1000]})
+            quota_error = isinstance(err, ApiError) and (
+                err.code == QUOTA_CODE or err.status in (403, 429) and bool(_QUOTA_ERROR.search(err.message))
+            )
             persisted = False
             try:
+                if quota_error:
+                    self._pause_for_quota(rec)
+                elif rec.get("task_id") and rec.get("state") == "submitted":
+                    with contextlib.suppress(Exception):
+                        self.rt.cancel(rec["task_id"], "adapter_error")
+                rec.update({"state": "error", "error": f"{type(err).__name__}: {err}"[:1000]})
                 self._save(rec)
                 persisted = True
             finally:
@@ -566,9 +654,7 @@ class _Runner:
         ws = self._workspace_id(inst)
         if rec.get("task_finished") and "patch" in rec and rec.get("cleanup_pending"):
             self._delete_workspace(rec, ws)
-            rec["state"] = "finished"
-            rec.pop("error", None)
-            self._save(rec)
+            self._save_collected(rec)
             return
         # Task 已经做完、花过钱时，续跑只取补丁，不重新跑。
         if not rec.get("task_finished"):
@@ -580,12 +666,18 @@ class _Runner:
             rec.update({"patch": diff["diff"], "patch_files": list(diff["files"]), "patch_error": None})
         if self.s.environment == "official" and "environment_used" not in rec:
             rec.update(self._environment_check(ws, str(rec.get("session_id") or "")))
-        rec["state"] = "finished"
-        rec.pop("error", None)
-        self._save(rec)
+        self._save_collected(rec)
         if not self.s.keep_workspaces:
             with contextlib.suppress(ApiError):
                 self._delete_workspace(rec, ws)
+
+    def _save_collected(self, rec: dict[str, Any]) -> None:
+        if rec.get("stop_reason") == QUOTA_CODE and not rec.get("patch"):
+            rec.update(state="error", error=QUOTA_CODE)
+        else:
+            rec["state"] = "finished"
+            rec.pop("error", None)
+        self._save(rec)
 
     def _environment_check(self, ws: str, session_id: str) -> dict[str, Any]:
         """EV-TB（docs/plan/ev-tb-0of5-2026-11-04.md）：这个工作区的沙箱用上项目环境的镜像没有。配额满、构建中或构建失败时
@@ -686,11 +778,12 @@ class _Runner:
         # Generic HTTP 4xx is insufficient: task-service can return an error
         # after InsertTask/SignalWithStart. Only these fixed input checks are
         # known to precede insertion (server.go submit's initial switch).
+        if isinstance(exc, PreSubmissionError):
+            return True
         if not isinstance(exc, ApiError):
             return False
         return (exc.status == 401 and exc.code == "unauthenticated"
                 or exc.status == 403 and exc.code == "permission_denied" and exc.message == "tenant model budget exceeded"
-                or exc.status == 503 and exc.code == "sandbox_unavailable"
                 or exc.status == 400 and exc.code == "invalid_argument" and exc.message in (
                     "命令不能为空", "命令过长", "消息太长", "session_id 格式不对",
                     "client_request_id 必须是 1 到 128 个可打印字符"))
@@ -718,6 +811,10 @@ class _Runner:
             extra = {"network": network} if network is not None else {}
 
             def submit() -> dict[str, Any]:
+                if self.quota_pause and rec.get("submission_state") != "pending":
+                    # Workspace prepared before another thread detected the outage.
+                    # Its persisted identity lets a later invocation resume it.
+                    raise ProviderQuotaPaused(self.quota_pause)
                 rec.update(state="submitting", submission_state="pending", submission_attempts=int(rec.get("submission_attempts") or 0) + 1)
                 self._save(rec)  # durable intent before the request can launch a Task
                 try:
@@ -780,7 +877,11 @@ class _Runner:
                     continue  # 续读时重推的
                 last, fresh = ev.id, True
                 self._observe_event(rec, ev)
+                if _quota_event(ev):
+                    self._pause_for_quota(rec, ev)
                 if ev.name == "task_finished":
+                    if rec.get("provider_quota_event_id") and _status(ev.value.get("status")) in ("aborted", "failed") and not stop_reason:
+                        stop_reason = QUOTA_CODE
                     rec.update({"verdicts": dict(verdicts), "auto_replies": replies, "stop_reason": stop_reason})
                     return ev.value
                 if ev.name == "verdict":

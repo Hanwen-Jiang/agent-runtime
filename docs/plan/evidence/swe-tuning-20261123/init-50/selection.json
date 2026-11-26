@@ -1,0 +1,15 @@
+{
+  "dataset_name": "SWE-bench/SWE-bench_Verified",
+  "dataset_split": "test",
+  "population_count": 500,
+  "instances_sha256": "2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52",
+  "cohort_file_sha256": "372512ce89782d3e439db13a3f084b70c9b009260f180ce39c1a4a4b124d3b72",
+  "seed": 0,
+  "limit": 50,
+  "stratified": true,
+  "exclude_repos": [
+    "psf/requests"
+  ],
+  "source_run": "t18-rev19",
+  "method_description": "Exact ordered instance_ids frozen in historical t18-rev19; stratified by repository, seed=0 after excluding psf/requests."
+}

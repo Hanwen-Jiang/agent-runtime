@@ -1,0 +1,308 @@
+{
+  "at": "2026-11-23T03:29:03.868826+00:00",
+  "runs": [
+    {
+      "run_id": "init50-gpt62-tuned-20261123",
+      "selection_sha256": "372512ce89782d3e439db13a3f084b70c9b009260f180ce39c1a4a4b124d3b72",
+      "report_sha256": "1de52432f7f23c8ccf72997a1defec4480fd204b86e98b023cbcb01c3410b093",
+      "official_grade_sha256": "c16b8ec48403a6f147ba1ff0bdddfc173900b5615be76cdad96ef76bc133561a",
+      "predictions_sha256": "184f4845d88bddc2dc4a622e45df5617e73b9d2f9b66c97770f189eb90699d24",
+      "unique_tasks": 50,
+      "production_docker_receipts": 50,
+      "legacy_main_receipts": [
+        "astropy__astropy-8707"
+      ],
+      "reviewed_official_annotations": {
+        "pytest-dev__pytest-7205": "no_tests_collected"
+      },
+      "resolved": 43,
+      "unresolved": 7,
+      "completed": 50,
+      "empty_patch_ids": []
+    },
+    {
+      "run_id": "mini50-tuned-c-gpt62-20261123",
+      "selection_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+      "report_sha256": "3a04f65ab58d8c9688568630cda19fb97581775fe171477331b8c68cb59d70fb",
+      "official_grade_sha256": "84dc16265d64818387d64e13532c7ce3ba46ecb58bacbaeac24853d1d24cda1c",
+      "predictions_sha256": "e6c9f02ef2ea94f067754153fc961f269933d30463b2ed0c07f768777fad1168",
+      "unique_tasks": 50,
+      "production_docker_receipts": 50,
+      "legacy_main_receipts": [
+        "django__django-11790",
+        "django__django-12050",
+        "django__django-12262"
+      ],
+      "reviewed_official_annotations": {},
+      "resolved": 34,
+      "unresolved": 15,
+      "completed": 49,
+      "empty_patch_ids": [
+        "sphinx-doc__sphinx-9461"
+      ]
+    }
+  ],
+  "quota_receipt_sha256": "bf263d48e81c36c2d235a88e37683f5e4d8c61cd792dd0fad6d19092d621ffce",
+  "cache_receipt_sha256": "1fa239f0d0184dda75d9124df38775eb22341e2ff6a2485d28115fed570d3749",
+  "before": {
+    "swe50-1123-c-api": {
+      "uid": "783a522f-5003-44c8-b885-fd81546149b1",
+      "generation": 1,
+      "replicas": 1,
+      "ready": 1,
+      "owner": "swe50-1123",
+      "spec_sha256": "800bc26a7596be4fbbb09b4362fb4e199de20609ac45aadccddd97eeb4ce23a0"
+    },
+    "swe50-1123-c-task": {
+      "uid": "33b1dcff-b548-40d3-ae4e-e3fd304846c3",
+      "generation": 1,
+      "replicas": 1,
+      "ready": 1,
+      "owner": "swe50-1123",
+      "spec_sha256": "417088d208941f249ab8a6467a146d2f1436c30046a96e1b0cdb7ac5a08fc27b"
+    },
+    "swe50-1123-c-workspace": {
+      "uid": "d1760e5b-4f4b-46e5-b848-2460d63ea643",
+      "generation": 1,
+      "replicas": 1,
+      "ready": 1,
+      "owner": "swe50-1123",
+      "spec_sha256": "effee8316a25d7491c31e96dfb960f0e0819c9a26d30e9341dbcdf250cf05738"
+    },
+    "swe50-1123-c-decision": {
+      "uid": "e1845047-4ee6-4bb4-a157-24049275fbac",
+      "generation": 1,
+      "replicas": 1,
+      "ready": 1,
+      "owner": "swe50-1123",
+      "spec_sha256": "3939f813259628ae2469bec34c700928ff7bb55baa749b62430c769615375a6e"
+    },
+    "swe50-1123-c-model": {
+      "uid": "ac592490-aac8-44af-a46a-0338ba4ecd2f",
+      "generation": 1,
+      "replicas": 1,
+      "ready": 1,
+      "owner": "swe50-1123",
+      "spec_sha256": "85b3fde181d3d040904ffb044164f818dd1f9f9ba6b30e0c4c1dbe2c231f3d6d"
+    },
+    "swe50-1123-c-program": {
+      "uid": "f4f3c21b-0c57-4f60-853d-da4fd8440c3a",
+      "generation": 1,
+      "replicas": 1,
+      "ready": 1,
+      "owner": "swe50-1123",
+      "spec_sha256": "f62d4c8ded21f83ac997f79e615489af1f35fe64c103066a72f39a09b171d070"
+    },
+    "swe50-1123-sandbox": {
+      "uid": "e03813b8-ee53-40c3-a033-57f225e6e500",
+      "generation": 1,
+      "replicas": 1,
+      "ready": 1,
+      "owner": "swe50-1123",
+      "spec_sha256": "e5dfebcb157961c6a612c4198264c8b397df70a46ca7ab7b8891771eaad5a94a"
+    }
+  },
+  "after": {
+    "swe50-1123-c-api": {
+      "uid": "783a522f-5003-44c8-b885-fd81546149b1",
+      "generation": 2,
+      "replicas": 0,
+      "ready": 0,
+      "owner": "swe50-1123",
+      "spec_sha256": "ec82d51d2365c7367c74969ba601824802a3cc85a22ab9f1d683e3908abd35c8"
+    },
+    "swe50-1123-c-task": {
+      "uid": "33b1dcff-b548-40d3-ae4e-e3fd304846c3",
+      "generation": 2,
+      "replicas": 0,
+      "ready": 0,
+      "owner": "swe50-1123",
+      "spec_sha256": "572e4668f2244bdc8735f169271f042e37f653ca68312f8df3607b9882cd0690"
+    },
+    "swe50-1123-c-workspace": {
+      "uid": "d1760e5b-4f4b-46e5-b848-2460d63ea643",
+      "generation": 2,
+      "replicas": 0,
+      "ready": 0,
+      "owner": "swe50-1123",
+      "spec_sha256": "5077b0b3490d410dc38cdcf5e70804bbd3cd192624c8ad28559c0bdc753bf745"
+    },
+    "swe50-1123-c-decision": {
+      "uid": "e1845047-4ee6-4bb4-a157-24049275fbac",
+      "generation": 2,
+      "replicas": 0,
+      "ready": 0,
+      "owner": "swe50-1123",
+      "spec_sha256": "6877e6e614d54cd92b55bc1dc971813a4a9a58508e8de8b6b1f6d1f27a2276b7"
+    },
+    "swe50-1123-c-model": {
+      "uid": "ac592490-aac8-44af-a46a-0338ba4ecd2f",
+      "generation": 2,
+      "replicas": 0,
+      "ready": 0,
+      "owner": "swe50-1123",
+      "spec_sha256": "b51aa9b5d86821d8c4a67c243cfbac8d3a3b3a9ea15367d5118ba9453a97186c"
+    },
+    "swe50-1123-c-program": {
+      "uid": "f4f3c21b-0c57-4f60-853d-da4fd8440c3a",
+      "generation": 2,
+      "replicas": 0,
+      "ready": 0,
+      "owner": "swe50-1123",
+      "spec_sha256": "4bf4b1d93f73d74ade1d6169a1f42374d54f8a4c53b080dbf73fe8d3c48c132f"
+    },
+    "swe50-1123-sandbox": {
+      "uid": "e03813b8-ee53-40c3-a033-57f225e6e500",
+      "generation": 2,
+      "replicas": 0,
+      "ready": 0,
+      "owner": "swe50-1123",
+      "spec_sha256": "d0e9fe5688a2a86c9edfc3affdfb3cb8a8dbc3f0d4274b16f5ea77cbab06b70c"
+    }
+  },
+  "protected": {
+    "mini50-1121-a-api": {
+      "uid": "a3964820-a268-4dad-a1b5-8fbe0e77934f",
+      "generation": 3,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "90256f3c45126209ad166ef2a85ef9694a5a10b429006f65519d0586bb7969a9"
+    },
+    "mini50-1121-a-task": {
+      "uid": "1c7264b6-2acb-483b-bb69-3dddf0160980",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "35c30f9b555658fdb80b8d86c5d14e94b52895b48e960c15d39d661200f6277a"
+    },
+    "mini50-1121-a-workspace": {
+      "uid": "3c17e3ab-25b7-41c5-9601-fb0d1b445e1c",
+      "generation": 5,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "94faf3a28874fc7c1b4335a068c8b4dd7c61b47dcdf03022acca0b5ebcf67517"
+    },
+    "mini50-1121-a-decision": {
+      "uid": "c8142727-5953-432e-af9f-77feb77e7e5e",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "9032e143453f3b405eb0c745e6f20c2000088bd9ee7cac81c6127546ce68e26e"
+    },
+    "mini50-1121-a-model": {
+      "uid": "d863d803-f5ce-4fe0-92c4-ae6d01f6ef16",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "57383020704cf1657672ba465b0dfdbd455ab903878f7e990f2854c3c379ac07"
+    },
+    "mini50-1121-a-program": {
+      "uid": "61a21493-d604-45fd-bc37-b6561c3f88a0",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "fd1ae1c31855fd924f52e69b74d4a2b957ce08bf7373e149521330310fd42e1c"
+    },
+    "mini50-1121-b-api": {
+      "uid": "6db24a6e-e409-4178-8586-316d33b2bc3a",
+      "generation": 3,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "a637a05b242cc44ec240f538739563704bf9243738593166b870a19dd75d0076"
+    },
+    "mini50-1121-b-task": {
+      "uid": "a8775884-b6f1-46cc-835b-9c8301d2bb81",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "ceca033e640b126b6e606fcdb04a18033730bee71fa948d29575fb38477b8e6e"
+    },
+    "mini50-1121-b-workspace": {
+      "uid": "6f698d00-6fa9-41b0-a923-f95718683a1c",
+      "generation": 5,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "21a392ab8aa4db33dd8d7feeaa3b95c28bce5caab882c3dd1c7fc1c4cae49417"
+    },
+    "mini50-1121-b-decision": {
+      "uid": "7af3daa9-087d-46c7-b901-de7531642d2f",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "c3638eb8b3a6a5e806525ca379303470f4d48ed0d4f2aa54b4d135d91d9063da"
+    },
+    "mini50-1121-b-model": {
+      "uid": "9ad45cfe-7f69-43c2-bb6b-ce16e8525f7a",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "fa829ac0791a77cdff046e37e106e379d81ed417ecd2ed90262f8dd2dbc07e7e"
+    },
+    "mini50-1121-b-program": {
+      "uid": "71e3f9ca-7163-47e5-af53-963c5ef7f9d6",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "a60b4148b219a93f6289bcdf0b10bc1acff289ba064b706864f413a3dce5bbcd"
+    },
+    "mini50-1121-gw": {
+      "uid": "5dd67c0f-d032-466e-8792-41c2fe06a135",
+      "generation": 4,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "7bfdce48129d0fb5204782455919903ad282fd4310e5441ec3e00ef280a5652b"
+    },
+    "ar-agent-runtime-sandbox-service": {
+      "uid": "749b775e-7fb1-4ae3-be1d-cefd3e89cc13",
+      "generation": 41,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "ac99a46f1f926cd7f57abe4964f5904cf5b6de440f7b1651088ec2415529eb6b"
+    },
+    "ar-agent-runtime-model-gateway": {
+      "uid": "5d8f469c-c53b-40c7-90f8-e8a564bd71a0",
+      "generation": 36,
+      "replicas": 1,
+      "ready": 1,
+      "owner": null,
+      "spec_sha256": "eb2c70fbcc1b5e602704cdcb2914624dbeaa07744cd1b2b34da8239102609526"
+    }
+  },
+  "protected_specs_unchanged": true,
+  "kept_resources": {
+    "svc": {
+      "swe50-1123-c-api": "244acc6f-cd85-4c20-8ae4-bb08d736ad6d",
+      "swe50-1123-sandbox": "c5e8ec26-3c9e-4c6b-9c29-9207052ed635"
+    },
+    "cm": {
+      "swe50-1123-c-prompt-aaa729b987": "23b2bf40-8566-4f7b-a51f-aa03c91813b5",
+      "swe50-1123-sandbox-backends": "7f528c45-bc7f-4790-92d9-94a358001443"
+    },
+    "networkpolicy": {
+      "swe50-1123-c-api": "da1846ab-c471-4435-b748-e9b11b55cdd2",
+      "swe50-1123-sandbox": "c1fec92d-b25e-4dbd-9309-8d48a28fdebf"
+    }
+  },
+  "temporal_namespace": "ar-swe50-20261123-c",
+  "idle_workflows_before_scale": {
+    "SessionWorkflow": 100
+  },
+  "idle_workflows_after_scale": {
+    "SessionWorkflow": 100
+  },
+  "remaining_candidate_pods": 0
+}

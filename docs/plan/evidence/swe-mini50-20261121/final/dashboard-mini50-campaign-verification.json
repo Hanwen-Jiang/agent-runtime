@@ -1,0 +1,257 @@
+{
+  "checked_at": "2026-11-22T20:46:32.083Z",
+  "checked_url": "https://evals.cgent.link/results?type=runtime&trend=swebench&metric=resolved_rate&batch=mini-50#trend-swebench",
+  "campaign_url": "https://evals.cgent.link/results?q=swe-verified-mini50-20261121#run-records",
+  "deployment": {
+    "previous": "ghcr.io/agentruntime/learning:ui-mini50-campaign-de3f84972a7f",
+    "previous_config": "sha256:b09cb02dfd54ea92bdb87f096e3a76c91c684bed8061d7702604ba7278ab6994",
+    "image": "ghcr.io/agentruntime/learning:ui-mini50-campaign-e16ea0cf8fbd",
+    "image_config": "sha256:9eca077a254dbf62bba16ece67897bf6f3535ffc85ea4a0accac9c94334005ce",
+    "previous_revision": "76"
+  },
+  "bundle_sha256": "2f68a6a30c6812cc71d18be9f002f1fa863a0cfd6037b463cf41b18b4dd91119",
+  "endpoint": {
+    "checked_at": "2026-11-22T20:46:01.002485+00:00",
+    "status": "ready",
+    "errors": [],
+    "stale": false,
+    "campaign_id": "swe-verified-mini50-20261121",
+    "arm_summaries_at_capture": [
+      {
+        "arm": "a",
+        "initial_resolved": 26,
+        "regraded_resolved": 0,
+        "retry_resolved": 7,
+        "infra_resolved": 2,
+        "graded_count": 50,
+        "cumulative_resolved": 35
+      },
+      {
+        "arm": "b",
+        "initial_resolved": 27,
+        "regraded_resolved": 1,
+        "retry_resolved": 5,
+        "infra_resolved": 3,
+        "graded_count": 50,
+        "cumulative_resolved": 36
+      }
+    ],
+    "paired": {
+      "both_resolved": 33,
+      "only_a_ids": [
+        "django__django-12308",
+        "sphinx-doc__sphinx-10435"
+      ],
+      "only_b_ids": [
+        "django__django-11790",
+        "sphinx-doc__sphinx-10673",
+        "sphinx-doc__sphinx-8056"
+      ],
+      "neither_resolved": 12,
+      "both_graded": 50
+    },
+    "ignored_sources": [],
+    "ordered_ids_match_frozen_list": true,
+    "ordered_ids_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331"
+  },
+  "public_trend": {
+    "url": "https://evals.cgent.link/results?type=runtime&trend=swebench&metric=resolved_rate&batch=mini-50#trend-swebench",
+    "metric_options": [
+      {
+        "value": "resolved_rate",
+        "text": "解决率"
+      }
+    ],
+    "selected_metric": "resolved_rate",
+    "batch_options": [
+      {
+        "value": "",
+        "text": "全部批次"
+      },
+      {
+        "value": "init-50",
+        "text": "init-50 · 50 题固定批次"
+      },
+      {
+        "value": "mini-50",
+        "text": "mini-50 · 公开 Verified Mini 50"
+      }
+    ],
+    "selected_batch": "mini-50",
+    "observations": [
+      {
+        "id": "mini50-gpt62-formal-a-20261121T1900Z",
+        "runtime": "A",
+        "resolved": 35,
+        "selected": 50,
+        "graded": 50,
+        "displayed_rate": "70.0%",
+        "href": "/results?q=swe-verified-mini50-20261121#run-records"
+      },
+      {
+        "id": "mini50-gpt62-formal-b-20261121T1930Z",
+        "runtime": "B",
+        "resolved": 36,
+        "selected": 50,
+        "graded": 50,
+        "displayed_rate": "72.0%",
+        "href": "/results?q=swe-verified-mini50-20261121#run-records"
+      }
+    ],
+    "old_metric_url_normalized": true,
+    "sampling_info_buttons": 2,
+    "ordered_ids_verified_via_each_button": [
+      50,
+      50
+    ],
+    "init50_observations": [
+      "gpt55-base50",
+      "gpt55-tune1",
+      "gpt55-tune2",
+      "sol-rev18",
+      "t18-rev19"
+    ],
+    "exceptions": []
+  },
+  "public_chrome": {
+    "home_group_card": true,
+    "archive_group_title": "SWE-bench Verified Mini 50 \nⓘ",
+    "info_ids": 50,
+    "exceptions": [],
+    "queries": [
+      {
+        "query": "mini50",
+        "exact_parent_count": 1,
+        "standalone_member_rows": [],
+        "expanded_member_rows": [],
+        "sources_open": false,
+        "original_cases": 50
+      },
+      {
+        "query": "mini-50",
+        "exact_parent_count": 1,
+        "standalone_member_rows": [],
+        "expanded_member_rows": [],
+        "sources_open": false,
+        "original_cases": 50
+      },
+      {
+        "query": "mini50-quota-20261122-b",
+        "exact_parent_count": 1,
+        "standalone_member_rows": [],
+        "expanded_member_rows": [
+          "mini50-quota-20261122-b"
+        ],
+        "sources_open": true,
+        "original_cases": 50
+      },
+      {
+        "query": "swe-verified-mini50-20261121",
+        "exact_parent_count": 1,
+        "standalone_member_rows": [],
+        "expanded_member_rows": [],
+        "sources_open": false,
+        "original_cases": 50
+      },
+      {
+        "query": "(all)",
+        "exact_parent_count": 1,
+        "standalone_member_rows": [],
+        "expanded_member_rows": [],
+        "sources_open": false,
+        "original_cases": 50
+      }
+    ],
+    "completed_filter_matches_full_grading_coverage": true,
+    "campaign_visible_in_completed_filter": true,
+    "completed_arm_table": [
+      [
+        "旧版 A",
+        "35/50",
+        "70%",
+        "50/50"
+      ],
+      [
+        "候选 B",
+        "36/50",
+        "72%",
+        "50/50"
+      ]
+    ]
+  },
+  "older_run_checks": [
+    {
+      "rid": "gpt55-smoke5",
+      "summary": "swebench ⓘagent-runtime-gpt-5.5Runtime 版本评测部分判分0 / 5 题已解决 · 判分覆盖 4 / 510月31日 18:030.0%解决率$4.73",
+      "score": "0.0%"
+    },
+    {
+      "rid": "route2-20261122-fixed",
+      "summary": "swebench ⓘcandidate-fixed-routingRuntime 版本评测供应商额度中断暂无官方判定 · 判分覆盖 0 / 211月22日 20:48—暂无评分$0.02",
+      "score": "—"
+    }
+  ],
+  "independently_reconciled_official_grades": {
+    "a": {
+      "officially_graded": 50,
+      "resolved": 35,
+      "infra_report_sha256": "cbbf66fab19d10fc99465c81887fe03869b941194757d6e87bb3083c1420d1f8",
+      "stages": {
+        "initial": {
+          "official_verdicts_added": 37,
+          "resolved_added": 26
+        },
+        "quota_recovery": {
+          "official_verdicts_added": 9,
+          "resolved_added": 7
+        },
+        "infra_recovery": {
+          "official_verdicts_added": 4,
+          "resolved_added": 2
+        }
+      }
+    },
+    "b": {
+      "officially_graded": 50,
+      "resolved": 36,
+      "infra_report_sha256": "f0809eb49bc712ed765c8ee8cd085a73c4538ef98b277e46f46d581b65912c8e",
+      "stages": {
+        "initial": {
+          "official_verdicts_added": 35,
+          "resolved_added": 27
+        },
+        "original_patch_regrades": {
+          "official_verdicts_added": 2,
+          "resolved_added": 1
+        },
+        "quota_recovery": {
+          "official_verdicts_added": 10,
+          "resolved_added": 5
+        },
+        "infra_recovery": {
+          "official_verdicts_added": 3,
+          "resolved_added": 3
+        }
+      }
+    }
+  },
+  "final_infra_child": {
+    "run_id": "mini50-infra-20261123-b",
+    "official_api": {
+      "state": "finished",
+      "source": "benchmark_artifacts",
+      "graded_count": 3,
+      "selected": 3,
+      "resolved": 3,
+      "recovery_source": {
+        "parent_run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+        "arm": "b",
+        "mode": "missing_verdict_recovery"
+      },
+      "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198"
+    },
+    "summary": "swebench \nⓘ\nruntime-b-gpt-6.2-sol-infrastructure-retry\nRuntime 版本评测\n已完成\n3 / 3 题已解决 · 判分覆盖 3 / 3\n11月23日 04:12\n100.0%\n解决率\n$2.40",
+    "opened_under": "swe-verified-mini50-20261121",
+    "exceptions": []
+  }
+}

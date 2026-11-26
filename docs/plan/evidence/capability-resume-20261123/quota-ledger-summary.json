@@ -1,0 +1,56 @@
+{
+  "schema": "matrix-quota-zero-settlement-v1",
+  "tenant": "evals",
+  "margin_ms": 1000,
+  "snapshot": {
+    "snapshot_at": "2026-11-23T04:08:05.544896+00:00",
+    "database": "agentruntime",
+    "transaction_snapshot": "3608863:3608863:",
+    "timezone": "Etc/UTC"
+  },
+  "ledger_window_utc": [
+    "2026-11-23T03:56:32.141+00:00",
+    "2026-11-23T03:58:09.999+00:00"
+  ],
+  "ledger_rows": 1182,
+  "ledger_sha256": "09ea30875d7a4ccca8d15161484e0fd52f9405908dacc54ee66aeb2afdaf9c8a",
+  "ledger_query_sha256": "86eb563f4f9206b155c7a80703d01aad73c347c722cc3b8f61cde3e1ae2e839b",
+  "proof_sha256": "870573ad8f98216258ffdea86a2d09736ae2f1a9e88f9f0c51280c091dc9d6b2",
+  "runs": {
+    "capability-resume-20261123-core": {
+      "eligible": 135,
+      "candidate_quota_no_successful_count": 356,
+      "excluded_counts": {
+        "nonzero_settlement_in_expanded_tenant_window": 102,
+        "no_unambiguous_target_rpc_signature": 80,
+        "unknown_settlement_in_expanded_tenant_window": 12,
+        "signature_without_unique_reservation_in_window": 3,
+        "overlap_with_another_potentially_matching_trial": 24
+      },
+      "results_sha256": "ba2737b19233eeeb766ce141b36cd0ac6168537e87ada7a729fdff841ac1a8bf",
+      "run_lock_sha256": "05c4f84d77af3fa5a39d0d5e9d300589bf3a417c7b5e792d3eedf77162d73395"
+    },
+    "capability-resume-20261123-transform": {
+      "eligible": 289,
+      "candidate_quota_no_successful_count": 396,
+      "excluded_counts": {
+        "nonzero_settlement_in_expanded_tenant_window": 86,
+        "signature_without_unique_reservation_in_window": 21
+      },
+      "results_sha256": "b2cdafc2435a02cfa925cdf8e0098367b16489dee7e3e65f6b5e13c82682205d",
+      "run_lock_sha256": "76b84c8ddd91836eb2c08df72c46a879339bd410c6fb5a3958eee165a7d27474"
+    },
+    "capability-resume-20261123-judge-v2": {
+      "eligible": 0,
+      "candidate_quota_no_successful_count": 370,
+      "excluded_counts": {
+        "nonzero_settlement_in_expanded_tenant_window": 62,
+        "signature_without_unique_reservation_in_window": 289,
+        "overlap_with_another_potentially_matching_trial": 1,
+        "unknown_settlement_in_expanded_tenant_window": 18
+      },
+      "results_sha256": "917d9f77abe28a61a3e7f309a6706fb41d073d25556de8d4cbf8b0d2f2b9d6cf",
+      "run_lock_sha256": "6e147fd93a173b79a94ba1c6e28228f07a01e0141880209306a7f1aeb1094716"
+    }
+  }
+}

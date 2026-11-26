@@ -1,0 +1,30 @@
+{
+  "name": "capability-resume-20261123-judge-v2",
+  "task_family": "general.unclassified",
+  "n": 40,
+  "r": 3,
+  "seed": 0,
+  "concurrency": 7,
+  "item_usd_limit": 8.0,
+  "cells": [
+    {
+      "role": "judge",
+      "tier": "medium",
+      "evals": [
+        "s10",
+        "judgebench",
+        {
+          "eval": "rewardbench2",
+          "options": {
+            "source": "/opt/evals/deployments/capability-resume-20261123/judge/rewardbench2-reviewed.jsonl"
+          }
+        }
+      ],
+      "candidates": [
+        "a6api/claude-opus-5-5@2026-10",
+        "a6api/claude-fable-5-1@2026-11",
+        "a6api/gpt-6-astra@2026-11"
+      ]
+    }
+  ]
+}

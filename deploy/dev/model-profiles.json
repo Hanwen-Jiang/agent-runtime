@@ -367,6 +367,48 @@
       "constraints": {"context_window": 1000000, "max_output": 131072},
       "freshness": {"price_at": "2026-11-03"},
       "released_at": "2026-08-26"
+    },
+    {
+      "id": "a6api/gemini-4-carbon@2026-11",
+      "vendor": "google",
+      "model": "gemini-4-carbon",
+      "class": "strong",
+      "tiers": [
+        {"name": "medium", "effort": "medium", "thinking_budget": 8192},
+        {"name": "high", "effort": "high", "thinking_budget": 32768}
+      ],
+      "capabilities": ["generate", "structured", "tools", "stream"],
+      "cost": {"in_per_m": 2.0, "out_per_m": 10.0, "cache_read_per_m": 0.1},
+      "constraints": {"context_window": 1048576, "max_output": 32768},
+      "freshness": {"price_at": "2026-11-23"},
+      "released_at": "2026-11-10"
+    },
+    {
+      "id": "a6api/gemini-4-hydrogen@2026-11",
+      "vendor": "google",
+      "model": "gemini-4-hydrogen",
+      "class": "mid",
+      "tiers": [{"name": "low", "effort": "", "thinking_budget": 0}],
+      "capabilities": ["generate", "structured", "tools", "stream"],
+      "cost": {"in_per_m": 1.5, "out_per_m": 7.5, "cache_read_per_m": 0.075},
+      "constraints": {"context_window": 1048576, "max_output": 65536},
+      "freshness": {"price_at": "2026-11-23"},
+      "released_at": "2026-11-12"
+    },
+    {
+      "id": "a6api/gemini-4-neon@2026-11",
+      "vendor": "google",
+      "model": "gemini-4-neon",
+      "class": "strong",
+      "tiers": [
+        {"name": "medium", "effort": "medium", "thinking_budget": 8192},
+        {"name": "high", "effort": "high", "thinking_budget": 32768}
+      ],
+      "capabilities": ["generate", "structured", "tools", "stream"],
+      "cost": {"in_per_m": 3.0, "out_per_m": 15.0, "cache_read_per_m": 0.15},
+      "constraints": {"context_window": 1048576, "max_output": 65536},
+      "freshness": {"price_at": "2026-11-23"},
+      "released_at": "2026-11-18"
     }
   ]
 }

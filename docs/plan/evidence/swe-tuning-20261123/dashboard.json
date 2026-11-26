@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-11-23T03:17:22.773Z",
+  "init-50": {
+    "url": "https://evals.cgent.link/results?type=runtime&trend=swebench&metric=resolved_rate&batch=init-50#trend-swebench",
+    "rid": "init50-gpt62-tuned-20261123",
+    "observations": [
+      "gpt55-base50",
+      "gpt55-tune1",
+      "gpt55-tune2",
+      "sol-rev18",
+      "t18-rev19",
+      "init50-gpt62-tuned-20261123"
+    ],
+    "case_ids_match": true,
+    "coverage": 49,
+    "solved": 43,
+    "status": "partial",
+    "displayed": "runtime-c-gpt-6.2-sol-fixed · init50-gpt62-tuned-20261123init-5011月23日 04:5250 ⓘ官方判分覆盖 49/5086.0%"
+  },
+  "mini-50": {
+    "url": "https://evals.cgent.link/results?type=runtime&trend=swebench&metric=resolved_rate&batch=mini-50#trend-swebench",
+    "rid": "mini50-tuned-c-gpt62-20261123",
+    "observations": [
+      "mini50-gpt62-formal-a-20261121T1900Z",
+      "mini50-gpt62-formal-b-20261121T1930Z",
+      "mini50-tuned-c-gpt62-20261123"
+    ],
+    "case_ids_match": true,
+    "coverage": 49,
+    "solved": 34,
+    "status": "partial",
+    "displayed": "runtime-c-gpt-6.2-sol-fixed · mini50-tuned-c-gpt62-20261123mini-5011月23日 04:5250 ⓘ官方判分覆盖 49/5068.0%"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "plan": "round1",
+  "source_sha256": "2afc10fdce46423d75655ed78f59705585f0f686686946db27fd062d8de577a4",
+  "all_observed": 5742,
+  "observed_base_stage": 5417,
+  "sample_unit": "attempt in archived receipt sequence, not a model call",
+  "available": {
+    "attempts": 5417,
+    "roles": 4,
+    "lanes": 57,
+    "lanes_with_valid_pin": 53,
+    "valid_pinned_attempts": 4387,
+    "reported_cost_usd": 78.715845,
+    "explicitly_unknown_cost_records": 0,
+    "missing_cost_known_field": 5417
+  },
+  "prefixes": {
+    "100": {
+      "sequential_record_order": {
+        "attempts": 100,
+        "roles": 1,
+        "lanes": 2,
+        "lanes_with_valid_pin": 2,
+        "valid_pinned_attempts": 86,
+        "reported_cost_usd": 4.547441,
+        "explicitly_unknown_cost_records": 0,
+        "missing_cost_known_field": 100
+      },
+      "round_robin": {
+        "attempts": 100,
+        "roles": 4,
+        "lanes": 57,
+        "lanes_with_valid_pin": 50,
+        "valid_pinned_attempts": 88,
+        "reported_cost_usd": 2.052994,
+        "explicitly_unknown_cost_records": 0,
+        "missing_cost_known_field": 100
+      }
+    },
+    "500": {
+      "sequential_record_order": {
+        "attempts": 500,
+        "roles": 1,
+        "lanes": 7,
+        "lanes_with_valid_pin": 7,
+        "valid_pinned_attempts": 422,
+        "reported_cost_usd": 15.655669,
+        "explicitly_unknown_cost_records": 0,
+        "missing_cost_known_field": 500
+      },
+      "round_robin": {
+        "attempts": 500,
+        "roles": 4,
+        "lanes": 57,
+        "lanes_with_valid_pin": 50,
+        "valid_pinned_attempts": 414,
+        "reported_cost_usd": 10.723216,
+        "explicitly_unknown_cost_records": 0,
+        "missing_cost_known_field": 500
+      }
+    },
+    "1000": {
+      "sequential_record_order": {
+        "attempts": 1000,
+        "roles": 2,
+        "lanes": 15,
+        "lanes_with_valid_pin": 14,
+        "valid_pinned_attempts": 822,
+        "reported_cost_usd": 34.827601,
+        "explicitly_unknown_cost_records": 0,
+        "missing_cost_known_field": 1000
+      },
+      "round_robin": {
+        "attempts": 1000,
+        "roles": 4,
+        "lanes": 57,
+        "lanes_with_valid_pin": 51,
+        "valid_pinned_attempts": 842,
+        "reported_cost_usd": 25.273386,
+        "explicitly_unknown_cost_records": 0,
+        "missing_cost_known_field": 1000
+      }
+    }
+  }
+}

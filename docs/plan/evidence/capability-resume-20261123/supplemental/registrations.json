@@ -1,0 +1,32 @@
+{
+  "capability-resume-20261123-core": {
+    "parent_lock_sha256": "05c4f84d77af3fa5a39d0d5e9d300589bf3a417c7b5e792d3eedf77162d73395",
+    "original_protocol_sha256": "685877a1b01cf5bcfbecd1fbf47ce7ce11fd747aa0b703d467424239bf897fad",
+    "stopped_results_sha256": "5d85b15536f7df64697a41f0f53101aa042b12af09ed935166659019a5d4a3eb",
+    "original_separate_slots": 236,
+    "additional_stopped_slots": 12,
+    "execution_contract": "Run one preassigned separate attempt per unresolved slot. Preserve all previous records and costs. Accept the disposition of that attempt regardless of correctness; publish raw errors separately. No repeat-until-pass.",
+    "total": 248,
+    "manifest_sha256": "79659c292af3e42c20f4fdd61b96ed68518baa30112fec42fc7ec09d075f615b"
+  },
+  "capability-resume-20261123-judge-v2": {
+    "parent_lock_sha256": "6e147fd93a173b79a94ba1c6e28228f07a01e0141880209306a7f1aeb1094716",
+    "original_protocol_sha256": "d92958430dc794e6e868d090511aaf6012c0d46fed0d744480994f5d0c125b6a",
+    "stopped_results_sha256": "383b8013acb0ed72dce635c1d2b5cb6d29c12f385f6bba4cf49f4dbbffff8348",
+    "original_separate_slots": 381,
+    "additional_stopped_slots": 7,
+    "execution_contract": "Run one preassigned separate attempt per unresolved slot. Preserve all previous records and costs. Accept the disposition of that attempt regardless of correctness; publish raw errors separately. No repeat-until-pass.",
+    "total": 388,
+    "manifest_sha256": "2740978d5ae2481a981b099215def1fc9b88a90b3bbfea4632965a6ce2a5155c"
+  },
+  "capability-resume-20261123-transform": {
+    "parent_lock_sha256": "76b84c8ddd91836eb2c08df72c46a879339bd410c6fb5a3958eee165a7d27474",
+    "original_protocol_sha256": "e337dd3d840b306624cdc313293850334d7bc13e1bb04cf9949d3761a8500e04",
+    "stopped_results_sha256": "9a4f934fb70d5f1aac70d7e7031ba4914e901f78fcf589f92131d846f32cac84",
+    "original_separate_slots": 111,
+    "additional_stopped_slots": 8,
+    "execution_contract": "Run one preassigned separate attempt per unresolved slot. Preserve all previous records and costs. Accept the disposition of that attempt regardless of correctness; publish raw errors separately. No repeat-until-pass.",
+    "total": 119,
+    "manifest_sha256": "a4189297b6da8aba28e5831205f230d21e9f0d9e782ba6249bcc9185fba5b7ad"
+  }
+}

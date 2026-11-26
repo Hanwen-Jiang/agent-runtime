@@ -3,6 +3,7 @@ package broker
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -683,11 +684,6 @@ func (d *DiffResult) setData(data []byte, chunk DiffChunk) error {
 	return nil
 }
 
-const (
-	diffFile  = ".git/agentruntime-diff.patch"
-	diffIndex = ".git/agentruntime-diff.index"
-)
-
 func (b *Broker) withGit(ctx context.Context, tenant *commonv1.TenantContext, workspaceID, runtime string, fn func(lease *Lease) error) error {
 	lease, kept, err := b.gitLease(ctx, tenant, workspaceID, runtime)
 	if err != nil {
@@ -722,6 +718,16 @@ func (b *Broker) Diff(ctx context.Context, tenant *commonv1.TenantContext, works
 			return err
 		}
 		out.Head, out.Branch = head, branch
+		// Mounted collectors share .git. An interrupted Git process can leave an
+		// index lock behind, and concurrent requests must not share a patch file.
+		prefix := ".git/agentruntime-diff-" + rand.Text()
+		diffIndex, diffFile := prefix+".index", prefix+".patch"
+		defer func() {
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			// Use Git's shell on Windows as well as Linux. Only request-owned names are passed.
+			_, _ = b.git(cleanup, lease, []string{"-c", "alias.ar-diff-clean=!rm -f --", "ar-diff-clean", diffIndex, diffIndex + ".lock", diffFile}, nil)
+		}()
 		index := map[string]string{"GIT_INDEX_FILE": diffIndex}
 		readTree := []string{"read-tree", "--empty"}
 		if head != "" {

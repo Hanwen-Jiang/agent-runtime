@@ -1,0 +1,194 @@
+{
+  "run_id": "mini50-infra-20261123-b",
+  "protocol": {
+    "mode": "missing_verdict_recovery",
+    "arm": "b",
+    "ids": [
+      "sphinx-doc__sphinx-8056",
+      "sphinx-doc__sphinx-9281",
+      "sphinx-doc__sphinx-9367"
+    ],
+    "profile": "a6api/gpt-6.2-sol@2026-11",
+    "tier": "strong@medium",
+    "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+    "original_tasks": {
+      "sphinx-doc__sphinx-8056": null,
+      "sphinx-doc__sphinx-9281": null,
+      "sphinx-doc__sphinx-9367": null
+    },
+    "price_scope": "Gateway reported model cost",
+    "usd_per_task": 3,
+    "timeout_seconds": 3600,
+    "concurrency": 1,
+    "prewarm_sha256": "0be37aff3ab29887836eedd3f6e340a69b3c0be1e2cda8ccef402f4f96bf75ee"
+  },
+  "records": {
+    "sphinx-doc__sphinx-8056": {
+      "task_id": "tsk_01M82F9C2YFXR9XKVG1B2YFKC9",
+      "status": "aborted",
+      "stop_reason": null,
+      "final_verdict": "abort",
+      "environment_used": true,
+      "rounds": 4,
+      "cost_usd": 1.600423,
+      "head": "f78d49a7d65a0214ebc102087d0d32ac95db84b2",
+      "patch_error": null,
+      "patch_bytes": 3517,
+      "patch_sha256": "eda272185f512b83acc3998294ca13d3a0888ec5996f406dce8d48f31f4e1e3e",
+      "image": "127.0.0.1:30500/envs/swebench/env@sha256:f10d6b82099a1e6de5008aaae1ff055fcbfaecf7d9c84c71703e3628b3522599",
+      "record_sha256": "61ee0d061819f7cbe94d51c4c5c22cdd3296b8c8ef63e5035532a2294fd05bf8",
+      "earlier_task": null,
+      "official_details": {
+        "report_sha256": "3e0330a47dcb351e8275531c032569dfc8a89f61820c23659f748876d30b0251",
+        "resolved": true,
+        "patch_applied": true,
+        "tests": {
+          "FAIL_TO_PASS": {
+            "success": 1,
+            "failure": 0
+          },
+          "PASS_TO_PASS": {
+            "success": 40,
+            "failure": 0
+          }
+        }
+      }
+    },
+    "sphinx-doc__sphinx-9281": {
+      "task_id": "tsk_01M82ER7V07A1D4WN6VAMTRVT5",
+      "status": "done",
+      "stop_reason": null,
+      "final_verdict": "done",
+      "environment_used": true,
+      "rounds": 1,
+      "cost_usd": 0.458124,
+      "head": "1212d1ac350e2f34e1431f5c91fc35071e1c15be",
+      "patch_error": null,
+      "patch_bytes": 1072,
+      "patch_sha256": "daa3099e5e7e51fbb0672bc8ab7b491bb26f5e4bd015fe634105d6ca5e2ab90d",
+      "image": "127.0.0.1:30500/envs/swebench/env@sha256:8c482148e0a99225a144a53cfdc27d04bf9efd2314eeb6a9b4c79a9dc4001863",
+      "record_sha256": "002f18a40ba48316e2c6c709eeb7702d5608a5bda6e298d1cb2b5f81d7b3824d",
+      "earlier_task": null,
+      "official_details": {
+        "report_sha256": "aa6d62a7c5541c7c24fcff59ed0736efd410008d6ef8367ddacacb41c24dc357",
+        "resolved": true,
+        "patch_applied": true,
+        "tests": {
+          "FAIL_TO_PASS": {
+            "success": 1,
+            "failure": 0
+          },
+          "PASS_TO_PASS": {
+            "success": 38,
+            "failure": 0
+          }
+        }
+      }
+    },
+    "sphinx-doc__sphinx-9367": {
+      "task_id": "tsk_01M82EYT4MRHAF7HP34HHZMEJZ",
+      "status": "done",
+      "stop_reason": null,
+      "final_verdict": "done",
+      "environment_used": true,
+      "rounds": 3,
+      "cost_usd": 0.337083,
+      "head": "6c158806c22f0e66254b05e91a7bbab2fb05f847",
+      "patch_error": null,
+      "patch_bytes": 568,
+      "patch_sha256": "3b07c6084498d1ff0cf017f43376489832e25c352ed17d50314867561637f7ce",
+      "image": "127.0.0.1:30500/envs/swebench/env@sha256:0226d2aa41d2d04c4dc4c4e1a71d72378c2b90a605d4d6565be2bf75b3d19a04",
+      "record_sha256": "9c108082eaf793c2b7f029f6bfe94cf7162f36d19adc0f9e07c831548166ee92",
+      "earlier_task": null,
+      "official_details": {
+        "report_sha256": "4efdf02de7eda86aa197df0036656fbb52f020c2fc8d9332b31c16091b6672eb",
+        "resolved": true,
+        "patch_applied": true,
+        "tests": {
+          "FAIL_TO_PASS": {
+            "success": 1,
+            "failure": 0
+          },
+          "PASS_TO_PASS": {
+            "success": 25,
+            "failure": 0
+          }
+        }
+      }
+    }
+  },
+  "official_grader": {
+    "total_instances": 3,
+    "submitted_instances": 3,
+    "completed_instances": 3,
+    "resolved_instances": 3,
+    "unresolved_instances": 0,
+    "infra_failure_instances": 0,
+    "ambiguous_failure_instances": 0,
+    "empty_patch_instances": 0,
+    "error_instances": 0,
+    "completed_ids": [
+      "sphinx-doc__sphinx-8056",
+      "sphinx-doc__sphinx-9281",
+      "sphinx-doc__sphinx-9367"
+    ],
+    "incomplete_ids": [],
+    "empty_patch_ids": [],
+    "submitted_ids": [
+      "sphinx-doc__sphinx-8056",
+      "sphinx-doc__sphinx-9281",
+      "sphinx-doc__sphinx-9367"
+    ],
+    "resolved_ids": [
+      "sphinx-doc__sphinx-8056",
+      "sphinx-doc__sphinx-9281",
+      "sphinx-doc__sphinx-9367"
+    ],
+    "unresolved_ids": [],
+    "infra_failure_ids": [],
+    "ambiguous_failure_ids": [],
+    "failure_reasons": {},
+    "error_ids": [],
+    "schema_version": 2,
+    "unstopped_instances": 0,
+    "unstopped_containers": [],
+    "unremoved_images": [
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-8056:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9281:latest",
+      "swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9367:latest"
+    ]
+  },
+  "reported_cost_usd": 2.39563,
+  "ledger": [
+    {
+      "task_id": "tsk_01M82ER7V07A1D4WN6VAMTRVT5",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 13,
+      "settled": 13,
+      "cost_usd_micros": 458124
+    },
+    {
+      "task_id": "tsk_01M82EYT4MRHAF7HP34HHZMEJZ",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 19,
+      "settled": 19,
+      "cost_usd_micros": 337083
+    },
+    {
+      "task_id": "tsk_01M82F9C2YFXR9XKVG1B2YFKC9",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "reservations": 45,
+      "settled": 45,
+      "cost_usd_micros": 1600423
+    }
+  ],
+  "source_sha256": {
+    "grader": "37a44cdf0d5c1f8beb71b6ef5c97e6d52c5e73164224de13d894d159bcc5a950",
+    "protocol": "4f7eaf96f06c875dfa6eb8071a761f8584aa0fdddf9144d258526ab73b3c68d3",
+    "predictions": "41dae2a082620091d093f91b1dec60b4711287a81cc49d395a6237902b84908f",
+    "report": "f0809eb49bc712ed765c8ee8cd085a73c4538ef98b277e46f46d581b65912c8e"
+  }
+}

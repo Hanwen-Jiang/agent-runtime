@@ -86,8 +86,6 @@ BINARY_PROBE = 8192
 MAX_LIST = 1000
 DEFAULT_LOG, MAX_LOG = 30, 200
 MAX_INITIAL_FILES, MAX_INITIAL_BYTES = 200, 1 << 20
-DIFF_FILE = ".git/agentruntime-diff.patch"
-DIFF_INDEX = ".git/agentruntime-diff.index"
 DEFAULT_AUTHOR = ("Agent Runtime", "agent-runtime@localhost")
 # 不存在的 hooks 目录：仓库带的、沙箱里写进去的 hooks 都不跑。
 NO_HOOKS = "/dev/null"
@@ -507,24 +505,36 @@ class WorkspaceOperations:
             check_rev(base)
         renames = ["--find-renames"] if args.get("find_renames") else ["--no-renames"]
         await self._current(inp.tenant.tenant_id, inp.workspace_id)
-        async with self._lease(inp, writable=False) as lease:
+        async with self._lease(inp, writable=False) as lease, self._diff_files(lease) as (index_file, patch_file):
             head, branch = await self._head(lease), await self._branch(lease)
             # 临时的 index：HEAD 加上工作区里的全部改动（含未跟踪的新文件），不动工作区自己的 index。
-            index = {"GIT_INDEX_FILE": DIFF_INDEX}
+            index = {"GIT_INDEX_FILE": index_file}
             await self._git(lease, ["read-tree", *(["HEAD"] if head else ["--empty"])], extra=index, what="准备 diff")
             await self._git(lease, ["add", "-A"], extra=index, what="准备 diff")
             target = [base, "--"] if base else (["HEAD", "--"] if head else [])
             common = ["diff", "--cached", "--no-color", "--no-ext-diff", *renames]
-            await self._git(lease, [*common, "--binary", f"--output={DIFF_FILE}", *target], extra=index, what="diff")
+            await self._git(lease, [*common, "--binary", f"--output={patch_file}", *target], extra=index, what="diff")
             numstat = await self._git(lease, [*common, "--numstat", "-z", *target], extra=index, what="diff")
             with timing.phase("command"):
-                data = await lease.box.read_file(lease.env_id, multirepo.path(DIFF_FILE))
+                data = await lease.box.read_file(lease.env_id, multirepo.path(patch_file))
             timing.add_bytes("sandbox", "in", len(data))
         stats = parse_numstat(numstat.stdout.decode("utf-8", errors="replace"))
         return {
             **diff_payload(data, args), "files": [s["path"] for s in stats], "stats": stats,
             "head": head, "branch": branch,
         }
+
+    @contextlib.asynccontextmanager
+    async def _diff_files(self, lease: Lease) -> AsyncIterator[tuple[str, str]]:
+        prefix = ".git/agentruntime-diff-" + secrets.token_hex(16)
+        index, patch = prefix + ".index", prefix + ".patch"
+        try:
+            yield index, patch
+        finally:
+            # _git uses the selected repository and provides a shell on Windows.
+            with contextlib.suppress(ProviderError, OSError):
+                await self._git(lease, ["-c", "alias.ar-diff-clean=!rm -f --", "ar-diff-clean",
+                                        index, index + ".lock", patch], what="清理临时 diff 文件", check=False)
 
     async def list_files(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:
         await self._record(inp)

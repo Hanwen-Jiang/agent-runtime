@@ -1,0 +1,98 @@
+{
+  "id": "engineering-20261123-rag-lookup",
+  "kind": "engineering-comparison",
+  "evaluation_type": "ablation",
+  "evaluation_scope": "component",
+  "title_zh": "代码导航检索 · 符号召回",
+  "title_en": "Code navigation retrieval",
+  "baseline_label": "仅重排 · Rerank",
+  "candidate_label": "符号召回 · Symbol lookup",
+  "evaluated_on": "2026-11-23",
+  "sample_count": 33,
+  "completed_count": 33,
+  "collection_complete": true,
+  "baseline_completed": 33,
+  "candidate_completed": 33,
+  "quality_valid": true,
+  "cost_known": true,
+  "actual_cost_usd": 0,
+  "known_cost_usd": 0,
+  "metrics": [
+    {
+      "key": "hit1",
+      "label_zh": "首条引用命中定义行",
+      "label_en": "First citation covers definition",
+      "unit": "ratio",
+      "baseline": 0.18181818181818182,
+      "candidate": 0.7575757575757576
+    },
+    {
+      "key": "hit8",
+      "label_zh": "前八条命中定义行",
+      "label_en": "Top 8 cover definition",
+      "unit": "ratio",
+      "baseline": 0.18181818181818182,
+      "candidate": 0.8181818181818182
+    },
+    {
+      "key": "p95",
+      "label_zh": "检索 P95",
+      "label_en": "Search P95",
+      "unit": "seconds",
+      "baseline": 0.066307,
+      "candidate": 0.063217
+    }
+  ],
+  "limitations_zh": [
+    "本地检索服务，固定 283 个源码文件和 4,303 个代码块。问题按真实调用关系构造，P95 为单进程暖索引，费用仅指模型接口。"
+  ],
+  "limitations_en": [
+    "Local retrieval, 283 source files and 4,303 chunks. Constructed queries from actual calls; single-process warm timings and model API cost only."
+  ],
+  "source_sha256": "3079f43ea1a6eb5c28bac5af8d0863424cedb28913974108a6ffc7d95da00c69",
+  "selection_info": {
+    "dataset": "Developer RAG",
+    "method": "explicit_ids",
+    "split": "validation",
+    "source": "lookup-validation.json",
+    "selected_count": 33,
+    "method_detail_zh": "从同一冻结源码库余下的 33 个目标文件各取 1 题。它们与前一轮 24 个开发、48 个验证目标文件完全不同。",
+    "method_detail_en": "One question per remaining target file, disjoint from the original 24 development and 48 validation files.",
+    "selection_ids": [
+      "res-01",
+      "res-02",
+      "res-03",
+      "res-04",
+      "res-05",
+      "res-06",
+      "res-07",
+      "res-08",
+      "res-09",
+      "res-10",
+      "res-11",
+      "res-12",
+      "res-13",
+      "res-14",
+      "res-15",
+      "res-16",
+      "res-17",
+      "res-18",
+      "res-19",
+      "res-20",
+      "res-21",
+      "res-22",
+      "res-23",
+      "res-24",
+      "res-25",
+      "res-26",
+      "res-27",
+      "res-28",
+      "res-29",
+      "res-30",
+      "res-31",
+      "res-32",
+      "res-33"
+    ],
+    "cohort_sha256": "cdec92e44a623406522b5d136a47601cd7ec367adee629f2a95abe2f54718035"
+  }
+}

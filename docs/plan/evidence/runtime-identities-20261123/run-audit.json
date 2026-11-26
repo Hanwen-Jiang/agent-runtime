@@ -1,0 +1,1423 @@
+{
+  "feeds": {
+    "benchmarks": "e2616c00799d5718ac320c0c28b841d781ff63bfae38392368e575b16f03a655",
+    "live": "5773834d16104cd2a7a1c83080a404779dad8bb88eebe29a5e15f65255c62147",
+    "reports": "0592299f9e6172d7db83de46c9e76da9e244959043615806f419470762654231"
+  },
+  "observed_scope": "model counts from non-embed ledger entries with settled amount and output_tokens>0 or run-bound gateway receipts; linked task evidence can be partial. A frozen requested tier is not an observed effort. Existing public display group medium is a separate label, never evidence of an actual inference setting.",
+  "runs": {
+    "20261104T095921Z-worker-context-481b": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "context"
+    },
+    "20261104T095922Z-worker-planner-0dc6": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "20261104T095923Z-worker-0bca": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "20261104T100556Z-worker-context-5436": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "context"
+    },
+    "20261104T101214Z-worker-context-80c9": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "context"
+    },
+    "20261104T102616Z-worker-planner-1acf": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "20261104T104323Z-worker-planner-6ae3": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "20261104T105238Z-worker-2ef2": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "20261104T113633Z-worker-33ce": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "deepeval": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {
+        "/opt/evals/w1/deepeval/run.json": "15ac202a4ed9a2e02e2839551706560c474bf676e1b9208c5994a2f1a6538e2e"
+      },
+      "suite": "deepeval"
+    },
+    "deepeval-b": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 8,
+      "source_sha256": {
+        "/opt/evals/w1/deepeval-b/run.json": "4c19b59632284e33ab8c6628521e269a7bdf595c14840b404c8aad4a4e1d84e7"
+      },
+      "suite": "deepeval"
+    },
+    "ev-swe-13989": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 1,
+      "source_sha256": {
+        "/opt/evals/w1/swe-13989-b/run.json": "b3b3a1593600e411073eb6c5c80fcdfbfbe69fe26de28841ddcd93ee63a78321",
+        "/opt/evals/w1/swe-13989/run.json": "f779d776b2cae24aaa743da6237367b194cfa3229711693d917b6918a78f3089"
+      },
+      "suite": "swebench"
+    },
+    "ev-tb-one": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 1,
+      "source_sha256": {
+        "/opt/evals/tb/one/run.json": "1f87e7b12ce42f8c9efa02651a16baca7321781c4e721ab3e864f67c9e225996"
+      },
+      "suite": "terminal-bench"
+    },
+    "ev-tb2-one": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/deepseek-v4-flash@2026-10": 2,
+        "a6api/gemini-4-argon@2026-11": 36,
+        "a6api/gpt-6-luna@2026-11": 20,
+        "a6api/kimi-k3.1-pro@2026-11": 47
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 1,
+      "source_sha256": {
+        "/opt/evals/tb2/one/run.json": "91f6a1e62ea4587ab4883ccaec282b80d8ef73d5aa2393bdfabe12463d742b89"
+      },
+      "suite": "terminal-bench"
+    },
+    "ev-tb2-one-b": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gemini-4-argon@2026-11": 2,
+        "a6api/gpt-6-luna@2026-11": 2,
+        "a6api/kimi-k3.1-pro@2026-11": 73
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 1,
+      "source_sha256": {
+        "/opt/evals/tb2/one-b/run.json": "6fd873725a2a27bc12a5f5f46c9d42ebc5bd6f3b71750c1744e8ef3773bdbcdd"
+      },
+      "suite": "terminal-bench"
+    },
+    "ev-tb2-one-c": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6-luna@2026-11": 1,
+        "a6api/kimi-k3.1-pro@2026-11": 94
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 1,
+      "source_sha256": {
+        "/opt/evals/tb2/one-c/run.json": "46142684cc1fe953bba8440ee320d44f3302e63797db1d51ee325efa8daff419"
+      },
+      "suite": "terminal-bench"
+    },
+    "ev-tb40-tb40-a": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/deepseek-v4-flash@2026-10": 5,
+        "a6api/gemini-4-argon@2026-11": 10,
+        "a6api/gpt-6-luna@2026-11": 26,
+        "a6api/kimi-k3.1-pro@2026-11": 788
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 20,
+      "source_sha256": {
+        "/opt/evals/tb2/tb40-a/run.json": "b1af271598e628728b77d17c56f73719fef4d6d4dbf59c9b2c06839f518eaa45"
+      },
+      "suite": "terminal-bench"
+    },
+    "ev-tb40-tb40-b": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/deepseek-v4-flash@2026-10": 6,
+        "a6api/gemini-4-argon@2026-11": 10,
+        "a6api/gpt-6-luna@2026-11": 10,
+        "a6api/kimi-k3.1-pro@2026-11": 374
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 7,
+      "source_sha256": {
+        "/opt/evals/tb2/tb40-b/run.json": "23160006ec2b3c1d8e953a25aad9fc0ecd5cfb2c36a8471af6a9e1f754865038"
+      },
+      "suite": "terminal-bench"
+    },
+    "gpt55-base50": {
+      "basis": "values-rev12/13.yaml；同一 worker 镜像，途中由第12版切换至第13版",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 50,
+      "source_sha256": {
+        "/opt/swebench/runs/gpt55-base50/run.json": "a31192dee3fccc386191f7603435c1342f9764e35052dc2a4a7ceae2d83b10a6"
+      },
+      "suite": "swebench"
+    },
+    "gpt55-smoke5": {
+      "basis": "eval-observability-and-runtime-fixes.md#11.11；第11版实际镜像/角色白名单",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 5,
+      "source_sha256": {
+        "/opt/swebench/runs/gpt55-smoke5/run.json": "9e198e57e40d9e65517417f6caa6cbb3963a0cf1abfd59e59ba33892283c0f22"
+      },
+      "suite": "swebench"
+    },
+    "gpt55-smoke5-again": {
+      "basis": "values-rev13.yaml；run.json；eval-observability-and-runtime-fixes.md#11.11",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 5,
+      "source_sha256": {
+        "/opt/swebench/runs/gpt55-smoke5-again/run.json": "dfea1da8b05fb1bd5783443c6c861229877d712fef06c5a32bc603615f0932c9"
+      },
+      "suite": "swebench"
+    },
+    "gpt55-smoke5-official": {
+      "basis": "values-rev12.yaml；run.json；eval-observability-and-runtime-fixes.md#11.11",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 5,
+      "source_sha256": {
+        "/opt/swebench/runs/gpt55-smoke5-official/run.json": "b8ca075fcce146ba50de96592e2eb89deb48e02a501a2aa5dddc45dc0bb1241c"
+      },
+      "suite": "swebench"
+    },
+    "gpt55-tune1": {
+      "basis": "rev16.log、values-rev16.yaml、run.json；Worker 镜像",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 50,
+      "source_sha256": {
+        "/opt/swebench/runs/gpt55-tune1/run.json": "add67f5ce7ff829247c3f51d94c04d34d768973e803c5ec0dd0eee600f4e2799"
+      },
+      "suite": "swebench"
+    },
+    "gpt55-tune2": {
+      "basis": "rev17.log、values-rev17.yaml、run.json；Worker 镜像",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 50,
+      "source_sha256": {
+        "/opt/swebench/runs/gpt55-tune2/run.json": "a36e04d7577433532ec2404045fe2238123ba9d34598ad201d9f50665754f8a5"
+      },
+      "suite": "swebench"
+    },
+    "init50-gpt62-tuned-20261123": {
+      "basis": "paired-protocol.json；swe-tuning-20261123/freeze.json + usage.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 1622
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 1097,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "act",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 71,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "deliver",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 182,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "judge",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 156,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "plan",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 112,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "route",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 2,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "transform",
+          "tier": "strong@medium"
+        }
+      ],
+      "observed_task_ids": 50,
+      "requested_protocol": {
+        "arm": "c",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "requested_routes": "per_role_required",
+        "runtime_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/init50-gpt62-tuned-20261123/paired-protocol.json": "6149a3577969c824836b06ea12ef2a6e04eb694fdb7477544f3b7832e14c05b7",
+        "/opt/swebench/runs/init50-gpt62-tuned-20261123/run.json": "bff2b4b44b2f1e253edfe331b6c58d843afb8bc300d7d2da71e3d31b265585e7"
+      },
+      "suite": "swebench"
+    },
+    "longbench-context-20261110-fixed-40": {
+      "basis": "fixed-experiments.js 已归档的40题固定模型对照",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "context"
+    },
+    "mini50-gpt62-arm-a-20261121T131913Z": {
+      "basis": "paired-protocol.json",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "requested_protocol": {
+        "arm": "a",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "c095dc8a858f4acd798396dc898f1ea3c176e906",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-gpt62-arm-a-20261121T131913Z/paired-protocol.json": "137dc306a094fd6ba438dd9270b3e1a270c66c49909f5606beb2f4eb996cfd42",
+        "/opt/swebench/runs/mini50-gpt62-arm-a-20261121T131913Z/run.json": "73fc21af641269aab55db1b3a924000369c4e9be5454740d0bbf1b5654e9f34b"
+      },
+      "suite": "swebench"
+    },
+    "mini50-gpt62-arm-b-20261121T131914Z": {
+      "basis": "paired-protocol.json",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-gpt62-arm-b-20261121T131914Z/paired-protocol.json": "67a5debefb61dad65ee74a698c0607cc84d7cc3673dc7cfda8b07bce71bc4145",
+        "/opt/swebench/runs/mini50-gpt62-arm-b-20261121T131914Z/run.json": "8f2ab4b5cf4c3ebf9b6c0503c8ebfe7ffc2da9313bf302c130603348ac8afcbc"
+      },
+      "suite": "swebench"
+    },
+    "mini50-gpt62-formal-a-20261121T1900Z": {
+      "basis": "paired-protocol.json；swe-mini50-20261121/final/mini50-a-model-audit.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 1197
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 806,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "act",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 58,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "deliver",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 139,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "judge",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 113,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "plan",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 80,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "route",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 1,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "transform",
+          "tier": "strong@medium"
+        }
+      ],
+      "observed_task_ids": 47,
+      "requested_protocol": {
+        "arm": "a",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "c095dc8a858f4acd798396dc898f1ea3c176e906",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-gpt62-formal-a-20261121T1900Z/model-audit.json": "ea80896774cdca1e661e6f6def0453e9d3ee60fb17e891b8ccc2f32b54d43f7a",
+        "/opt/swebench/runs/mini50-gpt62-formal-a-20261121T1900Z/paired-protocol.json": "d14767c0079b342bc7042eaca42f2b8a88225ecebd03f3683fccef28669ba62a",
+        "/opt/swebench/runs/mini50-gpt62-formal-a-20261121T1900Z/run.json": "24a70ae6092b7c8f3f46126ad01d588da9a8641b920c6f239f22de5d6434b489"
+      },
+      "suite": "swebench"
+    },
+    "mini50-gpt62-formal-b-20261121T1930Z": {
+      "basis": "paired-protocol.json；swe-mini50-20261121/final/mini50-b-model-audit.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 1163
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 766,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "act",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 62,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "deliver",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 136,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "judge",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 113,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "plan",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 84,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "route",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 2,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "transform",
+          "tier": "strong@medium"
+        }
+      ],
+      "observed_task_ids": 47,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-gpt62-formal-b-20261121T1930Z/model-audit.json": "9821ea4424206c2310599c9c512b904524a03f9cbf9183fb8dc82c7d43558726",
+        "/opt/swebench/runs/mini50-gpt62-formal-b-20261121T1930Z/paired-protocol.json": "a0f633369c33917a4f2f59bd5459dacbaf8a2eeb33a55317d0404dd4473581d8",
+        "/opt/swebench/runs/mini50-gpt62-formal-b-20261121T1930Z/run.json": "466dd8180068166f605cecf603df4a5977016a6105c4db1a9e5ce9d56aa83956"
+      },
+      "suite": "swebench"
+    },
+    "mini50-infra-20261123-a": {
+      "basis": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 137
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 4,
+      "requested_protocol": {
+        "arm": "a",
+        "mode": "missing_verdict_recovery",
+        "profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "c095dc8a858f4acd798396dc898f1ea3c176e906",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-infra-20261123-a/recovery-protocol.json": "398d6e5a9f63d8173f476f95a93c9c9d606ab6551dd141e8b2030f6b21995d2a",
+        "/opt/swebench/runs/mini50-infra-20261123-a/run.json": "18a631af627f32d405bd89cc0f4ef60724470d261c7736374b19b576889e3aba"
+      },
+      "suite": "swebench"
+    },
+    "mini50-infra-20261123-b": {
+      "basis": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 77
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 3,
+      "requested_protocol": {
+        "arm": "b",
+        "mode": "missing_verdict_recovery",
+        "profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-infra-20261123-b/recovery-protocol.json": "4f7eaf96f06c875dfa6eb8071a761f8584aa0fdddf9144d258526ab73b3c68d3",
+        "/opt/swebench/runs/mini50-infra-20261123-b/run.json": "d590b9d8be637854a85a0960ff76ed639ba802af38d92738e3a88a211a40c2d9"
+      },
+      "suite": "swebench"
+    },
+    "mini50-quota-20261122-a": {
+      "basis": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 342
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 9,
+      "requested_protocol": {
+        "arm": "a",
+        "mode": "second_attempt_quota_recovery",
+        "profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "c095dc8a858f4acd798396dc898f1ea3c176e906",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-quota-20261122-a/recovery-protocol.json": "6801120b73fccaf657f261a00efb0b315858390c550d46dea319acb105a2feb1",
+        "/opt/swebench/runs/mini50-quota-20261122-a/run.json": "77db801b92d2d35aa2afe01197f776fe5569776aa2363adf3f66e640d2ce9559"
+      },
+      "suite": "swebench"
+    },
+    "mini50-quota-20261122-b": {
+      "basis": "recovery-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 402
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 10,
+      "requested_protocol": {
+        "arm": "b",
+        "mode": "second_attempt_quota_recovery",
+        "profile": "a6api/gpt-6.2-sol@2026-11",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-quota-20261122-b/recovery-protocol.json": "271b3b6ac893dc62397ecccbaa560f80b1a38ed3f5f9ec1679bca70dea6c6cff",
+        "/opt/swebench/runs/mini50-quota-20261122-b/run.json": "d13bb614a40620e18d033f34cf0c9fc836984a5b7ecc8fe5ebf85604c35493a3"
+      },
+      "suite": "swebench"
+    },
+    "mini50-tuned-c-gpt62-20261123": {
+      "basis": "paired-protocol.json；swe-tuning-20261123/freeze.json + usage.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 1834
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 1258,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "act",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 76,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "deliver",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 196,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "judge",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 180,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "plan",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 117,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "route",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 2,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "transform",
+          "tier": "strong@medium"
+        }
+      ],
+      "observed_task_ids": 50,
+      "requested_protocol": {
+        "arm": "c",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "requested_routes": "per_role_required",
+        "runtime_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/mini50-tuned-c-gpt62-20261123/paired-protocol.json": "d359c2f2220326062f5cc63e1356fb098e4b0eec5b8e2025a3f53485283898bb",
+        "/opt/swebench/runs/mini50-tuned-c-gpt62-20261123/run.json": "76973aeeb78224e8956b6196af88f6293afe0b71d2f4991353a26c69d3303fe3"
+      },
+      "suite": "swebench"
+    },
+    "resume-e2e-20261121T103412Z": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {
+        "/opt/swebench/runs/resume-e2e-20261121T103412Z/run.json": "6bae737cf10f7cb2f9447b1fb3b6e70d2b9b839fac07df01d819d4578907941c"
+      },
+      "suite": "swebench"
+    },
+    "resume-e2e-20261121T103412Z-authv2": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {
+        "/opt/swebench/runs/resume-e2e-20261121T103412Z-authv2/run.json": "90ca6cf85c0b97b95a114830c10d80efd9c45cea40881268bdf3b204daa6d5f7"
+      },
+      "suite": "swebench"
+    },
+    "resume-sphinx-evals-20261121T103856Z": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {
+        "/opt/swebench/runs/resume-sphinx-evals-20261121T103856Z/run.json": "4bbb0b9949130ef7c7c9a8ab9b5bf72d1b684cc3f108e4d721e8bde1eafa19a7"
+      },
+      "suite": "swebench"
+    },
+    "reviewer-20261110-baseline-legacy-dev-r1": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "149a30279aa03b436a6d6b4dbbf1e617c58588734c733e061c014333fec1c03f",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "receipt_sha256": "b3cf0471558ed0354cfefb1cfcd3090533a2bb557120a0a5064cb3173eca7e4b",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "variant": "baseline"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-baseline-legacy-dev-r2": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "4ce74855eae9a614b8c4ec4750c7aa50cfb691c0654c121ff472206f8fa45bdd",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "receipt_sha256": "7dafeeaaa632322d735094ceccccd765e8a9f3e6bc15a84850d6e002b7fdac03",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "variant": "baseline"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-baseline-legacy-dev-r3": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "1679e5bae2db9a09da109486bca83d8912afc8b906db26fa1d1eb3c905ea31b9",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "receipt_sha256": "a04951b67043994e0cf20c9e98ce3392b35479c8fdafd90caa1487bbe954a3c6",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "variant": "baseline"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-baseline-legacy-holdout-r1": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "28ca632706272b7b60e1a1f0480217a3e982d0cd4673b5aa01fbb939fd32d57c",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "receipt_sha256": "076f031bbe24ec446ebbdd5ade56af419167b39e31c0577c45057ea045ee737b",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "variant": "baseline"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-baseline-regression-dev-r1": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "b0e3a27bd57ceab9d4c2b407141a1c9d96c0835e65caeb557d53e1d997b89955",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "receipt_sha256": "57d58e0ee62b166c49be50dbe377adbe1d70bd41d08dc8bf0151363c6ad32be4",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "variant": "baseline"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-baseline-regression-dev-r2": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "d5f6daf07e083bc094ff3ccbe71cac62021cdc8afe70c94b9201dd8d142cd9f4",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "receipt_sha256": "9ea2180314e04a9548502f2c4757bc51844afd2d549756ae96b976815ead29a9",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "variant": "baseline"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-baseline-regression-dev-r3": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "6b055b0defca54144106f908128834fa3abe46a0cb1fc126462233daeddd1d27",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "receipt_sha256": "c280c85ce31881b6c015396984ef2af72427f3de669a4c9db1ce8ea6940b1303",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "1713439efc339efee5915cf4894dd7dc01a9c2e6149a36d7a962177cc90b0666",
+        "variant": "baseline"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-candidate-legacy-dev-r1": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "2b7e4964372fa7327b645e43b015fb840ece487774a4790cd809ad62fe6be35c",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "receipt_sha256": "ecdbc9ad560b892e5ca5d1d7dced4cb5bc0128105b659160ca9bf99115f8ed9a",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "variant": "candidate"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-candidate-legacy-dev-r2": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "525849eb65d5b6a3c5989b93372a9a144866dfa72fed0f7e41f43c54328e5030",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "receipt_sha256": "597418aa33e76199f462e6a8aff49186779dd291c5b5769dbe3c0400d37f1d44",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "variant": "candidate"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-candidate-legacy-dev-r3": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "dada7d84e2088c3bd158c224e2fe2a667abd17419acc6726dbe8cf7b797cc64f",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "receipt_sha256": "22ad5ec7608af350426d66e26a06cba882754dd8c1f287fde02e6733908936ce",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "variant": "candidate"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-candidate-legacy-holdout-r1": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "8e7d0ab87cc1c553ce8add23e35dffd906093f1b97c24cc4479004f6fefc41f1",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "receipt_sha256": "b26eb0e4c8da85b3d699e16a45064668b71ce35f55fd7e96ca20ff3ed24d393c",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "variant": "candidate"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-candidate-regression-dev-r1": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "8eb9b69a3ecbdbb302553b86a68d832ca4546f2309571361e437cc671a9ad3df",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "receipt_sha256": "f55577ff44e151f3482b69381753350cf1129d52c926901566eaff1f37de8814",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "variant": "candidate"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-candidate-regression-dev-r2": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "7da0194ad497ec69bac8ba204a63df8934276156b9162592b93d9860c21486c9",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "receipt_sha256": "82a8a373c6cb678167fbd39a4a7410c7516ec61754bc206a6d7666d11cc9a6c9",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "variant": "candidate"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "reviewer-20261110-candidate-regression-dev-r3": {
+      "basis": "Reviewer 的代码快照、原运行模型统计、逐调用 pin 收据",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "reviewer_proof": {
+        "actual_tiers": [],
+        "base_revision": "b79c2e7d0a8e19b379dcca3e948687922fa4e2ea",
+        "calls_sha256": "afc4888b6727c5917d419b53f9f6b16e36e31ce27f07c440a281f856991ca567",
+        "pinned": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "planned": "a6api/kimi-k3.1-pro@2026-11",
+        "rawCodeRevision": "snapshot:a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "receipt_sha256": "55b674d49f8793bff892f49eea264dad6033d1584d6fdd4ecf5d48fca8ee9332",
+        "reported_models": [
+          "a6api/kimi-k3.1-pro@2026-11"
+        ],
+        "source_sha256": "a7f8b12f047c0de5a34cf163b4b9ad303e1edc2292785631b454ec1231e9bf7c",
+        "variant": "candidate"
+      },
+      "source_sha256": {},
+      "suite": "task-loop"
+    },
+    "route2-20261122-fixed": {
+      "basis": "route-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 1
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 1,
+      "requested_protocol": {
+        "mode": "fixed",
+        "requested_routes": "per_role_required",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/route2-20261122-fixed/route-protocol.json": "091b67373eec4561e55920e2966a0b4487f386ad520035bd18a97468cbc29a8b",
+        "/opt/swebench/runs/route2-20261122-fixed/run.json": "8804fa33c7876c93df7d7463051024d0c559670371eead72837c856a48523696"
+      },
+      "suite": "swebench"
+    },
+    "route2-20261122-native": {
+      "basis": "route-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6-luna@2026-11": 1
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 1,
+          "profile": "a6api/gpt-6-luna@2026-11",
+          "role": "route",
+          "tier": "small@low"
+        }
+      ],
+      "observed_task_ids": 1,
+      "requested_protocol": {
+        "mode": "native",
+        "requested_routes": "native_unpinned",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/route2-20261122-native/route-protocol.json": "f8d233bf6bc7216c61281dc3ae1f3eafa4b9a279ca878739fbe6d4e674722e33",
+        "/opt/swebench/runs/route2-20261122-native/route-usage.json": "b92367105962e4dc9563959850078aa38b5d8619bb6b382b205fa575ee7a3756",
+        "/opt/swebench/runs/route2-20261122-native/run.json": "c92f9d7724706dd251d3b4aac2c289047314e6c9296a367900503dc58dcb3d4d"
+      },
+      "suite": "swebench"
+    },
+    "route2-funded-20261122-fixed": {
+      "basis": "route-protocol.json；swe-mini50-20261121/routing-pilot/funded/comparison.json + fixed/route-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 99
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 2,
+      "requested_protocol": {
+        "mode": "fixed",
+        "requested_routes": "per_role_required",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/route2-funded-20261122-fixed/route-protocol.json": "d73a74a0a35a4398e148d990e68caed69f99447c59cc64433be5633710bdcf63",
+        "/opt/swebench/runs/route2-funded-20261122-fixed/run.json": "c1fafad2ddf900c7e26533979ef959366c62551b1438c1e0088f16e643606db5"
+      },
+      "suite": "swebench"
+    },
+    "route2-funded-20261122-native": {
+      "basis": "route-protocol.json；swe-mini50-20261121/routing-pilot/funded/comparison.json + native/route-protocol.json；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/deepseek-v4-flash@2026-10": 2,
+        "a6api/gemini-4-argon@2026-11": 8,
+        "a6api/gpt-6-luna@2026-11": 4,
+        "a6api/kimi-k3.1-pro@2026-11": 71
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 2,
+      "requested_protocol": {
+        "mode": "native",
+        "requested_routes": "native_unpinned",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/route2-funded-20261122-native/route-protocol.json": "ca4b522e2f693930de234f2250d5f3dcce76b196e5753f04175e28cfa3d03fe1",
+        "/opt/swebench/runs/route2-funded-20261122-native/run.json": "9b86397f8c57f6a937f0bea87ad0f94649d213fac4790c488fa4cc8c4e740666"
+      },
+      "suite": "swebench"
+    },
+    "sol-rev18": {
+      "basis": "cloud-deploy.md 第18版租户选档、agent-optimization-interview.md 版本对照",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 50,
+      "source_sha256": {
+        "/opt/swebench/runs/sol-rev18/run.json": "58a7af0b43dc5f6b8763f4ce81c0eebb2e3537ca3e72ab9ee6de3a29ff8cf77c"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1425Z": {
+      "basis": "paired-protocol.json",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1425Z/paired-protocol.json": "5a0f92975baf18cf2b68f7908ddf75483725d2f90543b4a03ffb4be0a1b3f48d",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1425Z/run.json": "9c85b71d20fdeb74260d9bd078ffe26638552fee3aeb61d13ebfb0708b3e5891"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1733Z": {
+      "basis": "paired-protocol.json",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1733Z/paired-protocol.json": "9d9f476a6f0ccdd9e8f971b008554a3786e85fd470b661c13331e69a817de724",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1733Z/run.json": "1810a70ad986a01fb82b5a188985c93ad7069915fec8b1facf23e5b1417dabd6"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1750Z": {
+      "basis": "paired-protocol.json",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1750Z/paired-protocol.json": "b2df0ad5b5f1366a375c8ed4b7e4bd25de0994b8214998694508959c94c9df18",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1750Z/run.json": "4e4d096d5e23e472a1c8eb3ddfe44b102def9793dc0c1190121a52eb1d804de7"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1805Z": {
+      "basis": "paired-protocol.json；冻结配置要求固定，但已结算模型与配置不符；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/deepseek-v4-flash@2026-10": 1,
+        "a6api/gpt-6-luna@2026-11": 2,
+        "a6api/kimi-k3.1-pro@2026-11": 14
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 2,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1805Z/paired-protocol.json": "ac0e0ff5f720ec2bfa305f8b129af9b45157bd5a5cee8848c450bd5dc30f1d72",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1805Z/run.json": "58652432957b407d4a5ce87109f85d128594e6f8b718fb5b565753e8519b2cbb"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1815Z": {
+      "basis": "paired-protocol.json；冻结配置要求固定，但已结算模型与配置不符；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/gpt-6-luna@2026-11": 2,
+        "a6api/kimi-k3.1-pro@2026-11": 6
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 2,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1815Z/paired-protocol.json": "d945f6e1af60ca251c6072546c8ab73ad8be71b0f1d660ce76866436495a56b6",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1815Z/run.json": "1757910fabf0bad19a3c31996fb8c95c9e99b21db935ba91d28fa88e4dd92a30"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1820Z": {
+      "basis": "paired-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 25
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 14,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "act",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 1,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "deliver",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 3,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "judge",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 4,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "plan",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 3,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "route",
+          "tier": "strong@medium"
+        }
+      ],
+      "observed_task_ids": 1,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1820Z/paired-protocol.json": "7a58590073f1492ce2f2543217ec3a768f57afbfd9dcd3211f27f5a456d3a42f",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1820Z/run.json": "6ec0124a21e01970423aaad8a5fbd037e64cb3deef7ac4da9c5530ec8bfda406"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1830Z": {
+      "basis": "paired-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 26
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 19,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "act",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 1,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "deliver",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 2,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "judge",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 2,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "plan",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 2,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "route",
+          "tier": "strong@medium"
+        }
+      ],
+      "observed_task_ids": 1,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1830Z/paired-protocol.json": "f6477832a1f9016dd53c9ff6936bfc58ff52cc83bfc0b190e4cc573a26af335b",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1830Z/run.json": "0004d896a659521704dc836bc87f652bd14db812d57c99cb9130971ce02808a7"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-gpt62-b-20261121T1840Z": {
+      "basis": "paired-protocol.json；按原 Task ID 核对的非嵌入生成账本；实际网关档位收据",
+      "observed_model_calls": {
+        "a6api/gpt-6.2-sol@2026-11": 56
+      },
+      "observed_role_tiers": [
+        {
+          "calls": 41,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "act",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 3,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "deliver",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 5,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "judge",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 4,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "plan",
+          "tier": "strong@medium"
+        },
+        {
+          "calls": 3,
+          "profile": "a6api/gpt-6.2-sol@2026-11",
+          "role": "route",
+          "tier": "strong@medium"
+        }
+      ],
+      "observed_task_ids": 2,
+      "requested_protocol": {
+        "arm": "b",
+        "model_profile": "a6api/gpt-6.2-sol@2026-11",
+        "run_kind": "sphinx-two-task-diagnostic",
+        "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+        "tier": "strong@medium"
+      },
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1840Z/paired-protocol.json": "9ead891b3b9f110f6df9c2b8815d44e2a71632ea9ae2aa65dc2b46e4a8dbccb0",
+        "/opt/swebench/runs/sphinx-gpt62-b-20261121T1840Z/run.json": "1360387e06034d5c057842688c7d530db62eeb0721acd346baa93cb8b0f73442"
+      },
+      "suite": "swebench"
+    },
+    "sphinx-workspace-fix-20261121T113359Z": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/deepseek-v4-flash@2026-10": 2,
+        "a6api/gemini-4-argon@2026-11": 6,
+        "a6api/gpt-6-luna@2026-11": 3,
+        "a6api/kimi-k3.1-pro@2026-11": 50
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 2,
+      "source_sha256": {
+        "/opt/swebench/runs/sphinx-workspace-fix-20261121T113359Z/run.json": "fb46c5376363cfc3f27fd68faa620e6cf096365ba4c4465572da9132059068ea"
+      },
+      "suite": "swebench"
+    },
+    "swe-verified-mini50-20261121": {
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 0,
+      "source_sha256": {},
+      "suite": "campaign"
+    },
+    "t18-rev19": {
+      "basis": "cloud-deploy.md 第19版多因素选档与 swebench 白名单；run.json",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 49,
+      "source_sha256": {
+        "/opt/swebench/runs/t18-rev19/run.json": "c60934ef337f09fe7b9f5b4742de72f0e2be09d31e40693e127592fb67a0c1b8"
+      },
+      "suite": "swebench"
+    },
+    "t18-tbench-smoke5": {
+      "basis": "原运行 run.json 声明的 Runtime 发布号",
+      "observed_model_calls": {},
+      "observed_role_tiers": [],
+      "observed_task_ids": 5,
+      "source_sha256": {
+        "archive/t18/t18-tbench-smoke5/run.json": "44321b681fb6b1717a8e59195de6110b15a6ac519589bdfb71af9aefd8f3f5be"
+      },
+      "suite": "terminal-bench"
+    },
+    "tb20-fc-20261109": {
+      "basis": "冻结 provenance.model_routing=dynamic_catalog；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/claude-haiku-5-5@2026-10": 2,
+        "a6api/gemini-4-argon@2026-11": 8,
+        "a6api/kimi-k3.1-pro@2026-11": 42
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 2,
+      "source_sha256": {
+        "/opt/evals/tb20-recheck-20261109/cohort/run.json": "c40fa4024f62dc07d996a3ce8ede78d57aba18016ceb3d90c5fe1f843d155d51"
+      },
+      "suite": "terminal-bench"
+    },
+    "tb20-fc-clean-20261110": {
+      "basis": "冻结 provenance.model_routing=dynamic_catalog；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/claude-haiku-5-5@2026-10": 5,
+        "a6api/deepseek-v4-flash@2026-10": 2,
+        "a6api/gemini-4-argon@2026-11": 41,
+        "a6api/kimi-k3.1-pro@2026-11": 83
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 3,
+      "source_sha256": {
+        "/opt/evals/tb20-clean-20261110/cohort/run.json": "a4a74de5d1b412252fef8c73c2484c94d5a444b09fa964447a4beab850705bb3"
+      },
+      "suite": "terminal-bench"
+    },
+    "tb20-fc-complete-20261110": {
+      "basis": "冻结 provenance.model_routing=dynamic_catalog；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/claude-haiku-5-5@2026-10": 7,
+        "a6api/deepseek-v4-flash@2026-10": 2,
+        "a6api/gemini-4-argon@2026-11": 65,
+        "a6api/kimi-k3.1-pro@2026-11": 104
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 4,
+      "source_sha256": {
+        "archive/tb20-complete-20261110/cohort/run.json": "30d65b760ed18afd329f74a8cd5bb7477d5b51b0b266fb1f1501e0bde6e1e1fb",
+        "archive/tb20-complete-20261110/frozen.json": "d9bd9a0ff72ce150a16d98cf88dd44ded1f95895fc8d0c2bad508310ae5956d6",
+        "archive/tb20-complete-20261110/public-summary.json": "2439977e501bdfbdf7e11888ca49dd44fc7117deccd95d7e2db5b0c06d2469a6",
+        "archive/tb20-complete-20261110/state.json": "b74eac9a4e74bb196b18d0e35e07b8ee53cbe27b6e68b5a9d8e2106e13f091c7"
+      },
+      "suite": "terminal-bench"
+    },
+    "tb20-official-round1-20261110": {
+      "basis": "原运行 frozen.json 的执行 Worker 镜像；按原 Task ID 核对的非嵌入生成账本",
+      "observed_model_calls": {
+        "a6api/claude-haiku-5-5@2026-10": 2,
+        "a6api/deepseek-v4-flash@2026-10": 1,
+        "a6api/gemini-4-argon@2026-11": 3,
+        "a6api/gpt-6.1-sol@2026-11": 1,
+        "a6api/kimi-k3.1-pro@2026-11": 30
+      },
+      "observed_role_tiers": [],
+      "observed_task_ids": 2,
+      "source_sha256": {
+        "archive/tb20-official-round1-20261110/frozen.json": "3e6eb6fe6287e6a4e5f7ce7a723637bb5b685442c16d31bcd0ea6a32add5e771",
+        "archive/tb20-official-round1-20261110/public-summary.json": "ebe5bee9c576e5abfc4b684667c428153076c856a06c53b8db5015d2163aceef",
+        "archive/tb20-official-round1-20261110/state.json": "c0326e785517ed30f23d9dbee926d157c01155950c19c77b1c326569123b42ad"
+      },
+      "suite": "terminal-bench"
+    }
+  },
+  "schema": "runtime-id-audit-v1",
+  "scope": {
+    "named_endpoint_runs": {
+      "campaign": 1,
+      "context": 4,
+      "deepeval": 2,
+      "swebench": 35,
+      "task-loop": 20,
+      "terminal-bench": 11
+    },
+    "observed_effort": 10,
+    "observed_models": 41,
+    "routing_known": 43,
+    "run_ids": 73,
+    "version": 58
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "captured_at_utc": "2026-11-22T13:21:43.547435+00:00",
+  "scope": "cloudnium_cloud Mini 50 evaluation launchers, new processes only",
+  "path": "/opt/swebench/cache/mini50-20261121-runtime-arm/quota-guard-20261122",
+  "python": "/opt/evals/venv-5b0b26a/bin/python",
+  "modules": {
+    "agentruntime_learning/benchmarks/swebench.py": {
+      "before_sha256": "a375c161789cc9cae1fa5587e9cc6022c9008d3dfaf3db9c3f5b35971ab11f0b",
+      "after_sha256": "98ef719fcfd51441c58780d943ec29c50eefb90a530edce86c62549516c5c7c0"
+    },
+    "agentruntime_learning/benchmarks/__main__.py": {
+      "before_sha256": "83bf6c7d13919b286d41fec7d83a1e37fd8d77f4bebdb50abd57c29205e537da",
+      "after_sha256": "fd6350b22034b5630cd28ddfcc10a39d8648309ce2724d90a0ed82ac38355896"
+    },
+    "agentruntime_learning/benchmarks/terminalbench.py": {
+      "before_sha256": "0234feb330a1dcd1f8f4f04cc39098c9bca2205ab82af7665248fbec74e275bf",
+      "after_sha256": "8ffb207049ee7748d52cdd9e9220fd82236ae25548d179cfa7ab907065dec6c2"
+    },
+    "agentruntime_learning/evals/deliverables.py": {
+      "before_sha256": "f0777cb054fdd4237c029cd02d8d3cac07d856f14c322c458217939ad9631b1b",
+      "after_sha256": "45d5e21db3f2934e910dab57c31aa9ae1fac9283903260f4ec9e40219361e81f"
+    }
+  },
+  "entrypoints": {
+    "launch-quota-recovery.sh": {
+      "before_sha256": "b8c1c18e2b08521fd767ef20520db9881120a6152a86a27eaa6ac882e82d77c6",
+      "after_sha256": "b5d62681ff5fd266366d8a0a82d23bdf12242cf65a1e5154844f51f80c7fc5b0"
+    },
+    "launch-routing-funded": {
+      "before_sha256": "cd7b7b421989d9667a7d4e8ed7800f01f1f9641c06d58e596a6f0c13f4a2429b",
+      "after_sha256": "d8d3032d5a1fc1c71fa76ede7cd2dd04449cc2b573e1d4db4889dd40ec20b3da"
+    },
+    "launch-routing-pilot": {
+      "before_sha256": "45c9bbb303a168d32fca33fcb50a3ef4d0841e00896aa08e68db82d1e251bed0",
+      "after_sha256": "149c9714d6857207087ccfda4ee66ff2b8afcaddc4124ee91e1c93329d947c06"
+    },
+    "run_paired_arm.py": {
+      "before_sha256": "60b186293624c0e14de60fe32f83aaf5f91d8e1bfd237fd01d87b7276800489d",
+      "after_sha256": "f175a6527b1c2b16284ae72f16f116dc980066f607d5ff32e38df555b757e708"
+    },
+    "run_quota_recovery.py": {
+      "before_sha256": "f222668c7c4a1a46d31d0dcef17fc133a466d09666acf7799d7b7507c164d142",
+      "after_sha256": "011a1ee12a211180834bc55a8059b48acca409e81188bb988b2c82f7a463fdc0"
+    },
+    "run_routing_pilot.py": {
+      "before_sha256": "23680ea77933e80a073f953f149026bc996261b523c208d194caa1f173938f55",
+      "after_sha256": "76c09d0cddd43b0b016725121a602ca602371bc1444785ab3d0a52f490f56d31"
+    },
+    "run_sphinx_gpt62.py": {
+      "before_sha256": "1206c60480bc146adc4a795423b3c6513f25a5c64b6fe23f75d87ce24b4ca5af",
+      "after_sha256": "8cb931886aa78d014dee969fbcb5e6fd9b83b578c288ed40dc72670ac245dd24"
+    }
+  },
+  "verification": {
+    "local_regression_suite": {
+      "passed": 126,
+      "new_cases": 7
+    },
+    "remote_offline_smoke": [
+      "provider quota stopped admission before case 2 and recorded Task ID",
+      "quota abort with empty patch classified as error",
+      "same directory resumed next case without resubmitting blocked Task",
+      "unrelated HTTP 403 continued",
+      "all three launcher environments loaded overlay and mapped ProviderQuotaPaused to CLI exit 75"
+    ]
+  }
+}

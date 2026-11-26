@@ -1,0 +1,62 @@
+{
+  "scope": "published in 2026-11-07 Registry; not an assertion about current routing",
+  "role": "act",
+  "promoted": {
+    "a6api/claude-opus-5-5@2026-10": {
+      "state": "default_confirmed",
+      "version": "v3",
+      "previous_default_version": "v2"
+    },
+    "a6api/deepseek-v4-pro@2026-11": {
+      "state": "default_confirmed",
+      "version": "v2",
+      "previous_default_version": "v1"
+    },
+    "a6api/gemini-4-argon@2026-11": {
+      "state": "default_confirmed",
+      "version": "v2",
+      "previous_default_version": "v1"
+    },
+    "a6api/glm-5.3@2026-11": {
+      "state": "default_confirmed",
+      "version": "v3",
+      "previous_default_version": "v2"
+    },
+    "a6api/gpt-6-astra@2026-11": {
+      "state": "default_confirmed",
+      "version": "v2",
+      "previous_default_version": "v1"
+    },
+    "a6api/gpt-6.1-sol@2026-11": {
+      "state": "default_confirmed",
+      "version": "v2",
+      "previous_default_version": "v1"
+    },
+    "a6api/grok-4.7@2026-11": {
+      "state": "default_confirmed",
+      "version": "v2",
+      "previous_default_version": "v1"
+    },
+    "a6api/kimi-k3.1-pro@2026-11": {
+      "state": "default_confirmed",
+      "version": "v2",
+      "previous_default_version": "v1"
+    },
+    "a6api/longcat-2.0@2026-11": {
+      "state": "default_confirmed",
+      "version": "v2",
+      "previous_default_version": "v1"
+    },
+    "a6api/mimo-v2.6-pro@2026-11": {
+      "state": "default_confirmed",
+      "version": "v3",
+      "previous_default_version": "v2"
+    }
+  },
+  "exported_count": 10,
+  "sha256": {
+    "bundle.json": "1b2690dfde0e97fac01bd12461f0acd6b45df8ba87e58ba17ae12ffdfc2e6f80",
+    "promotion-state.json": "dea5cc45c10700c1a57f730d649636910e15a7df4642e2213684d3e62bd63d63",
+    "export-readback-proof.json": "901b8b7da8e7c3cee2e8e9c27cbb54e3fd3897b456aec6b2e470b2c9c588250b"
+  }
+}

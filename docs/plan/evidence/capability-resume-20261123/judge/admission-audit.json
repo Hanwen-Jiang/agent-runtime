@@ -1,0 +1,56 @@
+{
+  "initial": {
+    "run_id": "capability-resume-20261123-judge",
+    "stats": {
+      "judgebench": {
+        "observed": 3,
+        "clean": 3,
+        "errors": {
+          "none": 3
+        },
+        "upstream_causes": {},
+        "pin_hits": 6,
+        "recorded_usd": 0.318564
+      },
+      "s10": {
+        "observed": 360,
+        "clean": 0,
+        "errors": {
+          "item_usd_limit": 342,
+          "none": 18
+        },
+        "upstream_causes": {
+          "model_call_budget_exceeded": 360,
+          "BudgetError": 342
+        },
+        "pin_hits": 0,
+        "recorded_usd": 0
+      }
+    },
+    "sha256": {
+      "run-lock.json": "5ec52e723a5e495336b31db1662dc07ced20c017c6fab131385bc4d1d15b5be9",
+      "plan.json": "6ab534125532b73fadc789c810b03fb73ade3e722681e7be5728b1202e184023",
+      "results.jsonl": "07c395ecbf6e9b3a6e3c479fc02b8e6d82c12b4a7a3e1ceae543bb519c4d2bd9"
+    }
+  },
+  "calibration": {
+    "run_id": "judge-admission-calibration",
+    "stats": {
+      "s10": {
+        "observed": 3,
+        "clean": 3,
+        "errors": {
+          "none": 3
+        },
+        "upstream_causes": {},
+        "pin_hits": 3,
+        "recorded_usd": 0.767042
+      }
+    },
+    "sha256": {
+      "run-lock.json": "e88fa681c5b3b4c0086d1c960a80854ff4bb03ed509de1f351b1eb855562bbc7",
+      "plan.json": "cd9d1d5f27f2414eaa7993c10f52a084d46200d0fb9fb3f99000cdd2afef5e2c",
+      "results.jsonl": "731ddc116e52cd304d05f4c2dbee7aa4d3743c5582784defbb52a39710b92764"
+    }
+  }
+}

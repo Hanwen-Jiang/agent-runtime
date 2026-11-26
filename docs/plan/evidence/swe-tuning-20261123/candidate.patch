@@ -1,0 +1,38 @@
+diff --git a/services/py-worker/src/agentruntime_worker/executor/tool_loop.py b/services/py-worker/src/agentruntime_worker/executor/tool_loop.py
+index f059aaaf..9e0d83c8 100644
+--- a/services/py-worker/src/agentruntime_worker/executor/tool_loop.py
++++ b/services/py-worker/src/agentruntime_worker/executor/tool_loop.py
+@@ -60,6 +60,12 @@ CORRECTION_HEADER = "【上一次的回答不能用】"
+ READ_ONLY_REMINDER_AT = 20
+ READ_ONLY_REMINDER = "【提醒】你已经连续读了很多内容，还没有改过任何东西。如果已经看懂了问题，现在就动手改；还缺什么就只查那一处，不要继续翻。"
+ _WRITE_CAPABLE_TOOLS = frozenset({"repo_edit", "shell_run"})
++BUGFIX_CHECK = (
++    "修复代码缺陷时，把需求中的一个失败输入和期望行为变成最小可执行检查，优先复用仓库的测试入口。"
++    "如果已有同一输入的失败记录，沿用那条检查。否则先在原代码上运行，确认它因所述行为失败。"
++    "改完后重跑同一检查，再运行一个相邻正常行为的回归用例。按实际输出报告命令与结果。"
++    "若环境阻止执行，记录具体障碍与尚未验证的行为。"
++)
+ 
+ 
+ def _wire_name(name: str) -> str:
+@@ -162,6 +168,11 @@ class ModelToolLoop:
+             from agentruntime_worker.runtime_capabilities import context_text
+             ceiling = str(node.get("effect_ceiling") or (inp.task_state.get("constraints") or {}).get("effect_ceiling") or "read")
+             runtime_context = context_text(await self.runtime_capabilities.load(inp.tenant, inp.task_id, ceiling=ceiling, tool_names=[str(t) for t in node.get("tools") or []]))
++        system = [SYSTEM_PROMPT]
++        if _WRITE_CAPABLE_TOOLS.issubset(tool.name for tool in tools):
++            system.append(BUGFIX_CHECK)
++        if runtime_context:
++            system.append(runtime_context)
+         built = await self.builder.build(
+             ContextRequest(
+                 tenant=inp.tenant,
+@@ -173,7 +184,7 @@ class ModelToolLoop:
+                 task_plan=inp.task_plan,
+                 context_version=inp.context_version,
+                 task_family=inp.task_family,
+-                system=[SYSTEM_PROMPT, *([runtime_context] if runtime_context else [])],
++                system=system,
+                 profile=[preference(personal.instructions)] if personal and personal.instructions else [],
+                 tools=tools,
+                 mcp_tools=(self.mcp_tools() if self.mcp_tools is not None else frozenset()) | leased,

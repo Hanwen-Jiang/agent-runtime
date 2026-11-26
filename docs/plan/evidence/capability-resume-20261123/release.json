@@ -1,0 +1,36 @@
+{
+  "gateway_configmap": "ar-model-profiles-gemini4-fb9ba6b48e2c",
+  "gateway_catalog_sha256": "fb9ba6b48e2cb265e21e0bba159f2535369d94389f0aa79f0a017998cb51e799",
+  "deployments": {
+    "ar-agent-runtime-model-gateway": {
+      "uid": "5d8f469c-c53b-40c7-90f8-e8a564bd71a0",
+      "generation": 36,
+      "template_sha256": "12a7a47386fcaca3086cbedf20d27da216540c22776b191fca1c2d18b737bd31",
+      "images": [
+        "ghcr.io/agentruntime/model-gateway:rec-c8ed02ec"
+      ]
+    },
+    "ar-agent-runtime-memory": {
+      "uid": "139e37c3-b530-47fe-8b15-3bde8c7739ae",
+      "generation": 31,
+      "template_sha256": "480291e08bce922401b1b20506b4b5aa6135fab912701a4bb3fd742d02981ce6",
+      "images": [
+        "ghcr.io/agentruntime/memory:rec-c8ed02ec"
+      ]
+    },
+    "ar-agent-runtime-task-service": {
+      "uid": "d3f169e1-c6b8-4953-b527-1ffad1eeccbc",
+      "generation": 47,
+      "template_sha256": "dae51845dd8552908bec2899b2f5688ad105c30f16e894316efd14caf2a5633b",
+      "images": [
+        "ghcr.io/agentruntime/task-service:rec-c8ed02ec"
+      ]
+    }
+  },
+  "runner_archive_sha256": "270f43b707b2e812fa7ad7101af1539b34eb4173bb3573c407bd7ac859c6e9dd",
+  "component_source_commit": "5af1d890195dda4524634b33fd81beb414467079",
+  "coding_agent_workspace_commit": "0cd2c890d214a53a3768568b7d80103eb0fd7341",
+  "coding_agent_usage": "not invoked by component adapters",
+  "memory_service_usage": "not invoked by these component adapters",
+  "sub_agents": "off"
+}

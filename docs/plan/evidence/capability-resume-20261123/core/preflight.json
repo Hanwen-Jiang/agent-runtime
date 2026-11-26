@@ -1,0 +1,228 @@
+[
+  {
+    "role": "plan",
+    "model": "a6api/claude-opus-5-5@2026-10",
+    "item_sha256": "2ee3d509fcc721f96069ac6a7140f4afdd412193e4e69729feda930b0e30c369",
+    "tier": "strong@medium",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/claude-haiku-5-5@2026-10": 1,
+      "plan:a6api/claude-opus-5-5@2026-10": 1
+    },
+    "reported_usd": 0.346824
+  },
+  {
+    "role": "plan",
+    "model": "a6api/claude-fable-5-1@2026-11",
+    "item_sha256": "2ee3d509fcc721f96069ac6a7140f4afdd412193e4e69729feda930b0e30c369",
+    "tier": "strong@medium",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/claude-haiku-5-5@2026-10": 1,
+      "plan:a6api/claude-fable-5-1@2026-11": 1
+    },
+    "reported_usd": 0.746383
+  },
+  {
+    "role": "plan",
+    "model": "a6api/gpt-6-astra@2026-11",
+    "item_sha256": "2ee3d509fcc721f96069ac6a7140f4afdd412193e4e69729feda930b0e30c369",
+    "tier": "strong@medium",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/claude-haiku-5-5@2026-10": 1,
+      "plan:a6api/gpt-6-astra@2026-11": 1
+    },
+    "reported_usd": 0.18958899999999998
+  },
+  {
+    "role": "act",
+    "model": "a6api/claude-opus-5-5@2026-10",
+    "item_sha256": "47d9e085a69019149ce54839c0bae5451c459039049bf4165c57ff7cde93cdab",
+    "tier": "strong@medium",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "act:a6api/claude-opus-5-5@2026-10": 1
+    },
+    "reported_usd": 0.007868
+  },
+  {
+    "role": "act",
+    "model": "a6api/claude-fable-5-1@2026-11",
+    "item_sha256": "47d9e085a69019149ce54839c0bae5451c459039049bf4165c57ff7cde93cdab",
+    "tier": "strong@medium",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "act:a6api/claude-fable-5-1@2026-11": 1
+    },
+    "reported_usd": 0.1505
+  },
+  {
+    "role": "act",
+    "model": "a6api/gpt-6-astra@2026-11",
+    "item_sha256": "47d9e085a69019149ce54839c0bae5451c459039049bf4165c57ff7cde93cdab",
+    "tier": "strong@medium",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "act:a6api/gpt-6-astra@2026-11": 1
+    },
+    "reported_usd": 0.04881
+  },
+  {
+    "role": "route",
+    "model": "a6api/claude-haiku-5-5@2026-10",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "small@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/claude-haiku-5-5@2026-10": 1
+    },
+    "reported_usd": 0.000229
+  },
+  {
+    "role": "route",
+    "model": "a6api/deepseek-v4-flash@2026-10",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "mid@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/deepseek-v4-flash@2026-10": 1
+    },
+    "reported_usd": 0.000264
+  },
+  {
+    "role": "route",
+    "model": "a6api/gemini-3.5-flash-lite@2026-10",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "small@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/gemini-3.5-flash-lite@2026-10": 1
+    },
+    "reported_usd": 0.000422
+  },
+  {
+    "role": "route",
+    "model": "a6api/gemini-3.8-flash@2026-11",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "mid@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/gemini-3.8-flash@2026-11": 1
+    },
+    "reported_usd": 0.000855
+  },
+  {
+    "role": "route",
+    "model": "a6api/glm-5.3-flash@2026-11",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "small@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/glm-5.3-flash@2026-11": 1
+    },
+    "reported_usd": 0.000294
+  },
+  {
+    "role": "route",
+    "model": "a6api/gpt-6-luna@2026-11",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "small@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 1,
+    "actual_calls": {},
+    "reported_usd": 3.6e-05
+  },
+  {
+    "role": "route",
+    "model": "a6api/gpt-6.1-terra@2026-11",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "mid@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/gpt-6.1-terra@2026-11": 1
+    },
+    "reported_usd": 0.001803
+  },
+  {
+    "role": "route",
+    "model": "a6api/qwen3.8-flash@2026-11",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "small@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/qwen3.8-flash@2026-11": 1
+    },
+    "reported_usd": 0.000326
+  },
+  {
+    "role": "route",
+    "model": "a6api/gemini-4-hydrogen@2026-11",
+    "item_sha256": "ced5586811c8a021677787f1632cc0eba16fba736a27e1218fe9f871c9eed480",
+    "tier": "mid@low",
+    "error": null,
+    "exceeded": false,
+    "known": true,
+    "pinned": 1,
+    "missed": 0,
+    "actual_calls": {
+      "route:a6api/gemini-4-hydrogen@2026-11": 1
+    },
+    "reported_usd": 0.002003
+  }
+]

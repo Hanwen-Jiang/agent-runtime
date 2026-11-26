@@ -106,4 +106,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except sb.ProviderQuotaPaused:
+        raise SystemExit(75) from None

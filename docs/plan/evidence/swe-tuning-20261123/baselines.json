@@ -1,0 +1,824 @@
+{
+  "init-50": {
+    "grades": {
+      "unresolved": 10,
+      "resolved": 38,
+      "run_error": 1,
+      "ambiguous_failure": 1
+    },
+    "unresolved_by_failure": {
+      "target_and_regression": 1,
+      "regression_only": 2,
+      "target_only": 7
+    },
+    "cases": {
+      "astropy__astropy-13033": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 1,
+        "regression_failures": 1
+      },
+      "astropy__astropy-8707": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 5,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11163": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11276": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11292": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11490": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11740": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11885": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 16,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 2
+      },
+      "django__django-11951": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12262": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-13033": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-13741": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-13810": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-14155": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 3,
+        "regression_failures": 0
+      },
+      "django__django-14765": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-14771": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-15503": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 6
+      },
+      "django__django-15561": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-15569": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-15814": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-15851": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-16145": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-16595": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-16661": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 8,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-16877": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 6,
+        "source_run": "t18-rev19",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "matplotlib__matplotlib-13989": {
+        "grade": "run_error",
+        "agent_verdict": null,
+        "rounds": null,
+        "source_run": "t18-rev19"
+      },
+      "matplotlib__matplotlib-26342": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "matplotlib__matplotlib-26466": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "mwaskom__seaborn-3187": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "pallets__flask-5014": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 1,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "pydata__xarray-2905": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "pydata__xarray-7393": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 5,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "pylint-dev__pylint-6528": {
+        "grade": "ambiguous_failure",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19"
+      },
+      "pytest-dev__pytest-7205": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 7,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "pytest-dev__pytest-7571": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 10,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "scikit-learn__scikit-learn-10297": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 10,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "scikit-learn__scikit-learn-13439": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "scikit-learn__scikit-learn-14629": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-10673": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8056": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9367": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9711": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sympy__sympy-12096": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sympy__sympy-13615": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sympy__sympy-14531": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 6,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sympy__sympy-15599": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 1,
+        "source_run": "t18-rev19",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "sympy__sympy-15809": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sympy__sympy-17630": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "t18-rev19",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "sympy__sympy-23413": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sympy__sympy-24562": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 5,
+        "source_run": "t18-rev19",
+        "target_failures": 0,
+        "regression_failures": 0
+      }
+    }
+  },
+  "mini-50": {
+    "grades": {
+      "resolved": 36,
+      "unresolved": 14
+    },
+    "unresolved_by_failure": {
+      "target_only": 14
+    },
+    "cases": {
+      "django__django-11790": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12050": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 1,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12262": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12713": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8475": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8721": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9320": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9698": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11848": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12774": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 6,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-7748": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8035": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8548": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9229": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "django__django-11880": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12143": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12155": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9367": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-infra-20261123-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12209": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "repair-mini50-diff-12209-20261122",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11951": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12193": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12276": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12304": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-9296": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-10466": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11999": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12039": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12273": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "django__django-12325": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "django__django-12406": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-10673": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-11510": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-7757": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8265": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8551": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8638": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 2,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11815": {
+        "grade": "resolved",
+        "agent_verdict": "abort",
+        "rounds": 8,
+        "source_run": "mini50-gpt62-formal-b-20261121T1930Z",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-11885": {
+        "grade": "unresolved",
+        "agent_verdict": "abort",
+        "rounds": 10,
+        "source_run": "repair-mini50-grader-11885-20261122",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "django__django-12708": {
+        "grade": "resolved",
+        "agent_verdict": null,
+        "rounds": 4,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-7590": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-7985": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8056": {
+        "grade": "resolved",
+        "agent_verdict": "abort",
+        "rounds": 4,
+        "source_run": "mini50-infra-20261123-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9461": {
+        "grade": "unresolved",
+        "agent_verdict": null,
+        "rounds": 2,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 3,
+        "regression_failures": 0
+      },
+      "django__django-11964": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "django__django-12308": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 2,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-10323": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 3,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-10435": {
+        "grade": "unresolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 1,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-8269": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 5,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9230": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 4,
+        "source_run": "mini50-quota-20261122-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      },
+      "sphinx-doc__sphinx-9281": {
+        "grade": "resolved",
+        "agent_verdict": "done",
+        "rounds": 1,
+        "source_run": "mini50-infra-20261123-b",
+        "target_failures": 0,
+        "regression_failures": 0
+      }
+    }
+  }
+}

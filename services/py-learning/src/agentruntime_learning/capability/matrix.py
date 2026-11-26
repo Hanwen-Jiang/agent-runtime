@@ -8,6 +8,7 @@
       "name": "round1",                       # 写进 capability_scores 的 source
       "task_family": "general.unclassified",  # 第一版都写在这里（第 1 节）
       "n": 40, "r": 3, "seed": 0, "concurrency": 4,
+      "schedule": "round_robin",              # 基础阶段按角色和候选评测器轮转，旧计划默认 sequential
       "item_usd_limit": 0.5,                  # 单题（一次重复）的花费上限，可省
       "extend": false,                        # true：区间与领先者重叠的候选追加样本（+20 道，最多 120）
       "cells": [
@@ -33,8 +34,8 @@ import hashlib
 import json
 import os
 import re
-from collections import defaultdict
-from collections.abc import Iterator, Mapping, Sequence
+from collections import defaultdict, deque
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -42,9 +43,10 @@ from pathlib import Path
 from typing import Any
 
 from agentruntime_core.providers.telemetry import Telemetry
+from agentruntime_core.errors import DeniedError
 from agentruntime_worker.executor.model_gateway import ModelGateway
 
-from agentruntime_learning.capability import publication, scoring
+from agentruntime_learning.capability import publication, quota, scoring
 from agentruntime_learning.capability.base import Cell, CellEval, Item, ItemResult, PinningGateway
 from agentruntime_learning.capability.evals import load_eval
 from agentruntime_learning.evals.live import LiveRun
@@ -166,6 +168,7 @@ class MatrixPlan:
     extend_step: int = scoring.EXTEND_STEP
     max_n: int = scoring.MAX_N
     raw: Mapping[str, Any] = field(default_factory=dict)
+    schedule: str = "sequential"
 
 
 def _positive(value: Any, what: str) -> int:
@@ -186,6 +189,9 @@ def parse_plan(data: Mapping[str, Any]) -> MatrixPlan:
     if isinstance(seed, bool) or not isinstance(seed, int):
         raise PlanError(f"seed 要是整数，得到 {seed!r}")
     family = str(data.get("task_family") or DEFAULT_TASK_FAMILY)
+    schedule = data.get("schedule", "sequential")
+    if schedule not in ("sequential", "round_robin"):
+        raise PlanError("schedule 必须是 sequential 或 round_robin")
     limit = data.get("item_usd_limit")
     if limit is not None and (not isinstance(limit, int | float) or limit <= 0):
         raise PlanError(f"item_usd_limit 要是正数，得到 {limit!r}")
@@ -242,6 +248,7 @@ def parse_plan(data: Mapping[str, Any]) -> MatrixPlan:
         extend_step=_positive(data.get("extend_step", scoring.EXTEND_STEP), "extend_step"),
         max_n=_positive(data.get("max_n", scoring.MAX_N), "max_n"),
         raw=dict(data),
+        schedule=schedule,
     )
 
 
@@ -458,7 +465,7 @@ class ItemBudgetExceeded(BudgetError):
 
 
 class _ItemBudget:
-    def __init__(self, inner: ModelGateway, limit: float | None, path: Path) -> None:
+    def __init__(self, inner: ModelGateway, limit: float | None, path: Path, *, pause: quota.Pause | None = None) -> None:
         self.guard = BudgetGateway(inner, path, limit) if limit is not None else None
         self.inner = self.guard or inner
         self.limit = limit
@@ -466,11 +473,22 @@ class _ItemBudget:
         self.exceeded = False
         self.cost_known = not (self.guard and self.guard.state["pending"])
         self.responses = 0
+        self.pause = pause
+        self.forwarded = 0
+        self.provider_refused = False
+        self.stopped_locally = False
 
     async def _call(self, method: str, request: Any) -> Any:
+        if self.pause and self.pause.first_at:
+            self.stopped_locally = True
+            raise quota.ProviderQuotaPaused("new calls suspended after provider quota refusal")
+        self.forwarded += 1
         try:
             response = await getattr(self.inner, method)(request)
         except Exception as exc:
+            if self.pause and isinstance(exc, DeniedError) and exc.code == quota.CODE:
+                self.provider_refused = True
+                self.pause.trip()
             if isinstance(exc, BudgetError):
                 self.exceeded = True
             billed = getattr(exc, "billed_cost_usd_micros", None)
@@ -504,6 +522,24 @@ class _Job:
     candidate: str
     item: Item
     repeat: int
+
+    @property
+    def key(self) -> tuple[str, ...]:
+        cell = self.cell.cell
+        return (cell.task_family, cell.role, cell.tier, self.ev.name, self.candidate, self.item.id, str(self.repeat))
+
+
+def _interleave[T](groups: Iterable[Iterable[T]]) -> Iterator[T]:
+    """Take one from each nonempty group per round, retaining order within groups."""
+    remaining = deque(iter(group) for group in groups)
+    while remaining:
+        group = remaining.popleft()
+        try:
+            item = next(group)
+        except StopIteration:
+            continue
+        yield item
+        remaining.append(group)
 
 
 def _outcome(result: ItemResult) -> str:
@@ -550,6 +586,8 @@ class MatrixRunner:
         self._owner = owner or DirectoryOwner(self.out_dir)
         self._owner.require(self.out_dir)
         try:
+            quota.require_running(self.out_dir)
+            self.quota_pause = quota.Pause(self.out_dir)
             self._initialize_output(frozen)
         except BaseException:
             self.close()
@@ -648,9 +686,11 @@ class MatrixRunner:
 
     # --- 跑题 ---
 
-    def _jobs(self, cp: CellPlan, candidates: Sequence[str], sizes: Mapping[str, tuple[int, int]]) -> list[_Job]:
+    def _jobs(self, cp: CellPlan, candidates: Sequence[str], sizes: Mapping[str, tuple[int, int]], *, include_finished: bool = False) -> list[_Job]:
         """candidates × 评测 × 前 n 道题 × r 次里还没做的；sizes 是 评测写法 → (n, r)。"""
         jobs = []
+        if not candidates:
+            return jobs
         for entry in cp.evals:
             ev = self.evals[(cp.key, entry.spec)]
             n, r = sizes[entry.spec]
@@ -658,9 +698,9 @@ class MatrixRunner:
             for c in candidates:
                 for item in items:
                     for repeat in range(r):
-                        key = (cp.cell.task_family, cp.cell.role, cp.cell.tier, ev.name, c, item.id, str(repeat))
-                        if key not in self.done:
-                            jobs.append(_Job(cp, ev, c, item, repeat))
+                        job = _Job(cp, ev, c, item, repeat)
+                        if include_finished or job.key not in self.done:
+                            jobs.append(job)
         return jobs
 
     async def _run_jobs(self, jobs: Sequence[_Job]) -> None:
@@ -675,6 +715,9 @@ class MatrixRunner:
 
         async def one(job: _Job) -> None:
             async with sem:
+                if self.quota_pause.first_at:
+                    self._skip(job, quota.CODE)
+                    return
                 if self.budget_usd is not None and self.spent >= self.budget_usd:
                     self._skip(job, "experiment_budget_exhausted")
                     return
@@ -708,7 +751,15 @@ class MatrixRunner:
         uses_judge = bool(getattr(ev, "uses_judge", False))
         identity = (cp.key, ev.name, job.candidate, job.item.id, job.repeat)
         item_key = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
-        budget = _ItemBudget(base, self.plan.item_usd_limit, self.out_dir / "item-budgets" / f"{item_key}.json")
+        budget_path = self.out_dir / "item-budgets" / f"{item_key}.json"
+        if budget_path.exists():
+            previous = json.loads(budget_path.read_bytes())
+            if previous.get("pending") or previous.get("spent_usd_micros", 0) > 0:
+                # A crash can leave a billed/in-flight trial with no results row.
+                # A new generation is unsafe until that specific trial is reconciled.
+                self._skip(job, "item_requires_billing_reconciliation")
+                return
+        budget = _ItemBudget(base, self.plan.item_usd_limit, budget_path, pause=self.quota_pause)
         base = budget
         if uses_judge:
             from agentruntime_learning.evals.judging import RecordingJudgeGateway
@@ -728,6 +779,9 @@ class MatrixRunner:
             result = ItemResult(job.item.id, score=0.0, error=f"{type(exc).__name__}: {exc}"[:300])
         finally:
             budget.close()
+        if budget.stopped_locally and not budget.forwarded:
+            self._skip(job, quota.CODE)
+            return
         total_unavailable = self._total_budget is not None and (
             self._total_budget.state["pending"] or self._total_budget.state["spent_usd_micros"] >= self._total_budget.limit
         )
@@ -738,6 +792,8 @@ class MatrixRunner:
         error = result.error
         if budget.exceeded:
             error, contaminated = ("experiment_budget_exhausted" if total_unavailable else "item_usd_limit"), True
+        if budget.provider_refused or budget.stopped_locally:
+            error, contaminated = quota.CODE, True
         cost = max(float(result.cost_usd or 0.0), pin.cost_usd, budget.spent)
         row = {
             "at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -763,6 +819,9 @@ class MatrixRunner:
             "missed_calls": pin.missed_calls,
             "record": result.record,
         }
+        if budget.provider_refused or budget.stopped_locally:
+            row["provider_quota"] = {"provider_refused":budget.provider_refused,
+                                     "successful_responses":budget.responses, "forwarded_calls":budget.forwarded}
         async with self._lock:
             with (self.out_dir / RESULTS).open("a", encoding="utf-8") as f:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -777,7 +836,7 @@ class MatrixRunner:
     def score_cell(self, cp: CellPlan) -> scoring.CellScore:
         return scoring.score_cell(cell_rows(self.rows, cp.cell), cp.candidates, expensive=cp.expensive, tournament_n=self.plan.tournament_n, seed=self.plan.seed)
 
-    async def run_cell(self, cp: CellPlan) -> scoring.CellScore:
+    def _initial_jobs(self, cp: CellPlan, *, include_finished: bool = False) -> tuple[list[_Job], list[_Job]]:
         for entry in cp.evals:
             ev = self.evals[(cp.key, entry.spec)]
             if ev.role != cp.cell.role:
@@ -786,15 +845,23 @@ class MatrixRunner:
                 raise PlanError(f"{cp.key}：被测角色是 judge 的格子不能再用固定的裁判（{entry.spec} 的 uses_judge）")
         full = {e.spec: (e.n, e.r) for e in cp.evals}
         regular = [c for c in cp.candidates if c not in cp.expensive]
-        expensive = list(cp.expensive)
-        await self._run_jobs(self._jobs(cp, regular, full))
-        if expensive and regular:
-            await self._run_jobs(self._jobs(cp, expensive, {e.spec: (min(e.n, self.plan.tournament_n), 1) for e in cp.evals}))
+        initial = {e.spec: (min(e.n, self.plan.tournament_n), 1) for e in cp.evals} if regular else full
+        return (self._jobs(cp, regular, full, include_finished=include_finished),
+                self._jobs(cp, cp.expensive, initial, include_finished=include_finished))
+
+    async def _finish_cell(self, cp: CellPlan) -> scoring.CellScore:
+        if self.quota_pause.first_at:
+            return self.score_cell(cp)
+        if self._total_budget and (self._total_budget.state["pending"]
+                                   or self._total_budget.state["spent_usd_micros"] >= self._total_budget.limit):
+            # Skipped base jobs were already reported. An interrupted preliminary
+            # comparison has not determined which conditional extensions to plan.
+            return self.score_cell(cp)
+        full = {e.spec: (e.n, e.r) for e in cp.evals}
+        if cp.expensive and set(cp.candidates) - set(cp.expensive):
             cell = self.score_cell(cp)
-            advancing = [c for c in expensive if cell.candidates[c].status != scoring.NOT_LEADING]
+            advancing = [c for c in cp.expensive if cell.candidates[c].status != scoring.NOT_LEADING]
             await self._run_jobs(self._jobs(cp, advancing, full))
-        elif expensive:
-            await self._run_jobs(self._jobs(cp, expensive, full))
         sizes = dict(full)
         while self.plan.extend:
             cell = self.score_cell(cp)
@@ -811,6 +878,21 @@ class MatrixRunner:
             sizes.update(grown)
             await self._run_jobs(self._jobs(cp, close, sizes))
         return self.score_cell(cp)
+
+    def _balanced_cell_jobs(self, cp: CellPlan) -> Iterator[_Job]:
+        lanes: dict[tuple[str, str], list[_Job]] = defaultdict(list)
+        for batch in self._initial_jobs(cp, include_finished=True):
+            for job in batch:
+                lanes[(job.ev.name, job.candidate)].append(job)
+        return _interleave(lanes.values())
+
+    async def run_cell(self, cp: CellPlan) -> scoring.CellScore:
+        if self.plan.schedule == "round_robin":
+            await self._run_jobs([job for job in self._balanced_cell_jobs(cp) if job.key not in self.done])
+        else:
+            for batch in self._initial_jobs(cp):
+                await self._run_jobs(batch)
+        return await self._finish_cell(cp)
 
     async def run(self) -> dict[str, Any]:
         self._owner.require(self.out_dir)
@@ -835,13 +917,29 @@ class MatrixRunner:
 
     async def _run(self) -> dict[str, Any]:
         (self.out_dir / PLAN_COPY).write_text(json.dumps(dict(self.plan.raw), ensure_ascii=False, indent=2), "utf-8")
-        for cp in self.plan.cells:
-            await self.run_cell(cp)
+        if self.plan.schedule == "round_robin":
+            # Filtering after interleaving preserves the unvisited suffix when
+            # the previous process stopped halfway through a round.
+            ordered = _interleave(self._balanced_cell_jobs(cp) for cp in self.plan.cells)
+            await self._run_jobs([job for job in ordered if job.key not in self.done])
+            for cp in self.plan.cells:
+                await self._finish_cell(cp)
+        else:
+            for cp in self.plan.cells:
+                await self.run_cell(cp)
+        if self.quota_pause.first_at:
+            self.quota_pause.write(self.rows)
+            raise quota.ProviderQuotaPaused(f"{self.out_dir.name} paused after provider {quota.CODE}; receipts saved")
         report = score_results(self.plan, self.rows)
         if self._total_budget:
             report["budget"] = dict(self._total_budget.state)
         report["not_run"] = self.not_run
+        if (any(quota.is_quota_row(r) for r in self.rows)
+                or any(r["reason"] == "item_requires_billing_reconciliation" for r in self.not_run)):
+            report["status"] = "partial_billing_reconciliation"
         write_scores(self.out_dir, report, owner=self._owner)
+        if report.get("status") == "partial_billing_reconciliation":
+            return report
         for cell in report["cells"]:
             for c in cell["candidates"]:
                 live = self._live.get(c["candidate"])
@@ -910,7 +1008,10 @@ def score_results(plan: MatrixPlan, rows: Sequence[Mapping[str, Any]]) -> dict[s
             for candidate in cells[-1]["candidates"]:
                 candidate.update(publishable=False, status="inconsistent", reason="experiment_mismatch")
             cells[-1]["publication"]["coverage_ok"] = False
-    return {"plan": plan.name, "seed": plan.seed, "scored_at": datetime.now(UTC).isoformat(timespec="seconds"), "cells": cells}
+    result = {"plan": plan.name, "seed": plan.seed, "scored_at": datetime.now(UTC).isoformat(timespec="seconds"), "cells": cells}
+    if any(quota.is_quota_row(r) for r in rows):
+        result["status"] = "partial_billing_reconciliation"
+    return result
 
 
 def _digest(value: Any) -> str:

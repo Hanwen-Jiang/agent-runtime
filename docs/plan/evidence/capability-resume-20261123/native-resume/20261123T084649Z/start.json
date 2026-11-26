@@ -1,0 +1,30 @@
+{
+  "stamp": "20261123T084649Z",
+  "runs": [
+    {
+      "run_id": "capability-resume-20261123-core",
+      "base_freeze_sha256": "05c4f84d77af3fa5a39d0d5e9d300589bf3a417c7b5e792d3eedf77162d73395",
+      "starting_results_sha256": "5d85b15536f7df64697a41f0f53101aa042b12af09ed935166659019a5d4a3eb",
+      "starting_rows": 454,
+      "starting_clean": 218,
+      "prior_marker_sha256": "f8f32bd6393ba79e053a75c1a675c50d27de886ed7aa6388e32ad86b1d0eb587"
+    },
+    {
+      "run_id": "capability-resume-20261123-transform",
+      "base_freeze_sha256": "76b84c8ddd91836eb2c08df72c46a879339bd410c6fb5a3958eee165a7d27474",
+      "starting_results_sha256": "9a4f934fb70d5f1aac70d7e7031ba4914e901f78fcf589f92131d846f32cac84",
+      "starting_rows": 297,
+      "starting_clean": 119,
+      "prior_marker_sha256": "391ac5c9bcc56e59650d2c7680851dc5f43c478b1f2496ff49a67a772b72075f"
+    },
+    {
+      "run_id": "capability-resume-20261123-judge-v2",
+      "base_freeze_sha256": "6e147fd93a173b79a94ba1c6e28228f07a01e0141880209306a7f1aeb1094716",
+      "starting_results_sha256": "383b8013acb0ed72dce635c1d2b5cb6d29c12f385f6bba4cf49f4dbbffff8348",
+      "starting_rows": 772,
+      "starting_clean": 376,
+      "prior_marker_sha256": "e3eb8a72d13facc5fe34bcf6438c3dffae4e0407232ebf670f2a87ec0038dcae"
+    }
+  ],
+  "authorization": "user_resumed_original_experiment"
+}

@@ -1,0 +1,173 @@
+{
+  "iid": "pytest-dev__pytest-7205",
+  "generation_attempts_added": 0,
+  "fresh_official_evaluations": 1,
+  "original": {
+    "patch_sha256": "938e1ae8d331c107be0f449060b4f38666bdb86fd384389c4664aeaf339ec779",
+    "docker_host": "unix:///var/run/docker.sock",
+    "docker_image_id": "sha256:1c6124cd5254db8831df455575eff2795b0cbeb849d10846388e30e00870e495",
+    "image_repo_digests": [
+      "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-7205@sha256:1c6124cd5254db8831df455575eff2795b0cbeb849d10846388e30e00870e495"
+    ],
+    "completed": true,
+    "unresolved": true,
+    "ambiguous_failure": true,
+    "reason": "no_tests_collected",
+    "test_counts": {
+      "FAIL_TO_PASS": {
+        "success": 1,
+        "failure": 9
+      },
+      "PASS_TO_PASS": {
+        "success": 16,
+        "failure": 0
+      }
+    },
+    "outer_summary": [
+      {
+        "line": 1296,
+        "text": "========================= 9 failed, 17 passed in 2.51s ========================="
+      }
+    ],
+    "embedded_no_tests_markers": [
+      {
+        "line": 386,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 408,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 459,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 481,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 519,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 537,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 592,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 614,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 665,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 687,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 725,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 743,
+        "matched": "no tests ran"
+      }
+    ],
+    "source_sha256": {
+      "official_summary": "e8ff24c673fb39f9f57f80a4c30d2b689641bb6825d7e6065a167542e5c8a621",
+      "official_case_report": "c61025e344c03e9d5cedca482e35f91cf93c7d4f2c8579a9ebf32142b8a118ca",
+      "stdout": "08e0c03ed1ab9d46b3c05fb9e26dbb95f6a288952811f7d4432f6e912d924079",
+      "official_eval_script": "722f5fdef23a1599616ded010fdf9c93329e0c4c56433d900dff9d647ddcd555"
+    }
+  },
+  "independent_replay": {
+    "patch_sha256": "938e1ae8d331c107be0f449060b4f38666bdb86fd384389c4664aeaf339ec779",
+    "docker_host": "unix:///var/run/docker.sock",
+    "docker_image_id": "sha256:1c6124cd5254db8831df455575eff2795b0cbeb849d10846388e30e00870e495",
+    "image_repo_digests": [
+      "swebench/sweb.eval.x86_64.pytest-dev_1776_pytest-7205@sha256:1c6124cd5254db8831df455575eff2795b0cbeb849d10846388e30e00870e495"
+    ],
+    "completed": true,
+    "unresolved": true,
+    "ambiguous_failure": true,
+    "reason": "no_tests_collected",
+    "test_counts": {
+      "FAIL_TO_PASS": {
+        "success": 1,
+        "failure": 9
+      },
+      "PASS_TO_PASS": {
+        "success": 16,
+        "failure": 0
+      }
+    },
+    "outer_summary": [
+      {
+        "line": 1296,
+        "text": "========================= 9 failed, 17 passed in 2.12s ========================="
+      }
+    ],
+    "embedded_no_tests_markers": [
+      {
+        "line": 386,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 408,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 459,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 481,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 519,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 537,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 592,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 614,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 665,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 687,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 725,
+        "matched": "no tests ran"
+      },
+      {
+        "line": 743,
+        "matched": "no tests ran"
+      }
+    ],
+    "source_sha256": {
+      "official_summary": "e8ff24c673fb39f9f57f80a4c30d2b689641bb6825d7e6065a167542e5c8a621",
+      "official_case_report": "c61025e344c03e9d5cedca482e35f91cf93c7d4f2c8579a9ebf32142b8a118ca",
+      "stdout": "158eb5d8b048ced3b1b0a9b998487f899c2b24793ea23c76a514ed24c00572f0",
+      "official_eval_script": "722f5fdef23a1599616ded010fdf9c93329e0c4c56433d900dff9d647ddcd555"
+    }
+  }
+}

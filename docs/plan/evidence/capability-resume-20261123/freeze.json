@@ -1,0 +1,244 @@
+{
+  "runtime_commit": "5af1d890195dda4524634b33fd81beb414467079",
+  "coding_agent_commit": "0cd2c890d214a53a3768568b7d80103eb0fd7341",
+  "deployment_manifest_sha256": "6b28d5104f390e1fc78d705fc34dceef1c561914f8d30b2de7b8648879f54109",
+  "registry_revisions": [
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/claude-fable-5-1@2026-11",
+      "version": "v1",
+      "document_sha256": "c3a8c60e48c6219bf15d95b2450e2fb702053adfb4d7fe8e040babb21c052cc2"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/claude-haiku-5-5@2026-10",
+      "version": "v2",
+      "document_sha256": "ba45f390cd51419982b714ae3ca2f82c2dc89de87f197fbe68a9542352b98bfe"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/claude-opus-5-5@2026-10",
+      "version": "v3",
+      "document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/claude-sonnet-5-5@2026-10",
+      "version": "v2",
+      "document_sha256": "0e6c0318486a6f67dcd58ad7418bfd8353800e814e6125bfed59f7735ea5271f"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/deepseek-v4-flash@2026-10",
+      "version": "v2",
+      "document_sha256": "b6f4c36572c5db4dcc601fbfdadb8a881ecdf881b949aa6215ec34371d93f1be"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/deepseek-v4-pro@2026-11",
+      "version": "v2",
+      "document_sha256": "3d3cbdb09c3c951c3cf996198d5c318a8a60ea46e5bea870bb2e1363204c4697"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gemini-3.5-flash-lite@2026-10",
+      "version": "v2",
+      "document_sha256": "d70dcdcab547faf233ffda014757fc070ad00a857a7b7e1c5b107c75e821c251"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gemini-3.5-flash@2026-10",
+      "version": "v2",
+      "document_sha256": "5576be744001d37ba1ff82ed821e5a135f039a3ee2f14032b3365d7b0e8a9b05"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gemini-3.8-flash@2026-11",
+      "version": "v1",
+      "document_sha256": "1dd62ee6332ed8d3c2184bbb9c229970b8e395e3e15d456c63556178855bb418"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gemini-4-argon@2026-11",
+      "version": "v2",
+      "document_sha256": "9bc099a959e8b697e1888db42eadf64fb9e19fcadfb00ce80f9311074187ea72"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gemini-4-carbon@2026-11",
+      "version": "v1",
+      "document_sha256": "ed3fec6687e60bb14dfc08bf8c9c6fd68b7c35da76a7e8e037e107726407df6b"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gemini-4-hydrogen@2026-11",
+      "version": "v1",
+      "document_sha256": "fab9cb3059ef51c9157d05946847c1978f1c4963f68c1a15c59e9f90ad132be2"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gemini-4-neon@2026-11",
+      "version": "v1",
+      "document_sha256": "36387927f7c6fc6aa0413490023e453baf89d246252fab744baf584edf0506a2"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/glm-5.3-flash@2026-11",
+      "version": "v1",
+      "document_sha256": "ebbd83a254d74d7be378a524ee8e2d3090fef9b441d2e2dfcf01bf76f9fe1214"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/glm-5.3@2026-11",
+      "version": "v3",
+      "document_sha256": "f7287c6d4c70bfae6578ba039ea651ea72e783c925d55d92b5f071524ae1c7bf"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gpt-4o-mini@2026-10",
+      "version": "v2",
+      "document_sha256": "aa580d6d09792d234ebd3c0423342f8d39ca0e77b064bb91c9d8b1d5e516b1b2"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gpt-5.5@2026-10",
+      "version": "v2",
+      "document_sha256": "00bb6a5866e238293fbd2148f3701f49b208fad4e2b38a43857b49317c5c7a3b"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gpt-6-astra@2026-11",
+      "version": "v2",
+      "document_sha256": "edcb90f5dee9cf4a3e7153811fc1afe749673ae6b6cbf5dc5e6b3f52d314d684"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gpt-6-luna@2026-11",
+      "version": "v1",
+      "document_sha256": "78ed6249328f367f18ab5fed5fb01974325f8552a2c4d7dca9ce05bf9379910e"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gpt-6.1-sol@2026-11",
+      "version": "v2",
+      "document_sha256": "83ba95e7bc2226e208409cdf92c1ba66069af5acb54764124fa14de764bca14b"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/gpt-6.1-terra@2026-11",
+      "version": "v1",
+      "document_sha256": "314677ed7d381fa128ec24b726e199cc6acad898dbbbf3ed10ac51d6fae03ddc"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/grok-4.7@2026-11",
+      "version": "v2",
+      "document_sha256": "0f6452a631178b9b2f717231f27bd9d20c51bb1a7aa90856d2624b19969ee5d5"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/kimi-k3.1-pro@2026-11",
+      "version": "v2",
+      "document_sha256": "b852a9ef76c954e93a8723acfaacab2fcddbd20b4fd171b5d4c29fc96150806b"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/longcat-2.0@2026-11",
+      "version": "v2",
+      "document_sha256": "b6dfe3f8ce90df809aa01d6bf1ab8aeef5e94509197ed97f794a99bbabed6e73"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/mimo-v2.6-pro@2026-11",
+      "version": "v3",
+      "document_sha256": "67d304c312e50d24e64911ad75b26d1b548d3f960c1428daee2b6dacb6c7f8b6"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/qwen3.8-flash@2026-11",
+      "version": "v1",
+      "document_sha256": "d26f2f8c2486771fa5948b7a1b52dc2e69dad8dbffef49e97ac30262fe59a7a6"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/qwen3.8-max@2026-11",
+      "version": "v1",
+      "document_sha256": "adf1202cd0fa740f1a0a1bd08e9282d4455163bbb666af16136dfb53f6d36f03"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/text-embedding-3-large@2026-10",
+      "version": "v1",
+      "document_sha256": "ac61544d2cec07c76bdbeee2a68cb9e1a4e3f171076242374725a93a87028180"
+    },
+    {
+      "scope": "platform",
+      "kind": "model_profile",
+      "name": "a6api/text-embedding-3-small@2026-10",
+      "version": "v2",
+      "document_sha256": "52fadf4c5e3ccd193bf3b75190a5b3faebdcd3de70dcc7186466246a4dc84a3a"
+    }
+  ],
+  "memory_revision": "ghcr.io/agentruntime/memory:rec-c8ed02ec",
+  "memory_config_sha256": "480291e08bce922401b1b20506b4b5aa6135fab912701a4bb3fd742d02981ce6",
+  "subject_models": [
+    "a6api/claude-fable-5-1@2026-11",
+    "a6api/claude-haiku-5-5@2026-10",
+    "a6api/claude-opus-5-5@2026-10",
+    "a6api/claude-sonnet-5-5@2026-10",
+    "a6api/deepseek-v4-flash@2026-10",
+    "a6api/deepseek-v4-pro@2026-11",
+    "a6api/gemini-3.5-flash-lite@2026-10",
+    "a6api/gemini-3.5-flash@2026-10",
+    "a6api/gemini-3.8-flash@2026-11",
+    "a6api/gemini-4-argon@2026-11",
+    "a6api/gemini-4-carbon@2026-11",
+    "a6api/gemini-4-hydrogen@2026-11",
+    "a6api/gemini-4-neon@2026-11",
+    "a6api/glm-5.3-flash@2026-11",
+    "a6api/glm-5.3@2026-11",
+    "a6api/gpt-4o-mini@2026-10",
+    "a6api/gpt-5.5@2026-10",
+    "a6api/gpt-6-astra@2026-11",
+    "a6api/gpt-6-luna@2026-11",
+    "a6api/gpt-6.1-sol@2026-11",
+    "a6api/gpt-6.1-terra@2026-11",
+    "a6api/grok-4.7@2026-11",
+    "a6api/kimi-k3.1-pro@2026-11",
+    "a6api/longcat-2.0@2026-11",
+    "a6api/mimo-v2.6-pro@2026-11",
+    "a6api/qwen3.8-flash@2026-11",
+    "a6api/qwen3.8-max@2026-11",
+    "a6api/text-embedding-3-large@2026-10",
+    "a6api/text-embedding-3-small@2026-10"
+  ],
+  "sub_agents": "off"
+}

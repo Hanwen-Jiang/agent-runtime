@@ -1,0 +1,126 @@
+{
+  "sources": {
+    "official_models": "https://aistudio.google.com/docs/models#all-gemini-4-models",
+    "pricing": "https://aistudio.google.com/docs/pricing",
+    "model_metadata": "https://models.dev/api.json",
+    "relay": "configured authenticated /models response"
+  },
+  "upstream_series": [
+    "gemini-4-argon",
+    "gemini-4-carbon",
+    "gemini-4-hydrogen",
+    "gemini-4-neon"
+  ],
+  "previous_profile_count": 26,
+  "added_profiles": [
+    "a6api/gemini-4-carbon@2026-11",
+    "a6api/gemini-4-hydrogen@2026-11",
+    "a6api/gemini-4-neon@2026-11"
+  ],
+  "new_allowlist_entries": {
+    "default": [
+      "a6api/gemini-4-carbon@2026-11",
+      "a6api/gemini-4-hydrogen@2026-11"
+    ],
+    "gh-hanwen-jiang": [
+      "a6api/gemini-4-carbon@2026-11",
+      "a6api/gemini-4-hydrogen@2026-11",
+      "a6api/gemini-4-neon@2026-11"
+    ],
+    "evals": [
+      "a6api/gemini-4-carbon@2026-11",
+      "a6api/gemini-4-hydrogen@2026-11",
+      "a6api/gemini-4-neon@2026-11"
+    ],
+    "swebench": [
+      "a6api/gemini-4-carbon@2026-11",
+      "a6api/gemini-4-hydrogen@2026-11",
+      "a6api/gemini-4-neon@2026-11"
+    ]
+  },
+  "deployment": {
+    "catalog": "ar-model-profiles-gemini4-fb9ba6b48e2c",
+    "catalog_immutable": true,
+    "registry_scope": "platform",
+    "active_revisions": {
+      "a6api/gemini-4-argon@2026-11": {
+        "scope": "platform",
+        "sha256": "9bc099a959e8b697e1888db42eadf64fb9e19fcadfb00ce80f9311074187ea72",
+        "version": "v2"
+      },
+      "a6api/gemini-4-carbon@2026-11": {
+        "scope": "platform",
+        "sha256": "ed3fec6687e60bb14dfc08bf8c9c6fd68b7c35da76a7e8e037e107726407df6b",
+        "version": "v1"
+      },
+      "a6api/gemini-4-hydrogen@2026-11": {
+        "scope": "platform",
+        "sha256": "fab9cb3059ef51c9157d05946847c1978f1c4963f68c1a15c59e9f90ad132be2",
+        "version": "v1"
+      },
+      "a6api/gemini-4-neon@2026-11": {
+        "scope": "platform",
+        "sha256": "36387927f7c6fc6aa0413490023e453baf89d246252fab744baf584edf0506a2",
+        "version": "v1"
+      }
+    },
+    "catalog_profiles": 29,
+    "gateway_ready": true,
+    "gateway_generation": 36
+  },
+  "live_generate": {
+    "at": "20261122T200149Z",
+    "tenant": "swebench",
+    "gateway": "ar-agent-runtime-model-gateway:8091",
+    "probes": [
+      {
+        "task_id": "gemini4-route-20261122T200149Z-argon",
+        "requested_profile": "a6api/gemini-4-argon@2026-11",
+        "requested_tier": "strong@medium",
+        "served_profile": "a6api/gemini-4-argon@2026-11",
+        "served_tier": "strong@medium",
+        "text_received": true,
+        "input_tokens": 737,
+        "output_tokens": 44,
+        "cost_usd_micros": 1914,
+        "pass": true
+      },
+      {
+        "task_id": "gemini4-route-20261122T200149Z-carbon",
+        "requested_profile": "a6api/gemini-4-carbon@2026-11",
+        "requested_tier": "strong@medium",
+        "served_profile": "a6api/gemini-4-carbon@2026-11",
+        "served_tier": "strong@medium",
+        "text_received": true,
+        "input_tokens": 215,
+        "output_tokens": 3,
+        "cost_usd_micros": 460,
+        "pass": true
+      },
+      {
+        "task_id": "gemini4-route-20261122T200149Z-hydrogen",
+        "requested_profile": "a6api/gemini-4-hydrogen@2026-11",
+        "requested_tier": "mid@low",
+        "served_profile": "a6api/gemini-4-hydrogen@2026-11",
+        "served_tier": "mid@low",
+        "text_received": true,
+        "input_tokens": 9473,
+        "output_tokens": 24,
+        "cost_usd_micros": 14390,
+        "pass": true
+      },
+      {
+        "task_id": "gemini4-route-20261122T200149Z-neon",
+        "requested_profile": "a6api/gemini-4-neon@2026-11",
+        "requested_tier": "strong@medium",
+        "served_profile": "a6api/gemini-4-neon@2026-11",
+        "served_tier": "strong@medium",
+        "text_received": true,
+        "input_tokens": 41,
+        "output_tokens": 24,
+        "cost_usd_micros": 483,
+        "pass": true
+      }
+    ]
+  }
+}

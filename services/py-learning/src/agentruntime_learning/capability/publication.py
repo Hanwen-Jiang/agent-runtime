@@ -13,6 +13,7 @@ import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from typing import Any
+from .quota import is_quota_row
 
 POLICY_VERSION = "capmatrix-publication-v2"
 S09_CONTRACT = "s09-strict-v2"
@@ -68,6 +69,10 @@ def enforce(
             reasons.append("unknown_cost")
         if any(r.get("deployment_frozen") is False for r in mine):
             reasons.append("deployment_not_frozen")
+        if any(is_quota_row(r) for r in mine):
+            reasons.append("provider_quota_unresolved")
+        if any((r.get("record") or {}).get("confirmed") is False for r in mine):
+            reasons.append("unconfirmed_labels")
         identities = [(str(r["eval"]), str(r["item"]), int(r.get("repeat", 0))) for r in mine]
         if any(n > 1 for n in Counter(identities).values()):
             reasons.append("duplicate_observations")

@@ -1,0 +1,605 @@
+{
+  "observed_utc": "2026-11-23T03:25:44.526670+00:00",
+  "historical_docker": {
+    "original_tags_and_digests_verified": 54
+  },
+  "mirror": {
+    "records": 63,
+    "restored_blobs_verified": 63,
+    "original_owner_mode_mtime_verified": 63,
+    "buffer_mounted": false,
+    "restored_bytes": 9261199384
+  },
+  "private_registry": {
+    "records": 58,
+    "authenticated_GET_verified": 58,
+    "registry_layer_links_verified": 58,
+    "inode_manifest": {
+      "00706f078579f87805c33c47db56a3028bab96cfbe0343ef8771506beb95dbf3": {
+        "status": "shared",
+        "bytes": 89740538,
+        "device": 2050,
+        "inode": 16420463,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "00867a1047c88f4174cbab71c1a736f00215e76550417270b11dc385a4c22e5f": {
+        "status": "restored",
+        "bytes": 402886014,
+        "device": 2050,
+        "inode": 14551554,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "078501fcd7ce66371e4ee23b56853765c2909b00acd629c33a1786adeeaacd03": {
+        "status": "restored",
+        "bytes": 435751539,
+        "device": 2050,
+        "inode": 14293603,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "0898dd0482f78768edc11d858095cfead64b0f10dcf7072655ce774c6d8fa523": {
+        "status": "restored",
+        "bytes": 403158159,
+        "device": 2050,
+        "inode": 14551553,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "08aa064d3dbc53056d73501b8384cb23334d6057ba86ef2123476984f1283e11": {
+        "status": "restored",
+        "bytes": 1376151759,
+        "device": 2050,
+        "inode": 14551528,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "09ac14ad500b54e7280c4e0db67de138a32bb97b849d68fd5e44e7bdaa45b10d": {
+        "status": "shared",
+        "bytes": 103353716,
+        "device": 2050,
+        "inode": 16420779,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "0fb6452b21b0c26e02c59923687e6b9cae445e05cfdbadc51932ba49202c2f0d": {
+        "status": "shared",
+        "bytes": 95890724,
+        "device": 2050,
+        "inode": 16420614,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "1292419278df8e2fbf3dc7af905278262bcc75ef2c9e3f92f4466d8baf2fb6fd": {
+        "status": "shared",
+        "bytes": 17728137,
+        "device": 2050,
+        "inode": 16421009,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "1525cc95f60d4640434ec398f8e8199bd716eff4411455704f454d5ebbc3067f": {
+        "status": "shared",
+        "bytes": 101482275,
+        "device": 2050,
+        "inode": 16420708,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "1555dd6c7db607e7b62e0942aa0187200d359a8c6dfd58d2c009566a8d10098b": {
+        "status": "restored",
+        "bytes": 398372872,
+        "device": 2050,
+        "inode": 14551556,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "1ebe56de0bb0810a3493ca8878901270cb0aa0ab29d5a2ef0f05e5acfcaddae3": {
+        "status": "shared",
+        "bytes": 99108853,
+        "device": 2050,
+        "inode": 16421020,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "21a080cb89789fe2ace968841dfed1fbeae1eac9178a7d1d23c0465019e250c2": {
+        "status": "restored",
+        "bytes": 449034808,
+        "device": 2050,
+        "inode": 14551546,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "247400deb38c5d5c0bdb1faf62e2a278e5754e16060ad3898a0cc1eb13639eea": {
+        "status": "shared",
+        "bytes": 11343693,
+        "device": 2050,
+        "inode": 16420966,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "2508898c891167cbc01ba489b66365a5d50ca924a29146eba601b7a2994fc39f": {
+        "status": "shared",
+        "bytes": 89593585,
+        "device": 2050,
+        "inode": 16420491,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "33d7a81d7812679cf07a2fea407ecd00f57c24030e0faed5dc39690be68145e4": {
+        "status": "restored",
+        "bytes": 105070471,
+        "device": 2050,
+        "inode": 14471768,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "360f7d768fa7cb59b27b2b615d6dbe35549aec2e6c1898bb3a9b31c0e790bd74": {
+        "status": "restored",
+        "bytes": 477576899,
+        "device": 2050,
+        "inode": 14551540,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "40a6daff0f1b9711747096290e90c2b26f7f53562e42bbfa0d0ceab92bdd3eff": {
+        "status": "shared",
+        "bytes": 7731389,
+        "device": 2050,
+        "inode": 16420933,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "412395ec2cb0ce1e82766ecf2908c6354f4b010c693cf95226e054356af682a8": {
+        "status": "restored",
+        "bytes": 996599859,
+        "device": 2050,
+        "inode": 14293600,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "446b89d0246a87665c0ec6fba131ec3ec5420515f16bd29476877977a8bf3382": {
+        "status": "shared",
+        "bytes": 90733752,
+        "device": 2050,
+        "inode": 16420524,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "495cd65b012815c3cef56a890809108660c4a91141095df1150fb63d1c287ab9": {
+        "status": "restored",
+        "bytes": 1494382542,
+        "device": 2050,
+        "inode": 14293598,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "4a95afb95d9abaaaa1818e0da1cdff80f198c1ad322ef51e24a304e1b3dea194": {
+        "status": "restored",
+        "bytes": 588620089,
+        "device": 2050,
+        "inode": 14551538,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "50965dba24b2cd8b83424917fb1fede8ec995d456a58615d5bac0e504afa6662": {
+        "status": "shared",
+        "bytes": 97137991,
+        "device": 2050,
+        "inode": 16420674,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "53008be69ef4fc6be68ee28cb5471502e180144516158b9dfb438b51958a3c15": {
+        "status": "shared",
+        "bytes": 89685513,
+        "device": 2050,
+        "inode": 16420471,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "5325a9ac3e313b05456582571b3409c68eaa550eb09ddf453f62e4d82eee3095": {
+        "status": "restored",
+        "bytes": 456699295,
+        "device": 2050,
+        "inode": 14293602,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "59429e645740f69edd72298c216d91a8efa59915e93065bfe712fea9134164ec": {
+        "status": "shared",
+        "bytes": 41396752,
+        "device": 2050,
+        "inode": 16421126,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "5fe4ea37df607d2929a8bfa9c3b630dfd0df807e0d77f45594e5ae76f5ae43e4": {
+        "status": "restored",
+        "bytes": 348062149,
+        "device": 2050,
+        "inode": 14551560,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "680dc31fbe67a32e7368c858d531af6662b31991da70dd75df28fa05088d7ea1": {
+        "status": "restored",
+        "bytes": 18075802,
+        "device": 2050,
+        "inode": 14551570,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "6c084da5b646e378624cdc507d2eb05e8d52406b8031c54710ceb788634f0206": {
+        "status": "shared",
+        "bytes": 46271362,
+        "device": 2050,
+        "inode": 16420875,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "6d1e3777ee25684149834503197d34e2710fa7a057be5b47bbd51f7ed5bf3603": {
+        "status": "restored",
+        "bytes": 18334006,
+        "device": 2050,
+        "inode": 14551567,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "7a13365a6c7b7b36335ff21844747a73a50b1fc011c63e840e8c50ce4cdbc927": {
+        "status": "restored",
+        "bytes": 435475002,
+        "device": 2050,
+        "inode": 14471767,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "7bb6a78904831cab45acd5dc39d9f0aae03f653e736f074f42ba61a0513a6f73": {
+        "status": "shared",
+        "bytes": 98554097,
+        "device": 2050,
+        "inode": 16420665,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "7ffb81a96de5b64fa84fbabbbef75e953c70b98127ec5d3e58376501249c5199": {
+        "status": "shared",
+        "bytes": 51919195,
+        "device": 2050,
+        "inode": 16421160,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "82a47ceeba80f08fec2e886755026c3eb83a175fde8980ab5fb7bc26fa81c087": {
+        "status": "shared",
+        "bytes": 102336746,
+        "device": 2050,
+        "inode": 16420738,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "85b6b34f40ac44e4600d76f2bd397d1bdf8617e8f99aec36a44226e10b7f39b8": {
+        "status": "restored",
+        "bytes": 104809951,
+        "device": 2050,
+        "inode": 14551565,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "87d563fa66d0eefddea3d68671e90cc63fb50ce83bb64c5d8950b65a05a76225": {
+        "status": "restored",
+        "bytes": 476576836,
+        "device": 2050,
+        "inode": 14551543,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "8b8e2805372cef1daa765aebbd96cfda130de1503912a80f1e9a41d15bc0cfae": {
+        "status": "restored",
+        "bytes": 442011179,
+        "device": 2050,
+        "inode": 14551549,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "8f072205b9e85984bdc36f67066f827716ad7d1f8d4f76073165031a86429969": {
+        "status": "shared",
+        "bytes": 103458791,
+        "device": 2050,
+        "inode": 16420765,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "8f14b57b52774a572c2069eeebcb9ea71fb46eb71c854bb7b6226128795e17f6": {
+        "status": "shared",
+        "bytes": 58132657,
+        "device": 2050,
+        "inode": 16421194,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "96395261a4212519f47ffbcabf8e60371515bfe938ded7a4049ca6682430ad20": {
+        "status": "restored",
+        "bytes": 409381626,
+        "device": 2050,
+        "inode": 14551551,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "a17e1b9b613858e2027b973d0505d85dca6d1587a8d68bb0ec135c9ba27c54d8": {
+        "status": "restored",
+        "bytes": 348083004,
+        "device": 2050,
+        "inode": 14551559,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "ac7756917c6714c127c9ecf98074801233eee3400c00153aa1c13b91151b7f70": {
+        "status": "restored",
+        "bytes": 476296665,
+        "device": 2050,
+        "inode": 14551544,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "b928b11c570589537eac7320f6f58e02688c9f48fc13a18060bd7f87f326b759": {
+        "status": "shared",
+        "bytes": 60023622,
+        "device": 2050,
+        "inode": 16420409,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "c2d1cec3499f1dc02294fc29112a6d4d50a175a70143868b6d47885b058200f9": {
+        "status": "shared",
+        "bytes": 74941701,
+        "device": 2050,
+        "inode": 16420450,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "c425cda090f280f6eeaa2b01777caf6cfaf3559334c8a493ebc99cae295624e9": {
+        "status": "shared",
+        "bytes": 102189776,
+        "device": 2050,
+        "inode": 16420744,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "c89d0f0e1c281e47ce35b810fc55119fd7e28c3b985708b87995a41cda3f5c42": {
+        "status": "restored",
+        "bytes": 108267892,
+        "device": 2050,
+        "inode": 14551561,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "cbcbbf535047ef3fcca4c4ce5e7d0fb4266d6b4a234e1fd749bcb873d1057da9": {
+        "status": "restored",
+        "bytes": 449317619,
+        "device": 2050,
+        "inode": 14471766,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "cda1458bae134fd16a0f628767e41d2d189f52d2c9ad7bd202a0d3b18542298f": {
+        "status": "shared",
+        "bytes": 95876224,
+        "device": 2050,
+        "inode": 16420608,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "ce4d8452b2f58d48e36db85dcf67b880b54be8d2614d54195302fb94f7142c6f": {
+        "status": "restored",
+        "bytes": 1223662926,
+        "device": 2050,
+        "inode": 14293599,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "d8cabc64f03d32248a5d1363959bdcbd0f49144830c66871ff9f14fe9a06e768": {
+        "status": "restored",
+        "bytes": 995260153,
+        "device": 2050,
+        "inode": 14551531,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "dbc4fd90ca1ecaae1f4c548fa0241904ada30c61ac3f351e173587159328a993": {
+        "status": "shared",
+        "bytes": 94113951,
+        "device": 2050,
+        "inode": 16420618,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "e02d4f83bb53f67b124ef9f75113a0f9bd3dcab595ba680913cf6a8a9527d011": {
+        "status": "restored",
+        "bytes": 105572445,
+        "device": 2050,
+        "inode": 14551562,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "e365bf2da4e86ec99e76157fc0820c8f5cf4da63d07bddcfc3f59b088913e840": {
+        "status": "restored",
+        "bytes": 727443776,
+        "device": 2050,
+        "inode": 14551534,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "e46897be79db095ad0d5f142170c4f54a271f4d0306ead2023b7a5b712fec73f": {
+        "status": "restored",
+        "bytes": 639243649,
+        "device": 2050,
+        "inode": 14293601,
+        "nlink": 1,
+        "uid": 10001,
+        "gid": 10001,
+        "mode": "0o644"
+      },
+      "e5a4da9540a857141abc1777dc00928e20539709fee4c55538d066ab06eb073f": {
+        "status": "shared",
+        "bytes": 90121940,
+        "device": 2050,
+        "inode": 16420508,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "ec54cb8e16bcc5f86d9fb1ba979179fb66db3b9e33f25fa5b97760428e46b256": {
+        "status": "shared",
+        "bytes": 13668585,
+        "device": 2050,
+        "inode": 16420953,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "efa74b6544820cbaf960bb0038a78318fbab1692179258020609972029303195": {
+        "status": "shared",
+        "bytes": 103351408,
+        "device": 2050,
+        "inode": 16420758,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "f449869efc386a13ff761c750beb3bceba6a3f5e15d771ecaf4edf8df5cc78df": {
+        "status": "shared",
+        "bytes": 98101400,
+        "device": 2050,
+        "inode": 16420692,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      },
+      "fc4f43b1b5bb5627375459706f9ad7499764cf66de2aec5a23efcf8f85563d58": {
+        "status": "shared",
+        "bytes": 87279105,
+        "device": 2050,
+        "inode": 16421018,
+        "nlink": 2,
+        "uid": 0,
+        "gid": 0,
+        "mode": "0o444"
+      }
+    },
+    "shared_blobs": 29,
+    "shared_bytes": 2215267478,
+    "restored_blobs": 29,
+    "restored_bytes": 14910178986
+  },
+  "free_bytes": 53705101312
+}

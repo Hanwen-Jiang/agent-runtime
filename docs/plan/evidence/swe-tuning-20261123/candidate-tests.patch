@@ -1,0 +1,31 @@
+diff --git a/services/py-worker/tests/test_tool_loop_model.py b/services/py-worker/tests/test_tool_loop_model.py
+index 4d08b1e9..64a84e3d 100644
+--- a/services/py-worker/tests/test_tool_loop_model.py
++++ b/services/py-worker/tests/test_tool_loop_model.py
+@@ -14,7 +14,7 @@ from agentruntime_worker import names
+ from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
+ from agentruntime_worker.config import WorkerConfig
+ from agentruntime_worker.context.builder import ContextBuilder
+-from agentruntime_worker.executor.tool_loop import TOOL_LOOP_TIER, ModelToolLoop, ToolLoopActivities
++from agentruntime_worker.executor.tool_loop import BUGFIX_CHECK, TOOL_LOOP_TIER, ModelToolLoop, ToolLoopActivities
+ from agentruntime_worker.worker import decision_activities
+ 
+ from .context_support import GOAL_NODE, TASK_ID, TASK_PLAN, TASK_STATE, TENANT, ContextGateway, config, objects, read_step, text_of, tool_call
+@@ -41,6 +41,17 @@ def loop(tmp_path: Path, gateway: ContextGateway) -> ModelToolLoop:
+     return ModelToolLoop(gateway, ContextBuilder(gateway, objects(tmp_path), config(effective_tokens=100_000)))
+ 
+ 
++@pytest.mark.parametrize("tools,expected", [
++    (["repo_edit", "shell_run"], True), (["repo_edit"], False), (["shell_run"], False),
++])
++async def test_behavior_check_only_for_nodes_that_can_edit_and_execute(tmp_path, tools, expected):
++    gateway = ContextGateway(steps=[{"summary": "done"}])
++    inp = step_input([])
++    inp.node = {**inp.node, "tools": tools}
++    await loop(tmp_path, gateway).step(inp)
++    assert (BUGFIX_CHECK in text_of(gateway.requests[0].generation.messages)) is expected
++
++
+ async def test_a_tool_call_becomes_a_tool_step(tmp_path: Path) -> None:
+     gateway = ContextGateway(steps=[tool_call("repo_read", path="src/checkout.py")])
+     step = await loop(tmp_path, gateway).step(step_input([]))

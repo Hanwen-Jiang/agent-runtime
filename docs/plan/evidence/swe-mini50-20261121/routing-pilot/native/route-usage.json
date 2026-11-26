@@ -1,0 +1,28 @@
+{
+  "scope": "Dedicated native gateway during this pilot. Failure log lines have no Task ID or role.",
+  "calls": [
+    {
+      "at": "2026-11-22T15:55:13.585370379+03:00",
+      "task_id": "tsk_01M81N5PJ46RZ2Q0H7PSMXM4HY",
+      "node_id": "triage",
+      "role": "route",
+      "method": "generate",
+      "tier": "small@low",
+      "model_profile_id": "a6api/gpt-6-luna@2026-11",
+      "cost_usd_micros": 717,
+      "status": "ok"
+    }
+  ],
+  "provider_errors": [
+    {
+      "profile": "a6api/gemini-4-argon@2026-11",
+      "error": "insufficient_user_quota",
+      "count": 34
+    },
+    {
+      "profile": "a6api/kimi-k3.1-pro@2026-11",
+      "error": "insufficient_user_quota",
+      "count": 22
+    }
+  ]
+}

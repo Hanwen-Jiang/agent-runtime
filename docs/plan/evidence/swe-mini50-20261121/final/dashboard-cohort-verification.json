@@ -1,0 +1,62 @@
+{
+  "checked_at": "2026-11-22T19:55:46.759771+00:00",
+  "browser": "Chrome headless, live public /results",
+  "verification": "Each visible information dialog was opened and its entire ordered case list compared to the original run.json instance_ids.",
+  "source_status": "ready",
+  "runs": [
+    {
+      "run_id": "mini50-gpt62-formal-a-20261121T1900Z",
+      "verified_case_count": 50,
+      "ordered_ids_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+      "public_status": "partial",
+      "resolved": 26,
+      "graded_count": 37,
+      "cost_usd": 41.782292
+    },
+    {
+      "run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+      "verified_case_count": 50,
+      "ordered_ids_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+      "public_status": "partial",
+      "resolved": 27,
+      "graded_count": 35,
+      "cost_usd": 41.118295
+    },
+    {
+      "run_id": "mini50-quota-20261122-b",
+      "verified_case_count": 10,
+      "ordered_ids_sha256": "88183fb80f21673382c548253d24f3dc2b38289d006ea2361099f64472717f07",
+      "public_status": "finished",
+      "resolved": 5,
+      "graded_count": 10,
+      "cost_usd": 11.694758
+    },
+    {
+      "run_id": "mini50-quota-20261122-a",
+      "verified_case_count": 9,
+      "ordered_ids_sha256": "271e166842227ed2afecc16660b0c72f187cdddbe05fe3dfc034f451e97055b3",
+      "public_status": "finished",
+      "resolved": 7,
+      "graded_count": 9,
+      "cost_usd": 11.536941
+    },
+    {
+      "run_id": "route2-funded-20261122-native",
+      "verified_case_count": 2,
+      "ordered_ids_sha256": "7139a1ccdf199169ae1e2e85f669dad5ef1a62e90a595a4207fc0e28b1e99ab1",
+      "public_status": "finished",
+      "resolved": 1,
+      "graded_count": 2,
+      "cost_usd": 3.999603
+    },
+    {
+      "run_id": "route2-funded-20261122-fixed",
+      "verified_case_count": 2,
+      "ordered_ids_sha256": "7139a1ccdf199169ae1e2e85f669dad5ef1a62e90a595a4207fc0e28b1e99ab1",
+      "public_status": "finished",
+      "resolved": 2,
+      "graded_count": 2,
+      "cost_usd": 4.019252
+    }
+  ]
+}

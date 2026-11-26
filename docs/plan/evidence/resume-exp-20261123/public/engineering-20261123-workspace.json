@@ -1,0 +1,85 @@
+{
+  "id": "engineering-20261123-workspace",
+  "kind": "engineering-comparison",
+  "evaluation_type": "ablation",
+  "evaluation_scope": "component",
+  "title_zh": "工作区交付 · 跨进程单执行者",
+  "title_en": "Workspace delivery across processes",
+  "baseline_label": "进程内去重 · Per-process",
+  "candidate_label": "跨进程执行权 · Cross-process",
+  "evaluated_on": "2026-11-23",
+  "sample_count": 28,
+  "completed_count": 28,
+  "collection_complete": true,
+  "baseline_completed": 28,
+  "candidate_completed": 28,
+  "quality_valid": true,
+  "cost_known": true,
+  "actual_cost_usd": 0,
+  "known_cost_usd": 0,
+  "metrics": [
+    {
+      "key": "pass_rate",
+      "label_zh": "场景验收通过率",
+      "label_en": "Scenario pass rate",
+      "unit": "ratio",
+      "baseline": 0.5714285714285714,
+      "candidate": 1.0
+    },
+    {
+      "key": "peak_queries",
+      "label_zh": "同一操作并发查询峰值",
+      "label_en": "Peak status queries per operation",
+      "unit": "number",
+      "baseline": 4,
+      "candidate": 2
+    }
+  ],
+  "limitations_zh": [
+    "本机真实 Go Web 进程和 HTTP，共享本地卷，下游 Runtime 协议服务为模拟。两版都正确创建 32 个项目。"
+  ],
+  "limitations_en": [
+    "Real Go processes on a shared local volume, HTTP and a simulated downstream Runtime. Both arms created 32 expected projects."
+  ],
+  "source_sha256": "a273f530fdfd2556560b68adda2a7ffcca77e0819e16a2ea3ca42b1229e25da6",
+  "selection_info": {
+    "dataset": "Coding Agent workspace delivery",
+    "method": "explicit_ids",
+    "split": "validation",
+    "source": "baseline.json + candidate.json",
+    "selected_count": 28,
+    "method_detail_zh": "7 种固定操作场景，每种重复 4 次。覆盖重试、状态查询、同键冲突、不同键并行和杀进程接管。",
+    "method_detail_en": "Seven predetermined scenarios, four repeats each, covering retries, polling, conflicts, independent keys and process handoff.",
+    "selection_ids": [
+      "workspace-eval-single-01",
+      "workspace-eval-duplicate-post-2-01",
+      "workspace-eval-duplicate-get-4-01",
+      "workspace-eval-mixed-4-01",
+      "workspace-eval-two-independent-01",
+      "workspace-eval-process-handoff-01",
+      "workspace-eval-same-key-conflict-01",
+      "workspace-eval-single-02",
+      "workspace-eval-duplicate-post-2-02",
+      "workspace-eval-duplicate-get-4-02",
+      "workspace-eval-mixed-4-02",
+      "workspace-eval-two-independent-02",
+      "workspace-eval-process-handoff-02",
+      "workspace-eval-same-key-conflict-02",
+      "workspace-eval-single-03",
+      "workspace-eval-duplicate-post-2-03",
+      "workspace-eval-duplicate-get-4-03",
+      "workspace-eval-mixed-4-03",
+      "workspace-eval-two-independent-03",
+      "workspace-eval-process-handoff-03",
+      "workspace-eval-same-key-conflict-03",
+      "workspace-eval-single-04",
+      "workspace-eval-duplicate-post-2-04",
+      "workspace-eval-duplicate-get-4-04",
+      "workspace-eval-mixed-4-04",
+      "workspace-eval-two-independent-04",
+      "workspace-eval-process-handoff-04",
+      "workspace-eval-same-key-conflict-04"
+    ],
+    "cohort_sha256": "fb55308f7f174b7a83d5ba1a066739a0ce89a0920ded6cbe0e17022714cc91c5"
+  }
+}

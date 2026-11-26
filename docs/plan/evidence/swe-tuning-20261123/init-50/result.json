@@ -1,0 +1,2280 @@
+{
+  "run_id": "init50-gpt62-tuned-20261123",
+  "baseline_cohort": "init-50",
+  "candidate_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032",
+  "model": "a6api/gpt-6.2-sol@2026-11",
+  "tier": "strong@medium",
+  "selected": 50,
+  "official_verdict_counts": {
+    "unresolved": 7,
+    "resolved": 43
+  },
+  "baseline_solved": 38,
+  "candidate_solved": 43,
+  "newly_solved": [
+    "django__django-15503",
+    "django__django-16877",
+    "matplotlib__matplotlib-13989",
+    "mwaskom__seaborn-3187",
+    "pydata__xarray-2905",
+    "pylint-dev__pylint-6528",
+    "sympy__sympy-15599",
+    "sympy__sympy-17630"
+  ],
+  "regressions": [
+    "pytest-dev__pytest-7205",
+    "sphinx-doc__sphinx-10673",
+    "sphinx-doc__sphinx-8056"
+  ],
+  "official_graded": 50,
+  "cost_reported_usd": 50.138726,
+  "cost_settled_usd": 52.738266,
+  "ledger_unsettled": 21,
+  "latency": {
+    "scope": "task_accepted to task_finished wall time, excludes workspace preparation and grading",
+    "method": "nearest rank",
+    "n": 50,
+    "p50_s": 583.159,
+    "p95_s": 1760.288
+  },
+  "source_sha256": {
+    "protocol": "6149a3577969c824836b06ea12ef2a6e04eb694fdb7477544f3b7832e14c05b7",
+    "manifest": "bff2b4b44b2f1e253edfe331b6c58d843afb8bc300d7d2da71e3d31b265585e7",
+    "baseline": "3e0481f81df8afc1b91a6dde6e7194c17aecd2666e461b5093fedf51d26b8eec",
+    "predictions": "184f4845d88bddc2dc4a622e45df5617e73b9d2f9b66c97770f189eb90699d24",
+    "official_grader": "c16b8ec48403a6f147ba1ff0bdddfc173900b5615be76cdad96ef76bc133561a",
+    "report": "1de52432f7f23c8ccf72997a1defec4480fd204b86e98b023cbcb01c3410b093"
+  },
+  "instances": {
+    "astropy__astropy-13033": {
+      "task_id": "tsk_01M82GZK0N4NN0C6E0Z2GK94TS",
+      "state": "aborted",
+      "agent_verdict": "abort",
+      "stop_reason": null,
+      "rounds": 5,
+      "before": "unresolved",
+      "after": "unresolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:c2a850aa4c8b97406bd2f63bbe5d7b74d0cdc5fbafd97f2d5312389c71df7070",
+      "prewarm_seconds": 431.891,
+      "patch_sha256": "fba474608a51cbfb81d8f080a5f2079e3e21499255a789a5ed46f0bc92edc0b4",
+      "patch_bytes": 1124,
+      "record_sha256": "f52f2551b0c3506787f85f0cf6759770ef3b6737b400b5b76c3ccf238aaa3a98",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 20,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "273825f447a7903894b8aa9b1de85b56f7b85b5d07fd5842be9e69010622079a",
+      "settled_model_usd": 0.658653,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 353.556
+    },
+    "astropy__astropy-8707": {
+      "task_id": "tsk_01M82H0K4XSY09E6SQ7AFZT0R1",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:1970391b42061095940844ae3eeafa986c294a79464d23017f5ae388c3bad6f4",
+      "prewarm_seconds": 482.967,
+      "patch_sha256": "36eb58c4617820092dcd770fd62e90cb00986183f003e12055e8e59ffa902e2d",
+      "patch_bytes": 944,
+      "record_sha256": "255d07039fb04acddb118eb117890fbdc190e42f8a89e0aa77f2b5ed510eea3a",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 11,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "362a1d00feff8f5c2b1de9318cb6a2d789ad00c543379c4adaeef987a862c4b8",
+      "settled_model_usd": 0.512384,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 302.112
+    },
+    "django__django-11163": {
+      "task_id": "tsk_01M82HSQX1CVEPQ4FKPCV5FQ3D",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:e7dcde25717bbe76b950f32dad6ff515843a6b24d1b4e91b2541593e912c2dd7",
+      "prewarm_seconds": 422.538,
+      "patch_sha256": "dbdb40f0b8c6a9fb93dbff45dfd563b600a4b81881b0d6c7e322107d1d3f5501",
+      "patch_bytes": 570,
+      "record_sha256": "0f16076b2b425026c227790592bb4f73af47a32aaad9e7109d1bdb7f8242f73c",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 141,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "6123ddf7c14a816a79002ad4f57875c714f26e2ec72e9485da99d699bc3bebf7",
+      "settled_model_usd": 0.438219,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 273.179
+    },
+    "django__django-11276": {
+      "task_id": "tsk_01M82HDSXFWPV35JM1XB697VNE",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:a3bd85c8480ab62978c1dd63b022d7992a64dc00dcf2c16282ed2b973999a6f5",
+      "prewarm_seconds": 13.077,
+      "patch_sha256": "3e8d0c68043dc242c29e52e5eaf14ced66f3cd4f96a272ad2f32ee208b9d3dcb",
+      "patch_bytes": 1002,
+      "record_sha256": "4815f4cc7f705c5d10b5425225225e34ccc98eba828e95ff52eb3b71afed7346",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 26,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 548,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "19072eb17b45bafea98de0a78b32ca53d21b391a3ede8e698945bc5f30fba123",
+      "settled_model_usd": 0.418599,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 230.01
+    },
+    "django__django-11292": {
+      "task_id": "tsk_01M82HSP8EAAT6EKDHGRZ9YVA2",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:2712a6103b9cc98838f8ce37e4d0ae35de383556ffe9e24be290b1c489d659a7",
+      "prewarm_seconds": 53.985,
+      "patch_sha256": "254cb547ff1a0ce2cd8cb3f7b308f651a9f77d86780014a63f51161c6f205ebf",
+      "patch_bytes": 1691,
+      "record_sha256": "d9848a973cb19205389a554a898c03897d782c5f157b6282eb87bb47c8a5efb1",
+      "changed_test_files": [
+        "tests/user_commands/tests.py"
+      ],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 31,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "27e2aae708f598b9eb5bf76b75540ba569ef4eed4cbe80ae77a0aae13b627520",
+      "settled_model_usd": 0.394167,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 224.203
+    },
+    "django__django-11490": {
+      "task_id": "tsk_01M82J5JE36KTRH63BMAZDZF32",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:668c2851071050208a1f63fbf90d4fe1777339bcd5e30b14019f7cacb7b0ebc6",
+      "prewarm_seconds": 13.711,
+      "patch_sha256": "f6029df42f7c116d476b03c7bcb4a394d5c6ae53748bdbf30baf49ddbcf3b8ba",
+      "patch_bytes": 683,
+      "record_sha256": "dcdbeed78fb102a37ad8e186a96d9a7869ffdbd2d7c50a3615ff0b1c07acd400",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 23,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "52f5421bf0a29303c6c68eb0e52e86f3de5370fd88cd323a5deaa275d127e4fd",
+      "settled_model_usd": 0.718106,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 335.005
+    },
+    "django__django-11740": {
+      "task_id": "tsk_01M82J68ZTC0TEK92517ZPXMR7",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:1c11d9040d682a687987b7542b0fd56bf7cf8ecdfbdb86b445e15f3dd0e20fe3",
+      "prewarm_seconds": 13.644,
+      "patch_sha256": "8fa72f4b8310a2a8c0769640689544a286447b70827cea60edc1caf53ee7584a",
+      "patch_bytes": 2590,
+      "record_sha256": "b5b8645788e234718c252808458e2b20efde42024eed0871c2d2f47767d9d33b",
+      "changed_test_files": [
+        "tests/migrations/test_autodetector.py"
+      ],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 109,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "41fbc77bb13668eadaaba9c64bc8272aa3c2e6609d118354ab54280ac654c8ed",
+      "settled_model_usd": 0.708573,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 266.869
+    },
+    "django__django-11885": {
+      "task_id": "tsk_01M82JJ3NZ7TYYP2MHV95ZNGGH",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 5,
+      "before": "unresolved",
+      "after": "unresolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:99ea50d5f25566716b057a17bc529f19e907bad52cd475e9d7b34534163701a4",
+      "prewarm_seconds": 14.073,
+      "patch_sha256": "0fe415851d4962b4ab9118bacb76634cdd69bd9d186763c83d22c5311adfdd0a",
+      "patch_bytes": 3402,
+      "record_sha256": "cc18e07cb27e2683f50dab83e37b45c93f50e492223f7ea3e8c45d3f3b6496d9",
+      "changed_test_files": [
+        "tests/delete/models.py",
+        "tests/delete/tests.py"
+      ],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 41,
+          "failure": 2
+        }
+      },
+      "official_report_sha256": "dacb7f568a984bf67b96bb857224b62474482578c9f46dc4d255a1d1007e98bf",
+      "settled_model_usd": 1.915683,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 761.17
+    },
+    "django__django-11951": {
+      "task_id": "tsk_01M82JKJ90VNDZD2ZJBVS7KRCG",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 1,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:4ee323564eb5e64d5d27505ec89fa352d6ad5e31ea6f6a14731f2b4391e43250",
+      "prewarm_seconds": 14.558,
+      "patch_sha256": "27f5fcaefdac027dd9af6f78957a06ea3d0f78a4a515b8fe78a617794b5cd079",
+      "patch_bytes": 1860,
+      "record_sha256": "73233140325065464941acd80de574fcdaad129ecc6ec21e5c53d49679f6944f",
+      "changed_test_files": [
+        "tests/bulk_create/tests.py"
+      ],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 21,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "647889af892027be2dbc50df6ff8660f5eae87e2255b7454474bb2d9b1bdcf19",
+      "settled_model_usd": 0.354499,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 178.824
+    },
+    "django__django-12262": {
+      "task_id": "tsk_01M82JX0AQZYQ6BZBDV2Y6GSAV",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 1,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:6d136d7d19f4b3691b5d105202130ca0e8fb6783af6ba59193139dbf9fcf6037",
+      "prewarm_seconds": 14.902,
+      "patch_sha256": "992bfbffc426d416db8ab59f96a24ee987233082d152befd6e3f2dbe6e61e406",
+      "patch_bytes": 1391,
+      "record_sha256": "acfd0e1d98db31ff0a39c12aa14d73ed0c0aafb312519784daf9b40dc4af9490",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 4,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 18,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "e20720bdaf1ed16fc95df8202bb9672230b5d67bf839f74cc1f171dad3fde58b",
+      "settled_model_usd": 0.554942,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 198.236
+    },
+    "django__django-13033": {
+      "task_id": "tsk_01M82KAPZ36K14T7W60PEY378F",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+      "prewarm_seconds": 99.045,
+      "patch_sha256": "3b20e407852a4f03644bc8a0f9c79b355eb6e2872d0cffb53d0fb6a98f1e0368",
+      "patch_bytes": 3124,
+      "record_sha256": "c724590037c94f38998325e66d154df373ba384d9a3988eb0976f19b9dc2dfa5",
+      "changed_test_files": [
+        "tests/ordering/models.py",
+        "tests/ordering/tests.py"
+      ],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 26,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "5bf1484b09c9ded08e2e9eb7102458c88a74568f455921920375d8b01421940a",
+      "settled_model_usd": 1.123262,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 433.738
+    },
+    "django__django-13741": {
+      "task_id": "tsk_01M82KEQCRX4Y78RQRCGA29CMD",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:37cd633b5f483a68f866ac570120b4e392472814f3b8ab078260021b1e8091a7",
+      "prewarm_seconds": 59.688,
+      "patch_sha256": "8f18f2049e64b04693f844b6800566ae639f27cd8e710e3ef9615f9dbd598545",
+      "patch_bytes": 465,
+      "record_sha256": "4fba4a7c437030080f1f27914fda1b9ecd0578f03d15b41a19f5d8930b3d9b41",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 82,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "859324ae5abc232f5c0ff573ab9589da092ce3f3aec8fb3732afae3def1401f7",
+      "settled_model_usd": 0.262128,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 152.552
+    },
+    "django__django-13810": {
+      "task_id": "tsk_01M82KRS33CK28XM3TX2HVJPY0",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:0aac75994fdc90ae93a27c8fdf17ffab9200ef81bbff8c818e204f71436c5efb",
+      "prewarm_seconds": 58.179,
+      "patch_sha256": "66c8fc07c268e829cbc252b1e0f3ebaca884e4ac8a1fd89cbb72eec3f63841f8",
+      "patch_bytes": 2621,
+      "record_sha256": "d34010cd357f15409570e1f7b8745fe727c58c37fe010103caaa0f58c02193c8",
+      "changed_test_files": [
+        "tests/middleware_exceptions/tests.py"
+      ],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 30,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "2a559066e7a9c672344877bc6de264107eb7c2fdd43650329b7ceedd4f0858c1",
+      "settled_model_usd": 0.592453,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 274.431
+    },
+    "django__django-14155": {
+      "task_id": "tsk_01M82KYZG58J6BBGCYYEMF24AR",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 1,
+      "before": "unresolved",
+      "after": "unresolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:62a0ce818228a8efb8b80af9737e3c4a6ea5da0f9e548831a84a5a291bdf2d4b",
+      "prewarm_seconds": 99.801,
+      "patch_sha256": "eadaa9bf5a2b8d39ac11574d71caafcd284a78bc85260ea2124efbae959353a1",
+      "patch_bytes": 603,
+      "record_sha256": "e44c87390f6d9b7449e638bea699f15df42ceb34e29bbc1ad66855019df933fb",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 3
+        },
+        "PASS_TO_PASS": {
+          "success": 89,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "18544d13d7736400da3d2fd86290d0488fd1f4e5706e0de2e916ffb5948d1ee4",
+      "settled_model_usd": 0.267478,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 141.084
+    },
+    "django__django-14765": {
+      "task_id": "tsk_01M82M6XNQY1M9KMQDV94EJ4PE",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:1ee909fb764fbbc1e07550e737aeafde1dbf322d9efacfd1cc45d9b2348bd494",
+      "prewarm_seconds": 61.499,
+      "patch_sha256": "0828ed2e39a731bdbdb9661c1977948181a941958d467abc333c7f7ee0775063",
+      "patch_bytes": 811,
+      "record_sha256": "f9e0c78d9287a4916c63c57859a104e1fb721af1ea1ffdbb0df5a7f1fc27e32f",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 64,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "6ef54f6dc4e6964f93f48631ffe4ee58491479c4a3c588a886c8ffdc35a85b2c",
+      "settled_model_usd": 1.015094,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 884.304
+    },
+    "django__django-14771": {
+      "task_id": "tsk_01M82M95PJ424DDCBBP6840SEE",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:be5bf1af12e7610619ac7879c2c722bb2f62da9195e6bd3831741fcf9808dae1",
+      "prewarm_seconds": 68.839,
+      "patch_sha256": "a851c990697a64aa52457d725b23ac3ee55018e9ca3aad30854c27ceade6bbef",
+      "patch_bytes": 729,
+      "record_sha256": "483d669b4f83017df43c5f69be70451980b5c9702ace09b468c3e4f631f4396b",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 60,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "d78fe559d299e147ac69dfeb8e12863d84f26d5f6ce826f97b6f27c336c41cfb",
+      "settled_model_usd": 1.8009,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 1293.282
+    },
+    "django__django-15503": {
+      "task_id": "tsk_01M82N7GHQMJAHDG8RMXKAN9GN",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "unresolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:d57430ca15a86fa0f5718e08482513e98834a5ffbdd31198537770feef50df1c",
+      "prewarm_seconds": 15.076,
+      "patch_sha256": "3940d017312d9215d6a6458703e16dd6ddeb9a8bf12062e704f80c5c02c7704e",
+      "patch_bytes": 3371,
+      "record_sha256": "a5bf125b1aa77583d9b2600ca50d9731b0c3cbb2235404cee958023623f7e7a7",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 78,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "749487a1ef091470f96e9206592b074beeabacd8fe715ae0ece1eb4d1c931c80",
+      "settled_model_usd": 0.838078,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 380.471
+    },
+    "django__django-15561": {
+      "task_id": "tsk_01M82NMZSQ6F29EK34X95P9ZHF",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 6,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:ef5d70337bf967a555a700776169eee223ccae4bd6b3615f67b0c5d9f10d7c7a",
+      "prewarm_seconds": 14.308,
+      "patch_sha256": "20310917c7607d00d820cd48ed9969ee01e4116a00dfeafc0675bc320a13aa0f",
+      "patch_bytes": 485,
+      "record_sha256": "fd0a1876c1d0550d90679688f4c7f376e3cc7d4fffbb11b371518aa1359a5c43",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 141,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "1df63f809aeeccaa31def86f2f713576feb65a2f3a0a25323bb00fab4734ad3e",
+      "settled_model_usd": 1.353128,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 1171.081
+    },
+    "django__django-15569": {
+      "task_id": "tsk_01M82NQADYZSJQ5FYC1N50E428",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:76b5de9631018e925b215a8fd7ef6dcdf4a0f70fa74e05038bd6e06696cc4e9a",
+      "prewarm_seconds": 13.836,
+      "patch_sha256": "80eb53df7d7ff50d9963b825c45824a6e995b6d07c04fdf92b2eb6fd44135f52",
+      "patch_bytes": 489,
+      "record_sha256": "59f8101e35cd253d1143ad38d520f3ff9544e4653a053f83a683ff19987fc32c",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 242,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "f2950785c1d86e3a7ce41211e6a22a63fefc763c6d6a994722541df9804038d1",
+      "settled_model_usd": 0.745717,
+      "unsettled_calls": 2,
+      "accepted_to_finished_s": 948.744
+    },
+    "django__django-15814": {
+      "task_id": "tsk_01M82PVBY2BHRRXFVH0FEZQ3WW",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:a6f9b0aba0b232296ab57f5b6b32b5ccd5f4857bae2e52198c21b565ec30d0dd",
+      "prewarm_seconds": 107.285,
+      "patch_sha256": "d8a04cc37576fcff62d370473f45581a27419c1937763cef5bb38da807f6baa7",
+      "patch_bytes": 627,
+      "record_sha256": "416f3643d3188156b8d57704c2b88d7208043f3ba2acf8f895630418a2110932",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 29,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "e7d1db8c5549fd1decfd00f10ed545a1bd7b09fbcb20863a684abfdeefa2b34b",
+      "settled_model_usd": 0.757048,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 387.53
+    },
+    "django__django-15851": {
+      "task_id": "tsk_01M82PX8DFVXV3XVFE439PXGRZ",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:b0925da3ebb9b538cb8c67ceb78ad7562cdb771c8b625f1a385d503a42545b62",
+      "prewarm_seconds": 16.308,
+      "patch_sha256": "35a982def43c96ca2ea376a7a78bb64763cc19bfd174fdf2a8671164f9ae9b9e",
+      "patch_bytes": 530,
+      "record_sha256": "613e65d434eab29dcb82169671922fde0d6bd0e67961e1af630332c64b916bc6",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 8,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "a1d8edab9199ecbc54dd63ba5a2f0200866b4e0029c88596b8327597ddaecb51",
+      "settled_model_usd": 2.041618,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 1694.774
+    },
+    "django__django-16145": {
+      "task_id": "tsk_01M82QD97KR3N20Q70H0R3TSX6",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 6,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:266233cf897a67d86a1ed2300976656933ec1142682b87964f9e8bee8b0efaaa",
+      "prewarm_seconds": 67.62,
+      "patch_sha256": "575188df91d564dbf0201e4fc6f2e91034af3596020cd33ef2e72834684b08df",
+      "patch_bytes": 1057,
+      "record_sha256": "b00a94b9261d41923a1abcac5e9db02cc9c1322f896ea0fa9e91407d61ecf8ef",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 174,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "9c9098acbc771edcec271576c2726b49538234165c5c8d58d0aaa66d7fd873f1",
+      "settled_model_usd": 1.618972,
+      "unsettled_calls": 3,
+      "accepted_to_finished_s": 1760.288
+    },
+    "django__django-16595": {
+      "task_id": "tsk_01M82RR69RJTYHGMW7MEQ4NG3D",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 1,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:06c6b9af78c14666b2f916e43f663f9413d80ba9f87f158ead998c86ee8f0202",
+      "prewarm_seconds": 108.388,
+      "patch_sha256": "b65487136005bdd4062b8bfba5092ebc740e538e28b733d005ab6d115b06737b",
+      "patch_bytes": 747,
+      "record_sha256": "753792bc175d2b0d2a3f6713533c52ce09b8c086a0fe4a9cc393786c8840a346",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 37,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "7ea1fdcf4cfdc23a535e1d349a043e53454a021aa51ac6bf7adc6c1fd5cdeb8a",
+      "settled_model_usd": 0.344112,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 187.827
+    },
+    "django__django-16661": {
+      "task_id": "tsk_01M82S43EZBSYGREWTWXMWTTP0",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:b838b7f03e6b44c90b0d72efffa034e6af3f67996b287a0a370a02dce9af4e13",
+      "prewarm_seconds": 66.646,
+      "patch_sha256": "269ac5479a2d2588a13a616de08a3325cf0689ab4547ab6ac63dc58da930a1f7",
+      "patch_bytes": 988,
+      "record_sha256": "d3e7443d2de2d1a378a4c0f6e1ddb80ef90a1f19c9a09fbefb103ff905106657",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 36,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "6d35b5f5eb2a4a2e8499f5feead843e5c1792b10e0c6c000854841b5ffed3081",
+      "settled_model_usd": 1.63745,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 1201.134
+    },
+    "django__django-16877": {
+      "task_id": "tsk_01M82S7SMMYSWMB4VGM9DRGAM9",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 1,
+      "before": "unresolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:45d0cb868bdbe58ec1be7fcec219ee6c908ea0cf1c7905910ff679890a328885",
+      "prewarm_seconds": 18.276,
+      "patch_sha256": "1b2a8d3c7f03dfdbe876a7a8aa06a2b78e88efa2286b57880d11ad4099093627",
+      "patch_bytes": 1683,
+      "record_sha256": "5fac474b72592c05329aced54c31649964468f2df5a10e9f7ac7a7b3d81280e6",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 4,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 0,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "ba03e2791e314cb85c336d5a5a080fecbb3450a344f36751bfa7cb4c22b5ee79",
+      "settled_model_usd": 0.626682,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 341.39
+    },
+    "matplotlib__matplotlib-13989": {
+      "task_id": "tsk_01M82SRRZZ1YVEGD12ZAY8Z6CA",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "run_error",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+      "prewarm_seconds": 86.658,
+      "patch_sha256": "da299aaf089064efb91ffbd52a4f7981171fea58c6b3c6727b6eeb2dd46ee769",
+      "patch_bytes": 480,
+      "record_sha256": "362d6b9a2d0503c50a1aa7e274599269b2163350caff75efbc82749f706dad06",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 411,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "e554f4f1b31928d94ac8868f2ad4deed3628aeb460b7a16794f57de4d0a7c0b8",
+      "settled_model_usd": 0.866713,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 583.159
+    },
+    "matplotlib__matplotlib-26342": {
+      "task_id": "tsk_01M82TP8AD7ZGJAE6PB5CYGZS3",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+      "prewarm_seconds": 97.708,
+      "patch_sha256": "c6b9e7495451f938341f22ac1fbcada4aff8909f1141903119d1f150d14aa537",
+      "patch_bytes": 619,
+      "record_sha256": "036c9d55cad58abaae757b16bc58942053ee51dfff02feab9e5cc8c18b1a9c09",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 81,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "87a7451fe8f0bc8b53cad0cf029601c4a5eba1382d46fc92f5511d2c766bd9f0",
+      "settled_model_usd": 1.136095,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 961.113
+    },
+    "matplotlib__matplotlib-26466": {
+      "task_id": "tsk_01M82TPYXHZX37N7RQFMBN45C2",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "unresolved",
+      "after": "unresolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+      "prewarm_seconds": 109.745,
+      "patch_sha256": "f812508dd3db4099d81dcb27b1d6b4bace90f4d691bfb29e97a5ee183a0b568f",
+      "patch_bytes": 544,
+      "record_sha256": "f3fda345e2a13944361cb1d71eb0578aa3ab7f09d7e1c292c604f580e6f34d6f",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 100,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "d8590a147f9cd230bb2cd204fd0d92742a072c6771dea1bcf474c6f1c0914115",
+      "settled_model_usd": 1.76327,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 1170.724
+    },
+    "mwaskom__seaborn-3187": {
+      "task_id": "tsk_01M82VPNS55C3CYVS00HAK8A2F",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "unresolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:d4301cb624e4883a4dbedbab52614866a2d0c803045f3a5c9654701bfc812afa",
+      "prewarm_seconds": 69.517,
+      "patch_sha256": "2e528b8aca21471c6f8f5e65712951bea1057d84ce932d7f75d8a9d0e7f2e5a1",
+      "patch_bytes": 2434,
+      "record_sha256": "8b60629f3dc6b5190b17c71f184debccc74ea7deae8a06d2b71b767fc120f1f8",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 248,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "15f9c7d66e708b7b53408efeae1047451de97e19ee02e71edd160bd9187fba32",
+      "settled_model_usd": 2.700216,
+      "unsettled_calls": 4,
+      "accepted_to_finished_s": 2724.73
+    },
+    "pallets__flask-5014": {
+      "task_id": "tsk_01M82VX5JDTVB42A9188JR08W1",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:c9504172f7276d0cebcd0d382698719663e54215d1fc8cc40149fe07c97ea002",
+      "prewarm_seconds": 57.308,
+      "patch_sha256": "3186a4411b86fdf7c292d009769afc95971880ac7c081980a590c97473e6552e",
+      "patch_bytes": 436,
+      "record_sha256": "8d939df824340d9e75997203d78ef746e9e7249b2015ca934702253dc6ff0f99",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 59,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "0a2ad8be764698b129e3371cbf63c3363c816b87a6d1404c42779f49afafce9a",
+      "settled_model_usd": 0.529564,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 348.05
+    },
+    "pydata__xarray-2905": {
+      "task_id": "tsk_01M82WEBCVB56JXG36H3KE4WR5",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "unresolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+      "prewarm_seconds": 55.567,
+      "patch_sha256": "bd40032ffd823fa567b4a49d150e528b3d728f8d8427f2c12e65e6f4b70b2e4c",
+      "patch_bytes": 1305,
+      "record_sha256": "2be193a01b159699bc8570c71c79279dc916186fa1b15c7dab3f862e9cc9aa89",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 364,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "27b1d107a34b33256368dc7f8cf9daa6c4c36af249d527699ba174201b690850",
+      "settled_model_usd": 0.968128,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 691.799
+    },
+    "pydata__xarray-7393": {
+      "task_id": "tsk_01M82X8NQKDFJXJ8FHY7CY6H0P",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+      "prewarm_seconds": 9.396,
+      "patch_sha256": "22a51bc0399307828a40e9c5433dcc0170556bc8f3af977ac086450e539d54fd",
+      "patch_bytes": 3715,
+      "record_sha256": "55cd90dd843ff68ffc20fe0d8762a8308e155855a2bf5313ff91a25027cd24b5",
+      "changed_test_files": [
+        "xarray/tests/test_multiindex_level_dtypes.py"
+      ],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 71,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "46272ad8d3cccdfb2ae7477d1ed417ed966f33a95743f190d1aec531dad890bb",
+      "settled_model_usd": 1.190084,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 683.441
+    },
+    "pylint-dev__pylint-6528": {
+      "task_id": "tsk_01M82Y04D0V65K52XEQCK7TG1P",
+      "state": "aborted",
+      "agent_verdict": "abort",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "ambiguous_failure",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:e0652d7e137034d58ae759c1017fdc2fc88afb3885def460802f5f59b4647181",
+      "prewarm_seconds": 53.195,
+      "patch_sha256": "dc98912ebba76eb85441ded09f6a045be769c967eb6af81d3594f8b69030c313",
+      "patch_bytes": 9669,
+      "record_sha256": "43e905cc762558be16a09dabb9c797fdc574c9a844e4af59ae33114f522dd442",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 4,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 171,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "d06bb411ff2ae8a97806d2cce4e2566020a7f280af139842c287131e9714eff3",
+      "settled_model_usd": 2.827927,
+      "unsettled_calls": 12,
+      "accepted_to_finished_s": 2676.774
+    },
+    "pytest-dev__pytest-7205": {
+      "task_id": "tsk_01M82YC2B137SAXFWBSCW8VQGS",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "unresolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:cb808dc4e8e39a26469f089108d8689ee116de78316ec07dd149e33df6954feb",
+      "prewarm_seconds": 45.115,
+      "patch_sha256": "938e1ae8d331c107be0f449060b4f38666bdb86fd384389c4664aeaf339ec779",
+      "patch_bytes": 583,
+      "record_sha256": "d56092059a50652f47ad83cc2fc092c856e6e5cebfbbe96909c3f46c1a6068ae",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 9
+        },
+        "PASS_TO_PASS": {
+          "success": 16,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "c61025e344c03e9d5cedca482e35f91cf93c7d4f2c8579a9ebf32142b8a118ca",
+      "settled_model_usd": 1.473924,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 545.647
+    },
+    "pytest-dev__pytest-7571": {
+      "task_id": "tsk_01M82YZ5ZD0HZ4SH11AJTDV6ZF",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:428ac30fd436f96bf7430b632fdab638d901d3c6bbe1d3e842940146746b2318",
+      "prewarm_seconds": 49.987,
+      "patch_sha256": "ec121e6b18ddee4a98c0c47f8cb65b528dc468787f164e10c2c41c1d2ffe190a",
+      "patch_bytes": 1288,
+      "record_sha256": "582f5b3589fb85a66df093d88bb9c14b86c23c9ab35b6a1318dd3038952af9ae",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 14,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "c83f46f6b2bc3110dd3cca49b7442c1fca7f20b728c8ff38f19bc4a59950a835",
+      "settled_model_usd": 1.248122,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 709.404
+    },
+    "scikit-learn__scikit-learn-10297": {
+      "task_id": "tsk_01M82ZTVQV4WNC2E1XARFBYSKD",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:127d03d91853dd3af5212ab4976378d8b0c8177588a1a6432d33d9e3d90f547f",
+      "prewarm_seconds": 6.8,
+      "patch_sha256": "603b7e1dbd80bdb8488396a6f781d2e1088374db710e3236afd3767ebd4d7c0a",
+      "patch_bytes": 2316,
+      "record_sha256": "9520d401295b248889fcfb3bf905e39f60625535b6124c44f781ea214e0f6223",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 28,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "55debaf7ddc6b4e99a7d9c3159c593afce3a01d104553028f6ecfbd464ed71c3",
+      "settled_model_usd": 1.145428,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 963.496
+    },
+    "scikit-learn__scikit-learn-13439": {
+      "task_id": "tsk_01M830M79XYWV4QZDBJFMCA73V",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 3,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:f2a3640431c4e8037059504c02d5b4716de7bb20007bd53343145655953f38b5",
+      "prewarm_seconds": 14.346,
+      "patch_sha256": "6cf8fbb3678f7d0ed3f9923abc74d86d9b29bca1dc21e3d48a786342dbbd4730",
+      "patch_bytes": 465,
+      "record_sha256": "8a3306c24a9d7e83adadc2ec3b7888ce98ff3d3bab2780c59d4d83db4124c455",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 40,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "7190cb13433e8f6be36766a4d707a667afd29b6fc1d85192a7d6e6841cbb0fe6",
+      "settled_model_usd": 0.699178,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 778.227
+    },
+    "scikit-learn__scikit-learn-14629": {
+      "task_id": "tsk_01M830WWM3D9E1HQKBFE4DNHV1",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+      "prewarm_seconds": 87.331,
+      "patch_sha256": "466c60f66d70f468f9e613c325bd5a2835948a86021e10cc343b8cca2c3e66c1",
+      "patch_bytes": 1597,
+      "record_sha256": "2035f9c5f15548265717bd7a1cccf10198c30ce25a9441fd8f0b26a02d4e67f8",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 26,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "129cdda0fb9a30b8442db3a00ea19a9fbca441c4c42fbcaa39313070a3a50661",
+      "settled_model_usd": 1.090184,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 1011.755
+    },
+    "sphinx-doc__sphinx-10673": {
+      "task_id": "tsk_01M831FGFC0EHCD2K8H9ZQSD3V",
+      "state": "cancelled",
+      "agent_verdict": null,
+      "stop_reason": "task_usd_limit",
+      "rounds": 2,
+      "before": "resolved",
+      "after": "unresolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:be6c8ecdba7da7f4a7653aa18483f81c282aed0e4a3a0d70a6f96dd767b75342",
+      "prewarm_seconds": 53.163,
+      "patch_sha256": "e90a420fb0ff279b9142c0406175edfa52090f36e7d739de75272cbae1585c0f",
+      "patch_bytes": 5196,
+      "record_sha256": "0be1ed3999b0feff89d1cc6139a902ed37d76e73e9ec56e10cd14d9313d0ff56",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 9,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "29c2b77f9872b8d7b0c6bf171d8d857da38db291df707f0a471f53144d0fd710",
+      "settled_model_usd": 3.058198,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 1735.945
+    },
+    "sphinx-doc__sphinx-8056": {
+      "task_id": "tsk_01M831XDBV7CCXSZYYSA46R34Z",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "unresolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:f10d6b82099a1e6de5008aaae1ff055fcbfaecf7d9c84c71703e3628b3522599",
+      "prewarm_seconds": 6.526,
+      "patch_sha256": "9d67b39bfb08bfffd9a66f600691d0e47d01f3b1852a62b70ef96eb2beb2dc3e",
+      "patch_bytes": 2476,
+      "record_sha256": "36a8a7d8ed8968552502ace8f1939bd0e525fbe0a957e1d2fce78fcea8e328b6",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 0,
+          "failure": 1
+        },
+        "PASS_TO_PASS": {
+          "success": 40,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "4150f95a88480e322d3ec99744cd4f4effc9015b8715faccef2549247030feeb",
+      "settled_model_usd": 2.02014,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 854.451
+    },
+    "sphinx-doc__sphinx-9367": {
+      "task_id": "tsk_01M832S9TDF7ZF8FDCD50D0519",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:0226d2aa41d2d04c4dc4c4e1a71d72378c2b90a605d4d6565be2bf75b3d19a04",
+      "prewarm_seconds": 7.386,
+      "patch_sha256": "e3b435a3d2741eda95c86844f6da13ee55b7f3c010351bf64a2f227ed5e5dd20",
+      "patch_bytes": 588,
+      "record_sha256": "6eab9806111c32b6f4a2f64c5f57e2a51b292993dd3fd1d2c0197e49af9123c0",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 25,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "4efdf02de7eda86aa197df0036656fbb52f020c2fc8d9332b31c16091b6672eb",
+      "settled_model_usd": 0.622494,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 412.049
+    },
+    "sphinx-doc__sphinx-9711": {
+      "task_id": "tsk_01M8336DNVC5X3DN9X015XDM79",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 5,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:71869de459d5cbdd941c3504ba24c67b8b84b627bd70057a560a4c8d5564899d",
+      "prewarm_seconds": 9.952,
+      "patch_sha256": "241bb9df7ad6308f9297efaad7b93d71b6f1c3887d55961cfc08e52a98c4f121",
+      "patch_bytes": 1334,
+      "record_sha256": "a60957eb159c695203d2db485ea70a49c1c433b4d3c0c044bd70e2052d46a905",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 0,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "e06cc06092faf16aee180af68c81aef85ab29f3aea2e4366981986254dc249cf",
+      "settled_model_usd": 1.399432,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 679.558
+    },
+    "sympy__sympy-12096": {
+      "task_id": "tsk_01M8339D49BDD2DXPJNEP2RKPJ",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:da247d5b80fb338355e623d00345bcf628650b632244dd9433ef0737b33a6348",
+      "prewarm_seconds": 52.316,
+      "patch_sha256": "f3a3736cbe7ad1109ffa558e6f39cdef8a2986d231ba91dca6e3bbf9e9239c95",
+      "patch_bytes": 1124,
+      "record_sha256": "04119d0e8770e7bb8357490cfa22241bd263cb0671072e07671f27f90e727194",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 43,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "228141ed78d4687e09305e910853cca9895ceac2fce7a756ccd43b8ee8ef7cc6",
+      "settled_model_usd": 0.831522,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 459.066
+    },
+    "sympy__sympy-13615": {
+      "task_id": "tsk_01M833SYHC563HF7B6K2CDRG1Y",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:e5b9fdbb90805ec78b843e00a6fe3bcd5f5fd2b0417552905e9478c56f881964",
+      "prewarm_seconds": 11.361,
+      "patch_sha256": "5dd712ef9189f0647a6d577628edc63a935e59472883683a21d7f3c5c175d03b",
+      "patch_bytes": 974,
+      "record_sha256": "5ec34dcbc8f3c2a59d91bbe906acb67afcc71a428effea5e1404bc1831e0e5d5",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 70,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "62f5c2f568e6c25cea28a0e4dd212d59726dae50b8c066ca65b8fcfa1a81b06e",
+      "settled_model_usd": 1.0801,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 594.329
+    },
+    "sympy__sympy-14531": {
+      "task_id": "tsk_01M833XM9TSTZ8621TVPAW48ZS",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:8ae520804980aa161214f1fb2c55551ef941cc75bf67f4d657c30e3afa992b42",
+      "prewarm_seconds": 9.592,
+      "patch_sha256": "338985cd633a491fdbe40cab03742b572451c49d9afd491bf61ec3672b2247ee",
+      "patch_bytes": 1160,
+      "record_sha256": "dc7194a4c3c16b47c3969706302cb246fa7a70ee9617f7b62fe72a1dd7700a48",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 84,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "12801d1e2ede887c8b6f5e3b018014605c3508a4854b368c71e3caae18393895",
+      "settled_model_usd": 0.992908,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 633.386
+    },
+    "sympy__sympy-15599": {
+      "task_id": "tsk_01M834EPFZPK5G5M0F5TBZAPP5",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "unresolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:6b63809eddca49b4249fc0180e6dcb1c6219a1d508fc094337d475cbe4b8316f",
+      "prewarm_seconds": 10.287,
+      "patch_sha256": "143afd09f922836013d865493afad89de22db7ed04b35ae5591a520a7e81b253",
+      "patch_bytes": 934,
+      "record_sha256": "6e7f9be8b7e1cb84ec6e27c8fea19914bbee26d378add8dfebe7fd188beba4d8",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 80,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "43ddad36cc84f872d23a35db5f921cf0ecfb75304be3014673cb25aa7d72cd94",
+      "settled_model_usd": 0.533566,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 556.281
+    },
+    "sympy__sympy-15809": {
+      "task_id": "tsk_01M834KJ32DB4GYAM354MFKK3H",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:648f30206fcb9c16bfe46d952c2ddb7e10c4a692cea32fc15162cd5b30ce74e8",
+      "prewarm_seconds": 9.995,
+      "patch_sha256": "c99d8afd95341c7af0a129a8f818f391025dbd8a1728e53cc66b2840b4e55865",
+      "patch_bytes": 563,
+      "record_sha256": "956ab72677c3127bf402b0a373e041f3037377eb68278d84aaf75841c8aeaabf",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 10,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "b67fed5f775b6749aa1a5c96c608aed7101f30c3af9e1f269af71b9d9dcdf4d3",
+      "settled_model_usd": 0.410592,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 445.87
+    },
+    "sympy__sympy-17630": {
+      "task_id": "tsk_01M8354YJHAGYE2Q0VY969K9ST",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "unresolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:0d0f73a5900dd8898454e8fe498b6b2f453c3b559d82bd09f911aa31e9db2a2e",
+      "prewarm_seconds": 87.241,
+      "patch_sha256": "f5d31c63d464ee97e0402feee0b856c3a70997feb61d1ccaf1879cd93c45fad5",
+      "patch_bytes": 699,
+      "record_sha256": "b423debef6dfbd6e41ee6cd0f1322bffcea53aa334d623cadc759fd7563d3cee",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 19,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "8c662d30760d9bb4b81c1b7613f60532f7c2bd40ab8a729556230b24098807b8",
+      "settled_model_usd": 0.993614,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 622.484
+    },
+    "sympy__sympy-23413": {
+      "task_id": "tsk_01M8354ZDB87J86DCNGDPVYQ06",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 4,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:950644b5f24afde891a9bb576cfa35009d583e905e297048998815283b4fddbe",
+      "prewarm_seconds": 11.449,
+      "patch_sha256": "0b90a24908807b90fef6d2b5c1e21e480c242d496e0b7b58cd00c8276b958c3d",
+      "patch_bytes": 1165,
+      "record_sha256": "3d81aa849fc6f948056100b3f815f189e611df91adb9e4737872b2ba51d33296",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 2,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "a1b2e1e2d8ae38040f54db8f294d4e935887675a312038373224fbc06267bbb0",
+      "settled_model_usd": 0.901354,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 622.551
+    },
+    "sympy__sympy-24562": {
+      "task_id": "tsk_01M835W5T73PX16CDW22PXDYF6",
+      "state": "done",
+      "agent_verdict": "done",
+      "stop_reason": null,
+      "rounds": 2,
+      "before": "resolved",
+      "after": "resolved",
+      "environment_used": true,
+      "warmed_image": "127.0.0.1:30500/envs/swebench/env@sha256:01d0e2420786455548ec4500ef07394f5f22ee6d2a9eaa1502476b15b725587c",
+      "prewarm_seconds": 12.015,
+      "patch_sha256": "e0f917cdd7844a6fe3487119644ed1bb653dd6b9f771dc0cfd70ff446618fc4e",
+      "patch_bytes": 719,
+      "record_sha256": "3e778ad38c60d63340bb7eebb00038e180f5c83bc00a567326230453e7943ad3",
+      "changed_test_files": [],
+      "official_test_counts": {
+        "FAIL_TO_PASS": {
+          "success": 1,
+          "failure": 0
+        },
+        "PASS_TO_PASS": {
+          "success": 105,
+          "failure": 0
+        }
+      },
+      "official_report_sha256": "5faba6a015869f9a191819c96913955280b9b2b967ddc21fb5100c40b13ada33",
+      "settled_model_usd": 0.557568,
+      "unsettled_calls": 0,
+      "accepted_to_finished_s": 485.691
+    }
+  },
+  "ledger": [
+    {
+      "task_id": "tsk_01M82GZK0N4NN0C6E0Z2GK94TS",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 29,
+      "settled": 29,
+      "usd_micros": 646845
+    },
+    {
+      "task_id": "tsk_01M82GZK0N4NN0C6E0Z2GK94TS",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 11808
+    },
+    {
+      "task_id": "tsk_01M82H0K4XSY09E6SQ7AFZT0R1",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 19,
+      "settled": 19,
+      "usd_micros": 512384
+    },
+    {
+      "task_id": "tsk_01M82HDSXFWPV35JM1XB697VNE",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 20,
+      "settled": 20,
+      "usd_micros": 408749
+    },
+    {
+      "task_id": "tsk_01M82HDSXFWPV35JM1XB697VNE",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 9850
+    },
+    {
+      "task_id": "tsk_01M82HSP8EAAT6EKDHGRZ9YVA2",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 17,
+      "settled": 17,
+      "usd_micros": 386195
+    },
+    {
+      "task_id": "tsk_01M82HSP8EAAT6EKDHGRZ9YVA2",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 7972
+    },
+    {
+      "task_id": "tsk_01M82HSQX1CVEPQ4FKPCV5FQ3D",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 26,
+      "settled": 26,
+      "usd_micros": 438219
+    },
+    {
+      "task_id": "tsk_01M82J5JE36KTRH63BMAZDZF32",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 27,
+      "settled": 27,
+      "usd_micros": 718106
+    },
+    {
+      "task_id": "tsk_01M82J68ZTC0TEK92517ZPXMR7",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 22,
+      "settled": 22,
+      "usd_micros": 696749
+    },
+    {
+      "task_id": "tsk_01M82J68ZTC0TEK92517ZPXMR7",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 11824
+    },
+    {
+      "task_id": "tsk_01M82JJ3NZ7TYYP2MHV95ZNGGH",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 51,
+      "settled": 51,
+      "usd_micros": 1915683
+    },
+    {
+      "task_id": "tsk_01M82JKJ90VNDZD2ZJBVS7KRCG",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 15,
+      "settled": 15,
+      "usd_micros": 354499
+    },
+    {
+      "task_id": "tsk_01M82JX0AQZYQ6BZBDV2Y6GSAV",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 18,
+      "settled": 18,
+      "usd_micros": 554942
+    },
+    {
+      "task_id": "tsk_01M82KAPZ36K14T7W60PEY378F",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 36,
+      "settled": 36,
+      "usd_micros": 1123262
+    },
+    {
+      "task_id": "tsk_01M82KEQCRX4Y78RQRCGA29CMD",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 14,
+      "settled": 14,
+      "usd_micros": 254828
+    },
+    {
+      "task_id": "tsk_01M82KEQCRX4Y78RQRCGA29CMD",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 7300
+    },
+    {
+      "task_id": "tsk_01M82KRS33CK28XM3TX2HVJPY0",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 20,
+      "settled": 20,
+      "usd_micros": 592453
+    },
+    {
+      "task_id": "tsk_01M82KYZG58J6BBGCYYEMF24AR",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 12,
+      "settled": 12,
+      "usd_micros": 267478
+    },
+    {
+      "task_id": "tsk_01M82M6XNQY1M9KMQDV94EJ4PE",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 39,
+      "settled": 39,
+      "usd_micros": 971498
+    },
+    {
+      "task_id": "tsk_01M82M6XNQY1M9KMQDV94EJ4PE",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 3,
+      "settled": 3,
+      "usd_micros": 43596
+    },
+    {
+      "task_id": "tsk_01M82M95PJ424DDCBBP6840SEE",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 55,
+      "settled": 55,
+      "usd_micros": 1754530
+    },
+    {
+      "task_id": "tsk_01M82M95PJ424DDCBBP6840SEE",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 46370
+    },
+    {
+      "task_id": "tsk_01M82N7GHQMJAHDG8RMXKAN9GN",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 24,
+      "settled": 24,
+      "usd_micros": 817472
+    },
+    {
+      "task_id": "tsk_01M82N7GHQMJAHDG8RMXKAN9GN",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 20606
+    },
+    {
+      "task_id": "tsk_01M82NMZSQ6F29EK34X95P9ZHF",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 50,
+      "settled": 50,
+      "usd_micros": 1303756
+    },
+    {
+      "task_id": "tsk_01M82NMZSQ6F29EK34X95P9ZHF",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 49372
+    },
+    {
+      "task_id": "tsk_01M82NQADYZSJQ5FYC1N50E428",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 32,
+      "settled": 31,
+      "usd_micros": 725385
+    },
+    {
+      "task_id": "tsk_01M82NQADYZSJQ5FYC1N50E428",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 1,
+      "usd_micros": 20332
+    },
+    {
+      "task_id": "tsk_01M82PVBY2BHRRXFVH0FEZQ3WW",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 24,
+      "settled": 24,
+      "usd_micros": 736562
+    },
+    {
+      "task_id": "tsk_01M82PVBY2BHRRXFVH0FEZQ3WW",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 20486
+    },
+    {
+      "task_id": "tsk_01M82PX8DFVXV3XVFE439PXGRZ",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 60,
+      "settled": 60,
+      "usd_micros": 1999310
+    },
+    {
+      "task_id": "tsk_01M82PX8DFVXV3XVFE439PXGRZ",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 42308
+    },
+    {
+      "task_id": "tsk_01M82QD97KR3N20Q70H0R3TSX6",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 62,
+      "settled": 59,
+      "usd_micros": 1565000
+    },
+    {
+      "task_id": "tsk_01M82QD97KR3N20Q70H0R3TSX6",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 53972
+    },
+    {
+      "task_id": "tsk_01M82RR69RJTYHGMW7MEQ4NG3D",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 11,
+      "settled": 11,
+      "usd_micros": 327942
+    },
+    {
+      "task_id": "tsk_01M82RR69RJTYHGMW7MEQ4NG3D",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 16170
+    },
+    {
+      "task_id": "tsk_01M82S43EZBSYGREWTWXMWTTP0",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 34,
+      "settled": 34,
+      "usd_micros": 1594410
+    },
+    {
+      "task_id": "tsk_01M82S43EZBSYGREWTWXMWTTP0",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 43040
+    },
+    {
+      "task_id": "tsk_01M82S7SMMYSWMB4VGM9DRGAM9",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 13,
+      "settled": 13,
+      "usd_micros": 611732
+    },
+    {
+      "task_id": "tsk_01M82S7SMMYSWMB4VGM9DRGAM9",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 14950
+    },
+    {
+      "task_id": "tsk_01M82SRRZZ1YVEGD12ZAY8Z6CA",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 24,
+      "settled": 24,
+      "usd_micros": 847451
+    },
+    {
+      "task_id": "tsk_01M82SRRZZ1YVEGD12ZAY8Z6CA",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 19262
+    },
+    {
+      "task_id": "tsk_01M82TP8AD7ZGJAE6PB5CYGZS3",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 39,
+      "settled": 39,
+      "usd_micros": 1115843
+    },
+    {
+      "task_id": "tsk_01M82TP8AD7ZGJAE6PB5CYGZS3",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 20252
+    },
+    {
+      "task_id": "tsk_01M82TPYXHZX37N7RQFMBN45C2",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 47,
+      "settled": 47,
+      "usd_micros": 1743408
+    },
+    {
+      "task_id": "tsk_01M82TPYXHZX37N7RQFMBN45C2",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 19862
+    },
+    {
+      "task_id": "tsk_01M82VPNS55C3CYVS00HAK8A2F",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 55,
+      "settled": 51,
+      "usd_micros": 2678748
+    },
+    {
+      "task_id": "tsk_01M82VPNS55C3CYVS00HAK8A2F",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 21468
+    },
+    {
+      "task_id": "tsk_01M82VX5JDTVB42A9188JR08W1",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 19,
+      "settled": 19,
+      "usd_micros": 502050
+    },
+    {
+      "task_id": "tsk_01M82VX5JDTVB42A9188JR08W1",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 27514
+    },
+    {
+      "task_id": "tsk_01M82WEBCVB56JXG36H3KE4WR5",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 30,
+      "settled": 30,
+      "usd_micros": 926016
+    },
+    {
+      "task_id": "tsk_01M82WEBCVB56JXG36H3KE4WR5",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 42112
+    },
+    {
+      "task_id": "tsk_01M82X8NQKDFJXJ8FHY7CY6H0P",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 33,
+      "settled": 33,
+      "usd_micros": 1141962
+    },
+    {
+      "task_id": "tsk_01M82X8NQKDFJXJ8FHY7CY6H0P",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 48122
+    },
+    {
+      "task_id": "tsk_01M82Y04D0V65K52XEQCK7TG1P",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 64,
+      "settled": 52,
+      "usd_micros": 2827927
+    },
+    {
+      "task_id": "tsk_01M82YC2B137SAXFWBSCW8VQGS",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 35,
+      "settled": 35,
+      "usd_micros": 1432038
+    },
+    {
+      "task_id": "tsk_01M82YC2B137SAXFWBSCW8VQGS",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 41886
+    },
+    {
+      "task_id": "tsk_01M82YZ5ZD0HZ4SH11AJTDV6ZF",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 42,
+      "settled": 42,
+      "usd_micros": 1211196
+    },
+    {
+      "task_id": "tsk_01M82YZ5ZD0HZ4SH11AJTDV6ZF",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 36926
+    },
+    {
+      "task_id": "tsk_01M82ZTVQV4WNC2E1XARFBYSKD",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 33,
+      "settled": 33,
+      "usd_micros": 1123206
+    },
+    {
+      "task_id": "tsk_01M82ZTVQV4WNC2E1XARFBYSKD",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 22222
+    },
+    {
+      "task_id": "tsk_01M830M79XYWV4QZDBJFMCA73V",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 29,
+      "settled": 29,
+      "usd_micros": 666044
+    },
+    {
+      "task_id": "tsk_01M830M79XYWV4QZDBJFMCA73V",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 33134
+    },
+    {
+      "task_id": "tsk_01M830WWM3D9E1HQKBFE4DNHV1",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 35,
+      "settled": 35,
+      "usd_micros": 1066870
+    },
+    {
+      "task_id": "tsk_01M830WWM3D9E1HQKBFE4DNHV1",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 23314
+    },
+    {
+      "task_id": "tsk_01M831FGFC0EHCD2K8H9ZQSD3V",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 48,
+      "settled": 48,
+      "usd_micros": 3058198
+    },
+    {
+      "task_id": "tsk_01M831XDBV7CCXSZYYSA46R34Z",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 46,
+      "settled": 46,
+      "usd_micros": 1978316
+    },
+    {
+      "task_id": "tsk_01M831XDBV7CCXSZYYSA46R34Z",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 41824
+    },
+    {
+      "task_id": "tsk_01M832S9TDF7ZF8FDCD50D0519",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 24,
+      "settled": 24,
+      "usd_micros": 585280
+    },
+    {
+      "task_id": "tsk_01M832S9TDF7ZF8FDCD50D0519",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 37214
+    },
+    {
+      "task_id": "tsk_01M8336DNVC5X3DN9X015XDM79",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 43,
+      "settled": 43,
+      "usd_micros": 1350440
+    },
+    {
+      "task_id": "tsk_01M8336DNVC5X3DN9X015XDM79",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 48992
+    },
+    {
+      "task_id": "tsk_01M8339D49BDD2DXPJNEP2RKPJ",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 23,
+      "settled": 23,
+      "usd_micros": 812708
+    },
+    {
+      "task_id": "tsk_01M8339D49BDD2DXPJNEP2RKPJ",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 18814
+    },
+    {
+      "task_id": "tsk_01M833SYHC563HF7B6K2CDRG1Y",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 36,
+      "settled": 36,
+      "usd_micros": 1042176
+    },
+    {
+      "task_id": "tsk_01M833SYHC563HF7B6K2CDRG1Y",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 37924
+    },
+    {
+      "task_id": "tsk_01M833XM9TSTZ8621TVPAW48ZS",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 32,
+      "settled": 32,
+      "usd_micros": 951328
+    },
+    {
+      "task_id": "tsk_01M833XM9TSTZ8621TVPAW48ZS",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 41580
+    },
+    {
+      "task_id": "tsk_01M834EPFZPK5G5M0F5TBZAPP5",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 16,
+      "settled": 16,
+      "usd_micros": 497454
+    },
+    {
+      "task_id": "tsk_01M834EPFZPK5G5M0F5TBZAPP5",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 36112
+    },
+    {
+      "task_id": "tsk_01M834KJ32DB4GYAM354MFKK3H",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 16,
+      "settled": 16,
+      "usd_micros": 377306
+    },
+    {
+      "task_id": "tsk_01M834KJ32DB4GYAM354MFKK3H",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 33286
+    },
+    {
+      "task_id": "tsk_01M8354YJHAGYE2Q0VY969K9ST",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 29,
+      "settled": 29,
+      "usd_micros": 946976
+    },
+    {
+      "task_id": "tsk_01M8354YJHAGYE2Q0VY969K9ST",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 46638
+    },
+    {
+      "task_id": "tsk_01M8354ZDB87J86DCNGDPVYQ06",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 34,
+      "settled": 34,
+      "usd_micros": 855662
+    },
+    {
+      "task_id": "tsk_01M8354ZDB87J86DCNGDPVYQ06",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 2,
+      "settled": 2,
+      "usd_micros": 45692
+    },
+    {
+      "task_id": "tsk_01M835W5T73PX16CDW22PXDYF6",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "generate",
+      "calls": 19,
+      "settled": 19,
+      "usd_micros": 539824
+    },
+    {
+      "task_id": "tsk_01M835W5T73PX16CDW22PXDYF6",
+      "model_profile_id": "a6api/gpt-6.2-sol@2026-11",
+      "method": "stream_generate",
+      "calls": 1,
+      "settled": 1,
+      "usd_micros": 17744
+    }
+  ]
+}

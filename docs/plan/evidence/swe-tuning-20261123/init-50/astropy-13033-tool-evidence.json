@@ -1,0 +1,85 @@
+{
+  "instance_id": "astropy__astropy-13033",
+  "task_id": "tsk_01M82GZK0N4NN0C6E0Z2GK94TS",
+  "prior": "unresolved",
+  "new_resolved": false,
+  "terminal": "aborted",
+  "patch_files": [
+    "astropy/timeseries/core.py"
+  ],
+  "rounds": 5,
+  "tool_counts": {
+    "skill_read": 1,
+    "repo_grep": 4,
+    "repo_list": 1,
+    "shell_run": 20,
+    "repo_read": 5,
+    "repo_edit": 1
+  },
+  "first_repo_edit_sequence": 10,
+  "checks": [
+    {
+      "tool_sequence": 9,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 1,
+      "target_sha256": "9c3647d639f27ca4e4a9d0aa857f352d90c0805be856b74677633f18e131fb5b",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 11,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 1,
+      "target_sha256": "6fff72e8e88d402f0267258a8a847f3cc0e2f4c87823ae579c54f7afd16aa02f",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 18,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "ccbc706bdbc5a212173f4131ecb413328bd880e6c30691e84a100ca88e641330",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 20,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "6e4481fd81660cd5c4678985420d66b5b1aa2b927a23f3e97dae1a57da0b271a",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 21,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "9c3647d639f27ca4e4a9d0aa857f352d90c0805be856b74677633f18e131fb5b",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 31,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 4,
+      "target_sha256": "6fff72e8e88d402f0267258a8a847f3cc0e2f4c87823ae579c54f7afd16aa02f",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 32,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 4,
+      "target_sha256": "9c3647d639f27ca4e4a9d0aa857f352d90c0805be856b74677633f18e131fb5b",
+      "command_type": "inline_python_check"
+    }
+  ],
+  "equal_recorded_shell_targets_across_first_repo_edit": [
+    "9c3647d639f27ca4e4a9d0aa857f352d90c0805be856b74677633f18e131fb5b"
+  ],
+  "official_tests": {
+    "FAIL_TO_PASS": {
+      "success": 0,
+      "failure": 1
+    },
+    "PASS_TO_PASS": {
+      "success": 20,
+      "failure": 0
+    }
+  },
+  "interpretation": "Matching targets are observed invocations; tool_status does not contain test stdout or a process exit code."
+}

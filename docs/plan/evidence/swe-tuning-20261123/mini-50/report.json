@@ -1,0 +1,1088 @@
+{
+  "benchmark": "swe-bench",
+  "run_id": "mini50-tuned-c-gpt62-20261123",
+  "model_name": "runtime-c-gpt-6.2-sol-fixed",
+  "settings": {
+    "model_name": "runtime-c-gpt-6.2-sol-fixed",
+    "hints": false,
+    "environment": "official",
+    "repo_url_template": "https://github.com/{repo}.git",
+    "workspace_path": "/workspace"
+  },
+  "selection": {
+    "dataset_name": "SWE-bench/SWE-bench_Verified",
+    "dataset_split": "test",
+    "population_count": 500,
+    "cohort_file_sha256": "594827f9dcc5c06dded01fc66872ceedb4821e30b8cd8e6484f1ace5cea65331",
+    "public_cohort": "MariusHobbhahn/swe-bench-verified-mini",
+    "source_commit": "1ce432065d9ed226017ef1ac88b5f91818383c64",
+    "method_description": "Published size-optimized list, 25 Django and 25 Sphinx in original order",
+    "reference_url": "https://github.com/MariusHobbhahn/SWEBench-verified-mini/blob/1ce432065d9ed226017ef1ac88b5f91818383c64/data/subsets/size_optimized_sample_ids.json",
+    "baseline_run_id": "mini50-gpt62-formal-b-20261121T1930Z",
+    "runtime_batch": "mini-50",
+    "runtime_version": "C",
+    "instances_sha256": "2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52",
+    "ids_file": "/opt/swebench/cache/mini50-20261121-runtime-arm/mini50.ids",
+    "runtime_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032"
+  },
+  "limits": {
+    "budget_usd": 150.0,
+    "task_usd_limit": 3.0,
+    "concurrency": 2,
+    "task_timeout_s": 3600
+  },
+  "selected": 50,
+  "ran": 50,
+  "not_run": 0,
+  "errors": 0,
+  "graded": true,
+  "graded_complete": true,
+  "resolved": 34,
+  "resolve_rate": 0.68,
+  "resolve_rate_ran": 0.68,
+  "cost_usd": 59.366204,
+  "cost_per_instance_usd": 1.187324,
+  "cost_per_resolved_usd": 1.746065,
+  "rounds": {
+    "median": 3.0,
+    "mean": 3.5,
+    "max": 10
+  },
+  "verdicts": {
+    "continue": 67,
+    "done": 44,
+    "repair": 49,
+    "replan": 8,
+    "escalate": 3,
+    "abort": 2
+  },
+  "statuses": {
+    "done": 44,
+    "cancelled": 4,
+    "aborted": 2
+  },
+  "stop_reasons": {
+    "task_usd_limit": 5
+  },
+  "auto_replies": 2,
+  "patch_errors": 0,
+  "by_repo": {
+    "django/django": {
+      "selected": 25,
+      "ran": 25,
+      "resolved": 20
+    },
+    "sphinx-doc/sphinx": {
+      "selected": 25,
+      "ran": 25,
+      "resolved": 14
+    }
+  },
+  "by_difficulty": {
+    "15 min - 1 hour": {
+      "selected": 23,
+      "ran": 23,
+      "resolved": 15
+    },
+    "<15 min fix": {
+      "selected": 19,
+      "ran": 19,
+      "resolved": 17
+    },
+    "1-4 hours": {
+      "selected": 7,
+      "ran": 7,
+      "resolved": 2
+    },
+    ">4 hours": {
+      "selected": 1,
+      "ran": 1,
+      "resolved": 0
+    }
+  },
+  "environment_fallback_ids": [],
+  "environment_unknown": 0,
+  "resolve_rate_with_environment": 0.68,
+  "instances": [
+    {
+      "instance_id": "django__django-11790",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 0.439577,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/contrib/auth/forms.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12050",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 0.604451,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/sql/query.py",
+        "tests/queries/test_query.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12262",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.767942,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/template/library.py",
+        "tests/template_tests/templatetags/custom.py",
+        "tests/template_tests/templatetags/inclusion.py",
+        "tests/template_tests/test_custom.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12713",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 0.444631,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/contrib/admin/options.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8475",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 1,
+      "cost_usd": 0.64956,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/builders/linkcheck.py",
+        "tests/test_build_linkcheck_toomany.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8721",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 1.178988,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/ext/viewcode.py",
+        "tests/test_ext_viewcode.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9320",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.567071,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/cmd/quickstart.py",
+        "tests/test_quickstart.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9698",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.786273,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/domains/python.py",
+        "tests/test_domain_py.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-11848",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 1,
+      "cost_usd": 0.243258,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/utils/http.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12774",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 0.728758,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/query.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7748",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 0.750899,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/ext/autodoc/__init__.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8035",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 5,
+      "cost_usd": 1.546608,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "doc/usage/extensions/autodoc.rst",
+        "sphinx/ext/autodoc/__init__.py",
+        "tests/roots/test-ext-autodoc/target/private_members.py",
+        "tests/test_ext_autodoc_private_members.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8548",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "1-4 hours",
+      "state": "finished",
+      "status": "cancelled",
+      "final_verdict": null,
+      "rounds": 10,
+      "cost_usd": 2.601268,
+      "stop_reason": "task_usd_limit",
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/ext/autodoc/__init__.py",
+        "tests/roots/test-ext-autodoc/target/inherited_attribute.py",
+        "tests/test_ext_autodoc.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9229",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "1-4 hours",
+      "state": "finished",
+      "status": "aborted",
+      "final_verdict": "abort",
+      "rounds": 3,
+      "cost_usd": 1.543658,
+      "stop_reason": null,
+      "auto_replies": 1,
+      "patch_files": [
+        "tests/roots/test-ext-autodoc/target/genericalias.py",
+        "tests/test_ext_autodoc.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-11880",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 5,
+      "cost_usd": 0.427409,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/forms/fields.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12143",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.43149,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/contrib/admin/options.py",
+        "tests/admin_changelist/tests.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12155",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.823836,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/contrib/admindocs/utils.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9367",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.523828,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/pycode/ast.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12209",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 7,
+      "cost_usd": 3.028161,
+      "stop_reason": "task_usd_limit",
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/base.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-11951",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 1.06765,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/query.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12193",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 0.852088,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/forms/widgets.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12276",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 0.937744,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/forms/widgets.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12304",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 0.981314,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/enums.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-9296",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 1,
+      "cost_usd": 0.266806,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/core/paginator.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10466",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 1.034894,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/builders/gettext.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-11999",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 6,
+      "cost_usd": 1.4415,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/fields/__init__.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12039",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 0.74634,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/backends/ddl_references.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12273",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 1.329246,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/base.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12325",
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.888087,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/base.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12406",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 6,
+      "cost_usd": 2.884177,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/forms/models.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10673",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "cancelled",
+      "final_verdict": null,
+      "rounds": 3,
+      "cost_usd": 1.000143,
+      "stop_reason": "task_usd_limit",
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/directives/other.py",
+        "sphinx/domains/std.py",
+        "tests/test_generated_toctree.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-11510",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "1-4 hours",
+      "state": "finished",
+      "status": "aborted",
+      "final_verdict": "abort",
+      "rounds": 4,
+      "cost_usd": 2.694646,
+      "stop_reason": null,
+      "auto_replies": 1,
+      "patch_files": [
+        "doc/extdev/appapi.rst",
+        "sphinx/directives/other.py",
+        "sphinx/events.py",
+        "tests/test_include_read.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7757",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 6,
+      "cost_usd": 1.182733,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/util/inspect.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8265",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 5,
+      "cost_usd": 2.22626,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/pycode/ast.py",
+        "sphinx/util/inspect.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8551",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 2.062372,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/domains/python.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8638",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 1.725224,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/domains/python.py",
+        "tests/test_domain_py_variable_fields.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-11815",
+      "repo": "django/django",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 1.080342,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/migrations/serializer.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-11885",
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 1.94929,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/models/deletion.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12708",
+      "repo": "django/django",
+      "difficulty": "1-4 hours",
+      "state": "finished",
+      "status": "cancelled",
+      "final_verdict": null,
+      "rounds": 4,
+      "cost_usd": 2.800398,
+      "stop_reason": "task_usd_limit",
+      "auto_replies": 0,
+      "patch_files": [
+        "django/db/backends/base/schema.py",
+        "django/db/backends/sqlite3/schema.py",
+        "django/db/migrations/autodetector.py",
+        "django/db/migrations/operations/__init__.py",
+        "django/db/migrations/operations/models.py",
+        "docs/ref/migration-operations.txt"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7590",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": ">4 hours",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 1.599078,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/domains/cpp.py",
+        "tests/test_domain_cpp_udl.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7985",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 1.089892,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/builders/linkcheck.py",
+        "tests/test_build_linkcheck_local.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "15 min - 1 hour",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 1.939916,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/util/docfields.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9461",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "1-4 hours",
+      "state": "finished",
+      "status": "cancelled",
+      "final_verdict": null,
+      "rounds": 2,
+      "cost_usd": 0.418416,
+      "stop_reason": "task_usd_limit",
+      "auto_replies": 0,
+      "patch_files": [],
+      "patch_error": null,
+      "error": null,
+      "grading": "empty_patch",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-11964",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 0.937808,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "choice_string_regression.py",
+        "django/db/models/enums.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "django__django-12308",
+      "repo": "django/django",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 0.660958,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "django/contrib/admin/utils.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 3,
+      "cost_usd": 1.206784,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "doc/usage/restructuredtext/directives.rst",
+        "sphinx/directives/code.py",
+        "tests/test_literalinclude_indent.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10435",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 1.018932,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/writers/latex.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8269",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 2,
+      "cost_usd": 0.772002,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/builders/linkcheck.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9230",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 1.335792,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/util/docfields.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "resolved",
+      "environment_used": true
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9281",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "<15 min fix",
+      "state": "finished",
+      "status": "done",
+      "final_verdict": "done",
+      "rounds": 4,
+      "cost_usd": 1.147706,
+      "stop_reason": null,
+      "auto_replies": 0,
+      "patch_files": [
+        "sphinx/util/inspect.py"
+      ],
+      "patch_error": null,
+      "error": null,
+      "grading": "unresolved",
+      "environment_used": true
+    }
+  ]
+}

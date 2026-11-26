@@ -5,6 +5,7 @@
   "r": 3,
   "seed": 0,
   "concurrency": 4,
+  "schedule": "round_robin",
   "item_usd_limit": 0.5,
   "cells": [
     {

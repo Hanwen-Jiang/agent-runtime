@@ -1,0 +1,45 @@
+{
+  "run_id": "route2-funded-20261122-native",
+  "mode": "native",
+  "conditions": {
+    "runtime_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+    "candidate_files": {
+      "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+      "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2"
+    },
+    "images": {
+      "task": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "decision": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "model": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "program": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "workspace": "sha256:c242863db27b74db99107cca83b53360414c9048bcde340aaf7ca79236228761",
+      "api": "sha256:ed447bb4a873b9c837eebc99220bd17ba4c2dc1cf43d0505d58e74819cca242a",
+      "gateway": "sha256:8ea10ccd09d73cd6f3facba8b811e855849e00532cc0a5c1f5121ea7d4a8c9df"
+    },
+    "catalog_sha256": "95032f5ca0d5e93f77e4b0207460621af1f401f6589912e51729d937dd371d39",
+    "policy_sha256": "75555a6bd61079600ac3ade73501602b2a936f59ef194f4c508b04a6ca8bdd86",
+    "selection": {
+      "dataset_name": "SWE-bench/SWE-bench_Verified",
+      "dataset_split": "test",
+      "instances_sha256": "2d336d3f60d2a6496b21cf04ab73ed6cdd016eb52f19e1e4bb0328a278145d52",
+      "population_count": 500,
+      "ids": true,
+      "ids_sha256": "7139a1ccdf199169ae1e2e85f669dad5ef1a62e90a595a4207fc0e28b1e99ab1",
+      "case_origins": {
+        "django__django-11885": "init50_and_mini50",
+        "sphinx-doc__sphinx-8721": "mini50_only"
+      }
+    },
+    "usd_per_task": 3,
+    "seconds_per_task": 3600,
+    "concurrency": 1,
+    "hints": false,
+    "environment": "official",
+    "prewarm_sha256": "0be37aff3ab29887836eedd3f6e340a69b3c0be1e2cda8ccef402f4f96bf75ee"
+  },
+  "requested_routes": {},
+  "instance_ids": [
+    "django__django-11885",
+    "sphinx-doc__sphinx-8721"
+  ]
+}

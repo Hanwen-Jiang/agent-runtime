@@ -1,0 +1,64 @@
+{
+  "checked_at": "2026-11-23T08:22:34.944Z",
+  "deployment": {
+    "previous": "ghcr.io/agentruntime/learning:ui-cap-panel-f40f01678ad9",
+    "previous_config": "sha256:8946db4cc6b5291b98dd7913befcf090ec54c70b58fdd1823bcca57534b25598",
+    "image": "ghcr.io/agentruntime/learning:ui-runtime-label-3874fbe2a809",
+    "image_config": "sha256:0b7e6ae8eef2a059a6fc4ec17649f5c3a188a403ae8d0d55adabed5ec93ac6ca",
+    "previous_revision": "79"
+  },
+  "mini50_points": [
+    {
+      "id": "mini50-gpt62-formal-a-20261121T1900Z",
+      "text": "agentruntime-c095dc8a · A · 35/50 mediummini-5011月21日 23:4950 ⓘ官方判分覆盖 50/5070.0%",
+      "g": [
+        [
+          "medium",
+          "展示分组"
+        ]
+      ]
+    },
+    {
+      "id": "mini50-gpt62-formal-b-20261121T1930Z",
+      "text": "agentruntime-014d63df · B · 36/50 mediummini-5011月22日 00:0050 ⓘ官方判分覆盖 50/5072.0%",
+      "g": [
+        [
+          "medium",
+          "展示分组"
+        ]
+      ]
+    },
+    {
+      "id": "mini50-tuned-c-gpt62-20261123",
+      "text": "agentruntime-e3646dd0 mediummini-5011月23日 04:5250 ⓘ官方判分覆盖 49/5068.0%",
+      "g": [
+        [
+          "medium",
+          "展示分组"
+        ]
+      ]
+    }
+  ],
+  "verified_run_details": [
+    {
+      "id": "mini50-tuned-c-gpt62-20261123",
+      "url": "https://evals.cgent.link/results?type=runtime&q=mini50-tuned-c-gpt62-20261123#run-records",
+      "badge": "medium",
+      "evidence": {
+        "路由方式": "固定模型",
+        "实测思考档": "思考等级中"
+      }
+    },
+    {
+      "id": "route2-funded-20261122-native",
+      "url": "https://evals.cgent.link/results?type=runtime&q=route2-funded-20261122-native#run-records",
+      "badge": "medium",
+      "evidence": {
+        "路由方式": "内核自动路由",
+        "实测思考档": "思考等级混合 (low / medium)"
+      }
+    }
+  ],
+  "matrix_has_group_badges": false,
+  "matrix_user_paused": true
+}

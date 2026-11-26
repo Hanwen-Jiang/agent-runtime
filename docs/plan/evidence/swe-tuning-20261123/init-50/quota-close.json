@@ -1,0 +1,1273 @@
+{
+  "at": "2026-11-23T03:18:04.570296Z",
+  "mode": "apply",
+  "counts_before": {
+    "failed": 8,
+    "ready": 94,
+    "deleted": 27
+  },
+  "cases": [
+    {
+      "instance_id": "astropy__astropy-13033",
+      "key": "cff65458742065bdd208b674b5b5f0ef54e388f7729ca56ffc3e611e759ba72c",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:4b90dc1a59c510995a9fae92f679f597e4e8631f5fc09104c33f6240072acbd5",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:c2a850aa4c8b97406bd2f63bbe5d7b74d0cdc5fbafd97f2d5312389c71df7070",
+      "before": {
+        "image_key": "cff65458742065bdd208b674b5b5f0ef54e388f7729ca56ffc3e611e759ba72c",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:c2a850aa4c8b97406bd2f63bbe5d7b74d0cdc5fbafd97f2d5312389c71df7070",
+        "digest": "sha256:c2a850aa4c8b97406bd2f63bbe5d7b74d0cdc5fbafd97f2d5312389c71df7070",
+        "workspace_id": "swb-astropy-astropy-13033-3105c61989",
+        "size_bytes": 1133549532,
+        "reason": "",
+        "ready_at": "2026-11-22T20:59:42.449637Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:05:46.318227Z",
+        "build_ms": 360231
+      },
+      "references": [
+        {
+          "workspace_id": "swb-astropy-astropy-13033-3105c61989",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "3771e4d332ced8a4d6a99ab13662b13a72175a2b01510364109eda2ad7baf687",
+      "status": "released"
+    },
+    {
+      "instance_id": "astropy__astropy-8707",
+      "key": "5e4d72b04bc3a7a68c5e7d3a1cb18a818b9b78e6e68a337af97c1ca41fd58b8e",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:8f860ad116fd5b3ce640553d9dfd5a9284ad2e571772876c4361babaf5214afe",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:1970391b42061095940844ae3eeafa986c294a79464d23017f5ae388c3bad6f4",
+      "before": {
+        "image_key": "5e4d72b04bc3a7a68c5e7d3a1cb18a818b9b78e6e68a337af97c1ca41fd58b8e",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:1970391b42061095940844ae3eeafa986c294a79464d23017f5ae388c3bad6f4",
+        "digest": "sha256:1970391b42061095940844ae3eeafa986c294a79464d23017f5ae388c3bad6f4",
+        "workspace_id": "swb-astropy-astropy-8707-b8128e7fe8",
+        "size_bytes": 1176957875,
+        "reason": "",
+        "ready_at": "2026-11-22T21:00:08.275514Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:05:38.092528Z",
+        "build_ms": 403961
+      },
+      "references": [
+        {
+          "workspace_id": "swb-astropy-astropy-8707-b8128e7fe8",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "e48edd4106f606528ad6dcbd19456aeaf570fc85284647b7e589ef8052e9cff5",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-11163",
+      "key": "a4a0db7fd2c1d5a1fd84e547e3772dc5a98ca35416181db2b81037bd1d46b213",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:acefff0688bfdde3602117f733e23aae9a02767b68d35c89fa5e9dc9afbbb8c7",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:e7dcde25717bbe76b950f32dad6ff515843a6b24d1b4e91b2541593e912c2dd7",
+      "before": {
+        "image_key": "a4a0db7fd2c1d5a1fd84e547e3772dc5a98ca35416181db2b81037bd1d46b213",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:e7dcde25717bbe76b950f32dad6ff515843a6b24d1b4e91b2541593e912c2dd7",
+        "digest": "sha256:e7dcde25717bbe76b950f32dad6ff515843a6b24d1b4e91b2541593e912c2dd7",
+        "workspace_id": "swb-django-django-11163-d3805e6655",
+        "size_bytes": 1151947964,
+        "reason": "",
+        "ready_at": "2026-11-22T21:14:32.046949Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:18:39.556115Z",
+        "build_ms": 383956
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-11163-d3805e6655",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "66e9652ca8447476f7d9d3ff9997cd7beb248e233d0127669d27642e32b77730",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-11276",
+      "key": "e88e96cb883fe4bfcf76ecc8ae1d58820efba47f86fbc2f0802bd6dc18ad38a7",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:a3bd85c8480ab62978c1dd63b022d7992a64dc00dcf2c16282ed2b973999a6f5",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:a3bd85c8480ab62978c1dd63b022d7992a64dc00dcf2c16282ed2b973999a6f5",
+      "before": {
+        "image_key": "e88e96cb883fe4bfcf76ecc8ae1d58820efba47f86fbc2f0802bd6dc18ad38a7",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:a3bd85c8480ab62978c1dd63b022d7992a64dc00dcf2c16282ed2b973999a6f5",
+        "digest": "sha256:a3bd85c8480ab62978c1dd63b022d7992a64dc00dcf2c16282ed2b973999a6f5",
+        "workspace_id": "",
+        "size_bytes": 1151896196,
+        "reason": "",
+        "ready_at": "2026-10-31T15:32:44.068475Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:11:34.441135Z",
+        "build_ms": 84448
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-11276-f8c5fffbf5",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "57cc864ad6437fa8d45decb2d90c42ecc4dd08d2626e11f13ecd81eb25f66d24",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-11292",
+      "key": "65a180285583868c17b724a7e19f3496fc9260fafb4e6e309e383698fadc7b09",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:2712a6103b9cc98838f8ce37e4d0ae35de383556ffe9e24be290b1c489d659a7",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:2712a6103b9cc98838f8ce37e4d0ae35de383556ffe9e24be290b1c489d659a7",
+      "before": {
+        "image_key": "65a180285583868c17b724a7e19f3496fc9260fafb4e6e309e383698fadc7b09",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:2712a6103b9cc98838f8ce37e4d0ae35de383556ffe9e24be290b1c489d659a7",
+        "digest": "sha256:2712a6103b9cc98838f8ce37e4d0ae35de383556ffe9e24be290b1c489d659a7",
+        "workspace_id": "",
+        "size_bytes": 1151804268,
+        "reason": "",
+        "ready_at": "2026-10-31T15:33:54.355462Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:18:21.123759Z",
+        "build_ms": 91914
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-11292-0317dd245a",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "01fa2dfe1d8b9d2621dd5e13120bdffba9ddafcd7031fe95286c4a207da5b119",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-11490",
+      "key": "641a10816162187878258c75e4618744d63875be1ceca30fcc668fbd61eeda60",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:668c2851071050208a1f63fbf90d4fe1777339bcd5e30b14019f7cacb7b0ebc6",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:668c2851071050208a1f63fbf90d4fe1777339bcd5e30b14019f7cacb7b0ebc6",
+      "before": {
+        "image_key": "641a10816162187878258c75e4618744d63875be1ceca30fcc668fbd61eeda60",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:668c2851071050208a1f63fbf90d4fe1777339bcd5e30b14019f7cacb7b0ebc6",
+        "digest": "sha256:668c2851071050208a1f63fbf90d4fe1777339bcd5e30b14019f7cacb7b0ebc6",
+        "workspace_id": "",
+        "size_bytes": 1152332621,
+        "reason": "",
+        "ready_at": "2026-10-31T15:34:22.575716Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:26:15.564096Z",
+        "build_ms": 98047
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-11490-e22b2be7a4",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "d197f3faeeef4b9f312055295aacd1294504c84bd2fd09681ccf4fda3de92f39",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-11740",
+      "key": "f464ccfdc9c5672dc6860b45bcb045550b190a255a0d53d315aa70dd3a1ccbdc",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:1c11d9040d682a687987b7542b0fd56bf7cf8ecdfbdb86b445e15f3dd0e20fe3",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:1c11d9040d682a687987b7542b0fd56bf7cf8ecdfbdb86b445e15f3dd0e20fe3",
+      "before": {
+        "image_key": "f464ccfdc9c5672dc6860b45bcb045550b190a255a0d53d315aa70dd3a1ccbdc",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:1c11d9040d682a687987b7542b0fd56bf7cf8ecdfbdb86b445e15f3dd0e20fe3",
+        "digest": "sha256:1c11d9040d682a687987b7542b0fd56bf7cf8ecdfbdb86b445e15f3dd0e20fe3",
+        "workspace_id": "",
+        "size_bytes": 1152944434,
+        "reason": "",
+        "ready_at": "2026-10-31T15:34:40.898746Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:25:32.821381Z",
+        "build_ms": 101972
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-11740-ab4cfcb74d",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "d82191fff8659442f6e6a53e88a394a270767cdb31d814c74d7b58dc87100016",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-13033",
+      "key": "ec94977cd9974a464ee97176267398afa8987121c8e9cea48500a51811f04d39",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+      "before": {
+        "image_key": "ec94977cd9974a464ee97176267398afa8987121c8e9cea48500a51811f04d39",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+        "digest": "sha256:df1158cae9b274aaf4b892821ac05d60e38c95b832946ff9de235fcf315b8059",
+        "workspace_id": "",
+        "size_bytes": 1157510471,
+        "reason": "",
+        "ready_at": "2026-10-31T15:39:38.843610Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:47:56.870241Z",
+        "build_ms": 261938
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-13033-131347428a",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "315df8e236563cee33808730083c00b7eaaf8644f79a802442d395bcb9e80464",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-13741",
+      "key": "dca6fddc147ca3f59e20f7b48f8fb1f46771f05fc8f9312259a2e15af9b4cea9",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:37cd633b5f483a68f866ac570120b4e392472814f3b8ab078260021b1e8091a7",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:37cd633b5f483a68f866ac570120b4e392472814f3b8ab078260021b1e8091a7",
+      "before": {
+        "image_key": "dca6fddc147ca3f59e20f7b48f8fb1f46771f05fc8f9312259a2e15af9b4cea9",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:37cd633b5f483a68f866ac570120b4e392472814f3b8ab078260021b1e8091a7",
+        "digest": "sha256:37cd633b5f483a68f866ac570120b4e392472814f3b8ab078260021b1e8091a7",
+        "workspace_id": "",
+        "size_bytes": 1159014954,
+        "reason": "",
+        "ready_at": "2026-10-31T15:38:44.700226Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:45:46.137972Z",
+        "build_ms": 176005
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-13741-3c8dfbef2d",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "3a7fc5640821b3426f4b1e72f498a02d54b3fd66b5311ed2a8547b22c14c1521",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-13810",
+      "key": "eec76e82af51194695c61fdee61b37b6ffd43c6229acb29be4d1c0cc3a44952d",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:0aac75994fdc90ae93a27c8fdf17ffab9200ef81bbff8c818e204f71436c5efb",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:0aac75994fdc90ae93a27c8fdf17ffab9200ef81bbff8c818e204f71436c5efb",
+      "before": {
+        "image_key": "eec76e82af51194695c61fdee61b37b6ffd43c6229acb29be4d1c0cc3a44952d",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:0aac75994fdc90ae93a27c8fdf17ffab9200ef81bbff8c818e204f71436c5efb",
+        "digest": "sha256:0aac75994fdc90ae93a27c8fdf17ffab9200ef81bbff8c818e204f71436c5efb",
+        "workspace_id": "",
+        "size_bytes": 1159000451,
+        "reason": "",
+        "ready_at": "2026-10-31T15:38:44.713432Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:53:15.379621Z",
+        "build_ms": 147179
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-13810-4d89401315",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "3308ce87906a00400f2b789fa4dc6fe2b989d43bc4b7c17b6cfd5e35c29bec18",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-14155",
+      "key": "a7cfaa116faa0f15f2a95eb43b4df836f75896dff281b0d88cf94cb81c688e81",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:62a0ce818228a8efb8b80af9737e3c4a6ea5da0f9e548831a84a5a291bdf2d4b",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:62a0ce818228a8efb8b80af9737e3c4a6ea5da0f9e548831a84a5a291bdf2d4b",
+      "before": {
+        "image_key": "a7cfaa116faa0f15f2a95eb43b4df836f75896dff281b0d88cf94cb81c688e81",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:62a0ce818228a8efb8b80af9737e3c4a6ea5da0f9e548831a84a5a291bdf2d4b",
+        "digest": "sha256:62a0ce818228a8efb8b80af9737e3c4a6ea5da0f9e548831a84a5a291bdf2d4b",
+        "workspace_id": "",
+        "size_bytes": 1193123268,
+        "reason": "",
+        "ready_at": "2026-10-31T15:42:49.212799Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T21:54:47.578632Z",
+        "build_ms": 244124
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-14155-02ff6ce650",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "7aeaed0d726ddcb603f445dbc546ac5f5e68f75e251b059247e6fc35f5403b33",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-14765",
+      "key": "05efed09504e012fc6623337846182b7ab84b2d2054bcb7d48c1b516760ecaad",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:1ee909fb764fbbc1e07550e737aeafde1dbf322d9efacfd1cc45d9b2348bd494",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:1ee909fb764fbbc1e07550e737aeafde1dbf322d9efacfd1cc45d9b2348bd494",
+      "before": {
+        "image_key": "05efed09504e012fc6623337846182b7ab84b2d2054bcb7d48c1b516760ecaad",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:1ee909fb764fbbc1e07550e737aeafde1dbf322d9efacfd1cc45d9b2348bd494",
+        "digest": "sha256:1ee909fb764fbbc1e07550e737aeafde1dbf322d9efacfd1cc45d9b2348bd494",
+        "workspace_id": "",
+        "size_bytes": 1193814616,
+        "reason": "",
+        "ready_at": "2026-10-31T15:42:51.691245Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T22:09:37.074016Z",
+        "build_ms": 246594
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-14765-ab176639e9",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "6995773d60c962a2fa0001d9d1c511f1962fcacf59251ffe9bc46232b480ce32",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-14771",
+      "key": "6fa22b9fc8232a4263d3f6472debf0920eba2f7352e0513921c0d9a10f6c0adc",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:be5bf1af12e7610619ac7879c2c722bb2f62da9195e6bd3831741fcf9808dae1",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:be5bf1af12e7610619ac7879c2c722bb2f62da9195e6bd3831741fcf9808dae1",
+      "before": {
+        "image_key": "6fa22b9fc8232a4263d3f6472debf0920eba2f7352e0513921c0d9a10f6c0adc",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:be5bf1af12e7610619ac7879c2c722bb2f62da9195e6bd3831741fcf9808dae1",
+        "digest": "sha256:be5bf1af12e7610619ac7879c2c722bb2f62da9195e6bd3831741fcf9808dae1",
+        "workspace_id": "",
+        "size_bytes": 1207827120,
+        "reason": "",
+        "ready_at": "2026-10-31T15:42:20.007006Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T22:19:02.125673Z",
+        "build_ms": 160611
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-14771-da6181a139",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "2aadb5e88c4efcff29f84e53abd8fc6b433400b0bd29f0cb48ab5137188a4737",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-15503",
+      "key": "38d2749bb9ab8f92f4643a23b93b2ec304826cf18590861b443fdba6e995a734",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:d57430ca15a86fa0f5718e08482513e98834a5ffbdd31198537770feef50df1c",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:d57430ca15a86fa0f5718e08482513e98834a5ffbdd31198537770feef50df1c",
+      "before": {
+        "image_key": "38d2749bb9ab8f92f4643a23b93b2ec304826cf18590861b443fdba6e995a734",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:d57430ca15a86fa0f5718e08482513e98834a5ffbdd31198537770feef50df1c",
+        "digest": "sha256:d57430ca15a86fa0f5718e08482513e98834a5ffbdd31198537770feef50df1c",
+        "workspace_id": "",
+        "size_bytes": 1210755299,
+        "reason": "",
+        "ready_at": "2026-10-31T15:45:03.006446Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T22:20:45.776421Z",
+        "build_ms": 162607
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-15503-4c9dba05b3",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "076088eff6a84f22c86ba59f1c946642d70f66a24e8a6c46529a4b7d113b9e48",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-15561",
+      "key": "638fea93ff62c46e159f93ef82930ca3947a74a56d8e5bf4f4bd4a3f9f271544",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:ef5d70337bf967a555a700776169eee223ccae4bd6b3615f67b0c5d9f10d7c7a",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:ef5d70337bf967a555a700776169eee223ccae4bd6b3615f67b0c5d9f10d7c7a",
+      "before": {
+        "image_key": "638fea93ff62c46e159f93ef82930ca3947a74a56d8e5bf4f4bd4a3f9f271544",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:ef5d70337bf967a555a700776169eee223ccae4bd6b3615f67b0c5d9f10d7c7a",
+        "digest": "sha256:ef5d70337bf967a555a700776169eee223ccae4bd6b3615f67b0c5d9f10d7c7a",
+        "workspace_id": "",
+        "size_bytes": 1211609770,
+        "reason": "",
+        "ready_at": "2026-10-31T15:46:47.008282Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T22:38:00.179570Z",
+        "build_ms": 235028
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-15561-aa3b7af7ed",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "4a052ab0bd23fb81618f58fbcd2ba28cd9adb4b3543e878b742a3e1204646303",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-15569",
+      "key": "f652692afcf007b62d4a7ca65c265a6d6f4bb92d85f4b3ae6dc3c311a716c7ab",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:76b5de9631018e925b215a8fd7ef6dcdf4a0f70fa74e05038bd6e06696cc4e9a",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:76b5de9631018e925b215a8fd7ef6dcdf4a0f70fa74e05038bd6e06696cc4e9a",
+      "before": {
+        "image_key": "f652692afcf007b62d4a7ca65c265a6d6f4bb92d85f4b3ae6dc3c311a716c7ab",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:76b5de9631018e925b215a8fd7ef6dcdf4a0f70fa74e05038bd6e06696cc4e9a",
+        "digest": "sha256:76b5de9631018e925b215a8fd7ef6dcdf4a0f70fa74e05038bd6e06696cc4e9a",
+        "workspace_id": "",
+        "size_bytes": 1211462800,
+        "reason": "",
+        "ready_at": "2026-10-31T15:45:38.397685Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T22:38:13.637595Z",
+        "build_ms": 164435
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-15569-d0724a976a",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "96f8f83565a0efa7f0d1d2ea1afd9141344059586c8927cb06a10d6360e0ab50",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-15814",
+      "key": "4caca16110511ff818ff2ea2fbf7654baf4b4c8a361af5bc3d054a60842c18b2",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:a6f9b0aba0b232296ab57f5b6b32b5ccd5f4857bae2e52198c21b565ec30d0dd",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:a6f9b0aba0b232296ab57f5b6b32b5ccd5f4857bae2e52198c21b565ec30d0dd",
+      "before": {
+        "image_key": "4caca16110511ff818ff2ea2fbf7654baf4b4c8a361af5bc3d054a60842c18b2",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:a6f9b0aba0b232296ab57f5b6b32b5ccd5f4857bae2e52198c21b565ec30d0dd",
+        "digest": "sha256:a6f9b0aba0b232296ab57f5b6b32b5ccd5f4857bae2e52198c21b565ec30d0dd",
+        "workspace_id": "",
+        "size_bytes": 1212902769,
+        "reason": "",
+        "ready_at": "2026-10-31T15:49:18.624664Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T22:49:12.837911Z",
+        "build_ms": 255151
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-15814-50d2d60d19",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "1e8cb56ca6e92706acc09e05321261fe9fdeaaf13d06384b384e7393a270a80a",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-15851",
+      "key": "319a8bc720801c74c7b694580c7f22a9885e922317dc993088c87b3c2abaa183",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:b0925da3ebb9b538cb8c67ceb78ad7562cdb771c8b625f1a385d503a42545b62",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:b0925da3ebb9b538cb8c67ceb78ad7562cdb771c8b625f1a385d503a42545b62",
+      "before": {
+        "image_key": "319a8bc720801c74c7b694580c7f22a9885e922317dc993088c87b3c2abaa183",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:b0925da3ebb9b538cb8c67ceb78ad7562cdb771c8b625f1a385d503a42545b62",
+        "digest": "sha256:b0925da3ebb9b538cb8c67ceb78ad7562cdb771c8b625f1a385d503a42545b62",
+        "workspace_id": "",
+        "size_bytes": 1213010152,
+        "reason": "",
+        "ready_at": "2026-10-31T15:49:18.600630Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T23:11:42.797890Z",
+        "build_ms": 218765
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-15851-4b9a3c1ccf",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "df6ee0efb88e1b17cbcbc2264fcae6227889e7859b86f4fd0861edfd67c5df66",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-16145",
+      "key": "a626543dccf27bf7ee001d65252f78b01b4d307311b67c9f5ca5328aa277b5f5",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:266233cf897a67d86a1ed2300976656933ec1142682b87964f9e8bee8b0efaaa",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:266233cf897a67d86a1ed2300976656933ec1142682b87964f9e8bee8b0efaaa",
+      "before": {
+        "image_key": "a626543dccf27bf7ee001d65252f78b01b4d307311b67c9f5ca5328aa277b5f5",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:266233cf897a67d86a1ed2300976656933ec1142682b87964f9e8bee8b0efaaa",
+        "digest": "sha256:266233cf897a67d86a1ed2300976656933ec1142682b87964f9e8bee8b0efaaa",
+        "workspace_id": "",
+        "size_bytes": 1212626740,
+        "reason": "",
+        "ready_at": "2026-10-31T15:48:46.543492Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T23:20:59.021435Z",
+        "build_ms": 118638
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-16145-d699bbdfa4",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "c60b4d483accf8fdf4bfbf3fed00e2beb280ff06c0e9ba5bb80a71b1ffa1f1e6",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-16595",
+      "key": "be2abe02864b77b694a99faabcb422dba59dd9a51d8cfb50ca30d224f0789895",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:06c6b9af78c14666b2f916e43f663f9413d80ba9f87f158ead998c86ee8f0202",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:06c6b9af78c14666b2f916e43f663f9413d80ba9f87f158ead998c86ee8f0202",
+      "before": {
+        "image_key": "be2abe02864b77b694a99faabcb422dba59dd9a51d8cfb50ca30d224f0789895",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:06c6b9af78c14666b2f916e43f663f9413d80ba9f87f158ead998c86ee8f0202",
+        "digest": "sha256:06c6b9af78c14666b2f916e43f663f9413d80ba9f87f158ead998c86ee8f0202",
+        "workspace_id": "",
+        "size_bytes": 1241881048,
+        "reason": "",
+        "ready_at": "2026-10-31T15:55:04.750558Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T23:19:08.472144Z",
+        "build_ms": 377759
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-16595-2cb3aa82a8",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "bbf312fdeea2e8cfe65edb75cc0ad8668d0f253a9e145541291845b80e1c0d75",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-16661",
+      "key": "1269792e56a05825f0e00ebd9ce0672ec8a0376dfb5e53e4e5af938c1bdbd34b",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:b838b7f03e6b44c90b0d72efffa034e6af3f67996b287a0a370a02dce9af4e13",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:b838b7f03e6b44c90b0d72efffa034e6af3f67996b287a0a370a02dce9af4e13",
+      "before": {
+        "image_key": "1269792e56a05825f0e00ebd9ce0672ec8a0376dfb5e53e4e5af938c1bdbd34b",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:b838b7f03e6b44c90b0d72efffa034e6af3f67996b287a0a370a02dce9af4e13",
+        "digest": "sha256:b838b7f03e6b44c90b0d72efffa034e6af3f67996b287a0a370a02dce9af4e13",
+        "workspace_id": "",
+        "size_bytes": 1241344833,
+        "reason": "",
+        "ready_at": "2026-10-31T15:53:30.748604Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T23:40:31.200788Z",
+        "build_ms": 251739
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-16661-fa14c6f8e2",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "5d2b0177b7d5189521b12c66722cf1e637daa88d8aab8d358f5cfc15d3b0d901",
+      "status": "released"
+    },
+    {
+      "instance_id": "django__django-16877",
+      "key": "06ae86d89aca4602f9096016e4d29f52b570af9e9972ac11ec57f5d727193d12",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:45d0cb868bdbe58ec1be7fcec219ee6c908ea0cf1c7905910ff679890a328885",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:45d0cb868bdbe58ec1be7fcec219ee6c908ea0cf1c7905910ff679890a328885",
+      "before": {
+        "image_key": "06ae86d89aca4602f9096016e4d29f52b570af9e9972ac11ec57f5d727193d12",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:45d0cb868bdbe58ec1be7fcec219ee6c908ea0cf1c7905910ff679890a328885",
+        "digest": "sha256:45d0cb868bdbe58ec1be7fcec219ee6c908ea0cf1c7905910ff679890a328885",
+        "workspace_id": "",
+        "size_bytes": 1242107327,
+        "reason": "",
+        "ready_at": "2026-10-31T14:17:32.070847Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T23:29:46.228747Z",
+        "build_ms": 187691
+      },
+      "references": [
+        {
+          "workspace_id": "swb-django-django-16877-005be85a64",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "e408283e1208012159c8a903941414eb4810c631e9fb0e5fdfb871d94bbfbe2f",
+      "status": "released"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-13989",
+      "key": "79dcc0b1c3da3c204ac09834550d8f217b72f3e42a92ecb7babde6b58a168bec",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+      "before": {
+        "image_key": "79dcc0b1c3da3c204ac09834550d8f217b72f3e42a92ecb7babde6b58a168bec",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+        "digest": "sha256:c7c89dfb5097253ab446ad8709756287773fe2a30106f97881da24fbc3aa7d42",
+        "workspace_id": "",
+        "size_bytes": 1741493044,
+        "reason": "",
+        "ready_at": "2026-10-31T15:57:39.738317Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-22T23:43:33.126275Z",
+        "build_ms": 500338
+      },
+      "references": [
+        {
+          "workspace_id": "swb-matplotlib-matplotlib-13989-dd6b3effa4",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "d64f14060fd200b7af50e57d46a3e8805bfa4a8294f99182cc5eb3afcc7cb0cd",
+      "status": "released"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-26342",
+      "key": "7ad95841ec461da1cee7495de2ae067d75617e6ae6465d79edb70dc584145705",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+      "before": {
+        "image_key": "7ad95841ec461da1cee7495de2ae067d75617e6ae6465d79edb70dc584145705",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+        "digest": "sha256:b172a156c4cc9cc656a517e83f9a277b822126f88d9601dc822c9f5d0f909e10",
+        "workspace_id": "",
+        "size_bytes": 3149880914,
+        "reason": "",
+        "ready_at": "2026-10-31T16:47:05.410118Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T00:04:51.893066Z",
+        "build_ms": 237880
+      },
+      "references": [
+        {
+          "workspace_id": "swb-matplotlib-matplotlib-26342-25ef32f0d5",
+          "state": "destroyed",
+          "n": 2
+        },
+        {
+          "workspace_id": "swb-matplotlib-matplotlib-26342-25ef32f0d5",
+          "state": "failed",
+          "n": 1
+        }
+      ],
+      "prewarm_sha256": "1dc7335d12576eb871e417f9af9680c36e88ee924a6139a1d6dddf1a4a251977",
+      "status": "released"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-26466",
+      "key": "1b74a358e12700cfcc2c24038457e3bc07293700bfb3d043d7f8e05a156d5925",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+      "before": {
+        "image_key": "1b74a358e12700cfcc2c24038457e3bc07293700bfb3d043d7f8e05a156d5925",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+        "digest": "sha256:516a29195867205ed084f4c3463b70bb17da489fc993e6addc897722b7bf0d93",
+        "workspace_id": "",
+        "size_bytes": 3151220620,
+        "reason": "",
+        "ready_at": "2026-10-31T16:12:39.139464Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T00:09:51.321909Z",
+        "build_ms": 1051873
+      },
+      "references": [
+        {
+          "workspace_id": "swb-matplotlib-matplotlib-26466-098db4dcaa",
+          "state": "destroyed",
+          "n": 2
+        },
+        {
+          "workspace_id": "swb-matplotlib-matplotlib-26466-098db4dcaa",
+          "state": "failed",
+          "n": 1
+        }
+      ],
+      "prewarm_sha256": "87d66f7292f1009f86513fba8bc278e8bb9afed28227d7c24a15644362b2acef",
+      "status": "released"
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3187",
+      "key": "8633833fe5cc98e995ec156e54da3deb188f0f026d03b91e043baddb91639772",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:d4301cb624e4883a4dbedbab52614866a2d0c803045f3a5c9654701bfc812afa",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:d4301cb624e4883a4dbedbab52614866a2d0c803045f3a5c9654701bfc812afa",
+      "before": {
+        "image_key": "8633833fe5cc98e995ec156e54da3deb188f0f026d03b91e043baddb91639772",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:d4301cb624e4883a4dbedbab52614866a2d0c803045f3a5c9654701bfc812afa",
+        "digest": "sha256:d4301cb624e4883a4dbedbab52614866a2d0c803045f3a5c9654701bfc812afa",
+        "workspace_id": "",
+        "size_bytes": 1295129668,
+        "reason": "",
+        "ready_at": "2026-10-31T16:05:07.650339Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T00:52:57.359527Z",
+        "build_ms": 446799
+      },
+      "references": [
+        {
+          "workspace_id": "swb-mwaskom-seaborn-3187-31b7c94864",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "c3a4ddb19cde189d20f7ddf8843d03ba9a779fdc77339d972cf623567e43d16d",
+      "status": "released"
+    },
+    {
+      "instance_id": "pallets__flask-5014",
+      "key": "365af840a6fb7f90d2ebf198aa2ed3864be7abccd797a1f97f6b88e5266eb3aa",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:c9504172f7276d0cebcd0d382698719663e54215d1fc8cc40149fe07c97ea002",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:c9504172f7276d0cebcd0d382698719663e54215d1fc8cc40149fe07c97ea002",
+      "before": {
+        "image_key": "365af840a6fb7f90d2ebf198aa2ed3864be7abccd797a1f97f6b88e5266eb3aa",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:c9504172f7276d0cebcd0d382698719663e54215d1fc8cc40149fe07c97ea002",
+        "digest": "sha256:c9504172f7276d0cebcd0d382698719663e54215d1fc8cc40149fe07c97ea002",
+        "workspace_id": "",
+        "size_bytes": 1145546499,
+        "reason": "",
+        "ready_at": "2026-10-31T16:10:26.927159Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T00:16:37.394811Z",
+        "build_ms": 318825
+      },
+      "references": [
+        {
+          "workspace_id": "swb-pallets-flask-5014-22d19f72bd",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "66730eedf4091c6d6375fb75444935ad244ae590dafaedd80377381e9bfbc45d",
+      "status": "released"
+    },
+    {
+      "instance_id": "pydata__xarray-2905",
+      "key": "bddb66a7350cda2adb6508069f2048f593c59feed2e8ae450d369404f815b255",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+      "before": {
+        "image_key": "bddb66a7350cda2adb6508069f2048f593c59feed2e8ae450d369404f815b255",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+        "digest": "sha256:8cc6f24679b85c8a68f9f96b91cf035ad7f20f24c198467f9c03ba9aaa383626",
+        "workspace_id": "",
+        "size_bytes": 2050058558,
+        "reason": "",
+        "ready_at": "2026-10-31T16:23:59.169292Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T00:31:33.944220Z",
+        "build_ms": 809422
+      },
+      "references": [
+        {
+          "workspace_id": "swb-pydata-xarray-2905-9677dc996f",
+          "state": "destroyed",
+          "n": 2
+        },
+        {
+          "workspace_id": "swb-pydata-xarray-2905-9677dc996f",
+          "state": "failed",
+          "n": 1
+        }
+      ],
+      "prewarm_sha256": "c4571c28e5747156b747370f76e48f455bb593d3f67447add07c13e9e81ed95d",
+      "status": "released"
+    },
+    {
+      "instance_id": "pydata__xarray-7393",
+      "key": "75e29a5cab6254d6e9c8bf48d3bc4ee9845d6f770179996b3f0e7fc42de7a752",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+      "before": {
+        "image_key": "75e29a5cab6254d6e9c8bf48d3bc4ee9845d6f770179996b3f0e7fc42de7a752",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+        "digest": "sha256:23bb6722e413c8296340de71b85235ead98fec98b010913c35322ca1d14474a1",
+        "workspace_id": "",
+        "size_bytes": 1901976946,
+        "reason": "",
+        "ready_at": "2026-10-31T16:23:28.534457Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T00:44:02.361801Z",
+        "build_ms": 649251
+      },
+      "references": [
+        {
+          "workspace_id": "swb-pydata-xarray-7393-d45e94b76b",
+          "state": "destroyed",
+          "n": 2
+        },
+        {
+          "workspace_id": "swb-pydata-xarray-7393-d45e94b76b",
+          "state": "failed",
+          "n": 1
+        }
+      ],
+      "prewarm_sha256": "678b5a50f4c16dbfdf84f62164469152f04cb16579954bc914c6d05c70780ba0",
+      "status": "released"
+    },
+    {
+      "instance_id": "pylint-dev__pylint-6528",
+      "key": "8741d8f23667fcf5344c19f19af79ff7e15290a8bd33838e65601729cf9ce637",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:e0652d7e137034d58ae759c1017fdc2fc88afb3885def460802f5f59b4647181",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:e0652d7e137034d58ae759c1017fdc2fc88afb3885def460802f5f59b4647181",
+      "before": {
+        "image_key": "8741d8f23667fcf5344c19f19af79ff7e15290a8bd33838e65601729cf9ce637",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:e0652d7e137034d58ae759c1017fdc2fc88afb3885def460802f5f59b4647181",
+        "digest": "sha256:e0652d7e137034d58ae759c1017fdc2fc88afb3885def460802f5f59b4647181",
+        "workspace_id": "",
+        "size_bytes": 1080963533,
+        "reason": "",
+        "ready_at": "2026-10-31T16:19:58.474127Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T01:32:41.449701Z",
+        "build_ms": 438249
+      },
+      "references": [
+        {
+          "workspace_id": "swb-pylint-dev-pylint-6528-8ec1fd57bf",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "a5a77d8c697bf4cbfa2269d9ff9dbc7cc2cfd4c7686763ec7e4297fa82a32229",
+      "status": "released"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-7205",
+      "key": "94529729b5da0e1a250948df9f6e19f2c9a41dbd7217e2cd97804815fe8a9065",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:cb808dc4e8e39a26469f089108d8689ee116de78316ec07dd149e33df6954feb",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:cb808dc4e8e39a26469f089108d8689ee116de78316ec07dd149e33df6954feb",
+      "before": {
+        "image_key": "94529729b5da0e1a250948df9f6e19f2c9a41dbd7217e2cd97804815fe8a9065",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:cb808dc4e8e39a26469f089108d8689ee116de78316ec07dd149e33df6954feb",
+        "digest": "sha256:cb808dc4e8e39a26469f089108d8689ee116de78316ec07dd149e33df6954feb",
+        "workspace_id": "",
+        "size_bytes": 1026049356,
+        "reason": "",
+        "ready_at": "2026-10-31T16:22:39.970799Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T01:03:11.195686Z",
+        "build_ms": 161054
+      },
+      "references": [
+        {
+          "workspace_id": "swb-pytest-dev-pytest-7205-a6fca1b80a",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "18126cca9cb2ca1ac35ea9bc85614ab6e01511e735261683f12dde2e8fe640a0",
+      "status": "released"
+    },
+    {
+      "instance_id": "pytest-dev__pytest-7571",
+      "key": "3ff3b4d0a48e27aea1b30925fa3ce2900e50dc26fc77dfb4e8e4bc82ef14bc06",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:428ac30fd436f96bf7430b632fdab638d901d3c6bbe1d3e842940146746b2318",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:428ac30fd436f96bf7430b632fdab638d901d3c6bbe1d3e842940146746b2318",
+      "before": {
+        "image_key": "3ff3b4d0a48e27aea1b30925fa3ce2900e50dc26fc77dfb4e8e4bc82ef14bc06",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:428ac30fd436f96bf7430b632fdab638d901d3c6bbe1d3e842940146746b2318",
+        "digest": "sha256:428ac30fd436f96bf7430b632fdab638d901d3c6bbe1d3e842940146746b2318",
+        "workspace_id": "",
+        "size_bytes": 1026634367,
+        "reason": "",
+        "ready_at": "2026-10-31T16:27:52.620748Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T01:15:48.281436Z",
+        "build_ms": 311183
+      },
+      "references": [
+        {
+          "workspace_id": "swb-pytest-dev-pytest-7571-c25067c78e",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "7f5d31d17738437b75335562b33cae194f5e4bd6bcf05cc338ff17d2a8ca0e00",
+      "status": "released"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "key": "da77e0eae291ded07147c4439af315ae7a14160aca7ae175b996de10a1ccaba5",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:127d03d91853dd3af5212ab4976378d8b0c8177588a1a6432d33d9e3d90f547f",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:127d03d91853dd3af5212ab4976378d8b0c8177588a1a6432d33d9e3d90f547f",
+      "before": {
+        "image_key": "da77e0eae291ded07147c4439af315ae7a14160aca7ae175b996de10a1ccaba5",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:127d03d91853dd3af5212ab4976378d8b0c8177588a1a6432d33d9e3d90f547f",
+        "digest": "sha256:127d03d91853dd3af5212ab4976378d8b0c8177588a1a6432d33d9e3d90f547f",
+        "workspace_id": "",
+        "size_bytes": 1474371487,
+        "reason": "",
+        "ready_at": "2026-10-31T16:31:32.306832Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T01:35:40.376678Z",
+        "build_ms": 482570
+      },
+      "references": [
+        {
+          "workspace_id": "swb-scikit-learn-scikit-learn-10297-27c97243be",
+          "state": "destroyed",
+          "n": 2
+        },
+        {
+          "workspace_id": "swb-scikit-learn-scikit-learn-10297-27c97243be",
+          "state": "failed",
+          "n": 1
+        }
+      ],
+      "prewarm_sha256": "9766a8a1a1502c08f8c83e4a015b1bc0a1b2bf3a0a38d2a8e7c29744c3470027",
+      "status": "released"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-13439",
+      "key": "ff5f1c6caaf76a6d78db4520df647b9c5527102a02f74983b2d95c050237d53d",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:f2a3640431c4e8037059504c02d5b4716de7bb20007bd53343145655953f38b5",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:f2a3640431c4e8037059504c02d5b4716de7bb20007bd53343145655953f38b5",
+      "before": {
+        "image_key": "ff5f1c6caaf76a6d78db4520df647b9c5527102a02f74983b2d95c050237d53d",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:f2a3640431c4e8037059504c02d5b4716de7bb20007bd53343145655953f38b5",
+        "digest": "sha256:f2a3640431c4e8037059504c02d5b4716de7bb20007bd53343145655953f38b5",
+        "workspace_id": "",
+        "size_bytes": 1486201235,
+        "reason": "",
+        "ready_at": "2026-10-31T16:31:32.291523Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T01:45:23.677211Z",
+        "build_ms": 451600
+      },
+      "references": [
+        {
+          "workspace_id": "swb-scikit-learn-scikit-learn-13439-ff21709c2a",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "df1b5a2b582ab6b00c73ccacf0e13f86720ce0c148b711113336f50dc0195b6d",
+      "status": "released"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-14629",
+      "key": "1636879b8cf03c034a4f6ede1d1d95cd6bf3688b4963459796153fe87bdcbe32",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+      "before": {
+        "image_key": "1636879b8cf03c034a4f6ede1d1d95cd6bf3688b4963459796153fe87bdcbe32",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+        "digest": "sha256:a0637fa59d5aa77738c28513e0abffa1fe656a08e44f457ecaaca51127d2fee0",
+        "workspace_id": "",
+        "size_bytes": 1495949882,
+        "reason": "",
+        "ready_at": "2026-10-31T16:35:12.763806Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T01:54:26.280378Z",
+        "build_ms": 439583
+      },
+      "references": [
+        {
+          "workspace_id": "swb-scikit-learn-scikit-learn-14629-cf86cd664b",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "3ea6cfe719d02dbd66a96814815c265b4fae5171ebaccd338a191b8d190e10ba",
+      "status": "released"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9711",
+      "key": "b7cd5b503d05c2b6d70a4e4be9a57b6c2337d46105bf849ca1650b02be86fbe3",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:71869de459d5cbdd941c3504ba24c67b8b84b627bd70057a560a4c8d5564899d",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:71869de459d5cbdd941c3504ba24c67b8b84b627bd70057a560a4c8d5564899d",
+      "before": {
+        "image_key": "b7cd5b503d05c2b6d70a4e4be9a57b6c2337d46105bf849ca1650b02be86fbe3",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:71869de459d5cbdd941c3504ba24c67b8b84b627bd70057a560a4c8d5564899d",
+        "digest": "sha256:71869de459d5cbdd941c3504ba24c67b8b84b627bd70057a560a4c8d5564899d",
+        "workspace_id": "",
+        "size_bytes": 1102185874,
+        "reason": "",
+        "ready_at": "2026-10-31T16:38:30.989335Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T02:28:15.810991Z",
+        "build_ms": 196982
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sphinx-doc-sphinx-9711-6f4a2eacc0",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "afe7925d034134bb9480d2b429299db8ef7c71402f340cfcdc7f1f3fe6fe354c",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-12096",
+      "key": "ea11c403a548247ad731755c226bcd1f0710bfdeab956201ee4fbb59c67e824a",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:da247d5b80fb338355e623d00345bcf628650b632244dd9433ef0737b33a6348",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:da247d5b80fb338355e623d00345bcf628650b632244dd9433ef0737b33a6348",
+      "before": {
+        "image_key": "ea11c403a548247ad731755c226bcd1f0710bfdeab956201ee4fbb59c67e824a",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:da247d5b80fb338355e623d00345bcf628650b632244dd9433ef0737b33a6348",
+        "digest": "sha256:da247d5b80fb338355e623d00345bcf628650b632244dd9433ef0737b33a6348",
+        "workspace_id": "",
+        "size_bytes": 1061990623,
+        "reason": "",
+        "ready_at": "2026-10-31T16:39:23.745779Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T02:27:49.848285Z",
+        "build_ms": 215512
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-12096-e7f7400c99",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "c0a3bd3dc4fcda94a11ee2d37437a24f4334e93ba7451c2bc1b225bc8654761a",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-13615",
+      "key": "d43cb531776a213c9b84d3fea1e2a9facd92e74b011bb2eecd945ca8dd5f9768",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:e5b9fdbb90805ec78b843e00a6fe3bcd5f5fd2b0417552905e9478c56f881964",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:e5b9fdbb90805ec78b843e00a6fe3bcd5f5fd2b0417552905e9478c56f881964",
+      "before": {
+        "image_key": "d43cb531776a213c9b84d3fea1e2a9facd92e74b011bb2eecd945ca8dd5f9768",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:e5b9fdbb90805ec78b843e00a6fe3bcd5f5fd2b0417552905e9478c56f881964",
+        "digest": "sha256:e5b9fdbb90805ec78b843e00a6fe3bcd5f5fd2b0417552905e9478c56f881964",
+        "workspace_id": "",
+        "size_bytes": 1068204085,
+        "reason": "",
+        "ready_at": "2026-10-31T16:40:05.397352Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T02:38:24.914902Z",
+        "build_ms": 93990
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-13615-8c180edfc5",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "6e5e4bd844ae1a5f90791ff20516d119837f618459f2832c6a7172b9a44c78a0",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-14531",
+      "key": "c7cd2abe8d7c6e926b0441b5d7e5f5d01a3d7aaf14de37cb3f4b57836b26e511",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:8ae520804980aa161214f1fb2c55551ef941cc75bf67f4d657c30e3afa992b42",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:8ae520804980aa161214f1fb2c55551ef941cc75bf67f4d657c30e3afa992b42",
+      "before": {
+        "image_key": "c7cd2abe8d7c6e926b0441b5d7e5f5d01a3d7aaf14de37cb3f4b57836b26e511",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:8ae520804980aa161214f1fb2c55551ef941cc75bf67f4d657c30e3afa992b42",
+        "digest": "sha256:8ae520804980aa161214f1fb2c55551ef941cc75bf67f4d657c30e3afa992b42",
+        "workspace_id": "",
+        "size_bytes": 1069778796,
+        "reason": "",
+        "ready_at": "2026-10-31T16:40:28.971112Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T02:40:37.239893Z",
+        "build_ms": 117563
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-14531-1a868da823",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "9ed16ff13a34faee2e57cc9cc1a4c43dd732c17d93ffdeaf4bddee5725443488",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-15599",
+      "key": "18d7751439d32dbb176b3d8e5a529e95f622fe416af16cb71fa0c700923fd577",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:6b63809eddca49b4249fc0180e6dcb1c6219a1d508fc094337d475cbe4b8316f",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:6b63809eddca49b4249fc0180e6dcb1c6219a1d508fc094337d475cbe4b8316f",
+      "before": {
+        "image_key": "18d7751439d32dbb176b3d8e5a529e95f622fe416af16cb71fa0c700923fd577",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:6b63809eddca49b4249fc0180e6dcb1c6219a1d508fc094337d475cbe4b8316f",
+        "digest": "sha256:6b63809eddca49b4249fc0180e6dcb1c6219a1d508fc094337d475cbe4b8316f",
+        "workspace_id": "",
+        "size_bytes": 1074998600,
+        "reason": "",
+        "ready_at": "2026-10-31T16:40:54.783390Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T02:48:02.734035Z",
+        "build_ms": 90513
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-15599-9f8ea94f6e",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "4357dee7dd371d3ec5934f331ecc9177eb8578f3caa75c59ca2833970b23f737",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-15809",
+      "key": "dbace14876f676571ea2c53ce3f61d4b601851f3c03283d8278798bc86bef79c",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:648f30206fcb9c16bfe46d952c2ddb7e10c4a692cea32fc15162cd5b30ce74e8",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:648f30206fcb9c16bfe46d952c2ddb7e10c4a692cea32fc15162cd5b30ce74e8",
+      "before": {
+        "image_key": "dbace14876f676571ea2c53ce3f61d4b601851f3c03283d8278798bc86bef79c",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:648f30206fcb9c16bfe46d952c2ddb7e10c4a692cea32fc15162cd5b30ce74e8",
+        "digest": "sha256:648f30206fcb9c16bfe46d952c2ddb7e10c4a692cea32fc15162cd5b30ce74e8",
+        "workspace_id": "",
+        "size_bytes": 1075233206,
+        "reason": "",
+        "ready_at": "2026-10-31T16:41:22.246755Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T02:50:28.406231Z",
+        "build_ms": 76432
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-15809-f08ee09bab",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "ba485efde7b89f36fb04404f3bcd8a1a58f261645abd06981c20cc7c7c1964c4",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-17630",
+      "key": "123f69bc39cf46f78bf9949462e4b0598ef652d2d914329765deef2d8c8b1e4b",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:0d0f73a5900dd8898454e8fe498b6b2f453c3b559d82bd09f911aa31e9db2a2e",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:0d0f73a5900dd8898454e8fe498b6b2f453c3b559d82bd09f911aa31e9db2a2e",
+      "before": {
+        "image_key": "123f69bc39cf46f78bf9949462e4b0598ef652d2d914329765deef2d8c8b1e4b",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:0d0f73a5900dd8898454e8fe498b6b2f453c3b559d82bd09f911aa31e9db2a2e",
+        "digest": "sha256:0d0f73a5900dd8898454e8fe498b6b2f453c3b559d82bd09f911aa31e9db2a2e",
+        "workspace_id": "",
+        "size_bytes": 1081463362,
+        "reason": "",
+        "ready_at": "2026-10-31T16:41:49.097151Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T03:02:19.846306Z",
+        "build_ms": 79676
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-17630-bcd486ae1d",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "857f70355f669ec754d36ff267ea5005600f255b7b8355929fa02224377be30c",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-23413",
+      "key": "8f597b7981edc0d3fa0905411e047843e2483d60c28f8b19edcc6bd2e8b5970e",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:950644b5f24afde891a9bb576cfa35009d583e905e297048998815283b4fddbe",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:950644b5f24afde891a9bb576cfa35009d583e905e297048998815283b4fddbe",
+      "before": {
+        "image_key": "8f597b7981edc0d3fa0905411e047843e2483d60c28f8b19edcc6bd2e8b5970e",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:950644b5f24afde891a9bb576cfa35009d583e905e297048998815283b4fddbe",
+        "digest": "sha256:950644b5f24afde891a9bb576cfa35009d583e905e297048998815283b4fddbe",
+        "workspace_id": "",
+        "size_bytes": 1096221196,
+        "reason": "",
+        "ready_at": "2026-10-31T16:42:22.487395Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T03:01:50.185031Z",
+        "build_ms": 87279
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-23413-07855e7956",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "22d518561b1cd245c36d832b5f324b02043c7243cd88818104ee90d98f25aa14",
+      "status": "released"
+    },
+    {
+      "instance_id": "sympy__sympy-24562",
+      "key": "7a6d2c3206162c91fab91fa8b293cd1b54c5ac43852c92fd785a5b4ec4642162",
+      "historical_deleted_image": "127.0.0.1:30500/envs/swebench/env@sha256:01d0e2420786455548ec4500ef07394f5f22ee6d2a9eaa1502476b15b725587c",
+      "verified_run_image": "127.0.0.1:30500/envs/swebench/env@sha256:01d0e2420786455548ec4500ef07394f5f22ee6d2a9eaa1502476b15b725587c",
+      "before": {
+        "image_key": "7a6d2c3206162c91fab91fa8b293cd1b54c5ac43852c92fd785a5b4ec4642162",
+        "state": "ready",
+        "image": "127.0.0.1:30500/envs/swebench/env@sha256:01d0e2420786455548ec4500ef07394f5f22ee6d2a9eaa1502476b15b725587c",
+        "digest": "sha256:01d0e2420786455548ec4500ef07394f5f22ee6d2a9eaa1502476b15b725587c",
+        "workspace_id": "",
+        "size_bytes": 1106169736,
+        "reason": "",
+        "ready_at": "2026-10-31T16:42:58.876474Z",
+        "deleted_at": "",
+        "last_used_at": "2026-11-23T03:13:26.991552Z",
+        "build_ms": 96190
+      },
+      "references": [
+        {
+          "workspace_id": "swb-sympy-sympy-24562-498f28f33f",
+          "state": "destroyed",
+          "n": 2
+        }
+      ],
+      "prewarm_sha256": "555abf08dc9ab681e75ffce3b1d22b4e87a65c6aad4dc504d54f1bba0dbc9a2e",
+      "status": "released"
+    }
+  ],
+  "counts_after": {
+    "failed": 8,
+    "ready": 50,
+    "deleted": 71
+  }
+}

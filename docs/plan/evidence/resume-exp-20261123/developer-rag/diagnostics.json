@@ -1,0 +1,298 @@
+{
+  "method": "post-hoc replay of the identical frozen B rankings; observed candidates before priority",
+  "counts": {
+    "gold_file_recalled": 22,
+    "gold_line_recalled": 16,
+    "gold_line_in_top8": 16
+  },
+  "cases": {
+    "val-01": {
+      "pool_size": 40,
+      "pool_evidence_rank": 3,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-02": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-03": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": true,
+      "B_evidence_rank": null
+    },
+    "val-04": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": true,
+      "B_evidence_rank": null
+    },
+    "val-05": {
+      "pool_size": 40,
+      "pool_evidence_rank": 29,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-06": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-07": {
+      "pool_size": 40,
+      "pool_evidence_rank": 14,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-08": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-09": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-10": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-11": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-12": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": true,
+      "B_evidence_rank": null
+    },
+    "val-13": {
+      "pool_size": 40,
+      "pool_evidence_rank": 17,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-14": {
+      "pool_size": 40,
+      "pool_evidence_rank": 13,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 5
+    },
+    "val-15": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-16": {
+      "pool_size": 40,
+      "pool_evidence_rank": 19,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-17": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-18": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-19": {
+      "pool_size": 40,
+      "pool_evidence_rank": 29,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-20": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-21": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-22": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-23": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-24": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-25": {
+      "pool_size": 40,
+      "pool_evidence_rank": 1,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-26": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-27": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-28": {
+      "pool_size": 40,
+      "pool_evidence_rank": 27,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-29": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-30": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-31": {
+      "pool_size": 40,
+      "pool_evidence_rank": 3,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-32": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-33": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-34": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-35": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": true,
+      "B_evidence_rank": null
+    },
+    "val-36": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-37": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-38": {
+      "pool_size": 40,
+      "pool_evidence_rank": 16,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-39": {
+      "pool_size": 40,
+      "pool_evidence_rank": 4,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-40": {
+      "pool_size": 40,
+      "pool_evidence_rank": 4,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-41": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": true,
+      "B_evidence_rank": null
+    },
+    "val-42": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-43": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": true,
+      "B_evidence_rank": null
+    },
+    "val-44": {
+      "pool_size": 40,
+      "pool_evidence_rank": 8,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-45": {
+      "pool_size": 40,
+      "pool_evidence_rank": 2,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-46": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    },
+    "val-47": {
+      "pool_size": 40,
+      "pool_evidence_rank": 8,
+      "source_file_in_pool": true,
+      "B_evidence_rank": 1
+    },
+    "val-48": {
+      "pool_size": 40,
+      "pool_evidence_rank": null,
+      "source_file_in_pool": false,
+      "B_evidence_rank": null
+    }
+  }
+}

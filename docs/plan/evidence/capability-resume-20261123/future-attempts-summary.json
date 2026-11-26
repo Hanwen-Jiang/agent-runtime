@@ -1,0 +1,34 @@
+{
+  "capability-resume-20261123-core": {
+    "proposed": 236,
+    "by_reason": {
+      "quota_no_successful_call_recorded": 221,
+      "no_receipt_preserve_reservation_or_spend": 11,
+      "quota_after_provider_observation": 4
+    },
+    "source_run_lock_sha256": "05c4f84d77af3fa5a39d0d5e9d300589bf3a417c7b5e792d3eedf77162d73395",
+    "manifest_sha256": "685877a1b01cf5bcfbecd1fbf47ce7ce11fd747aa0b703d467424239bf897fad",
+    "model_calls": 0
+  },
+  "capability-resume-20261123-judge-v2": {
+    "proposed": 381,
+    "by_reason": {
+      "quota_no_successful_call_recorded": 370,
+      "quota_after_provider_observation": 4,
+      "no_receipt_preserve_reservation_or_spend": 7
+    },
+    "source_run_lock_sha256": "6e147fd93a173b79a94ba1c6e28228f07a01e0141880209306a7f1aeb1094716",
+    "manifest_sha256": "d92958430dc794e6e868d090511aaf6012c0d46fed0d744480994f5d0c125b6a",
+    "model_calls": 0
+  },
+  "capability-resume-20261123-transform": {
+    "proposed": 111,
+    "by_reason": {
+      "quota_no_successful_call_recorded": 107,
+      "quota_after_provider_observation": 4
+    },
+    "source_run_lock_sha256": "76b84c8ddd91836eb2c08df72c46a879339bd410c6fb5a3958eee165a7d27474",
+    "manifest_sha256": "e337dd3d840b306624cdc313293850334d7bc13e1bb04cf9949d3761a8500e04",
+    "model_calls": 0
+  }
+}

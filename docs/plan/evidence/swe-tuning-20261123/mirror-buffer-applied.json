@@ -1,0 +1,869 @@
+{
+  "00706f078579f87805c33c47db56a3028bab96cfbe0343ef8771506beb95dbf3": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385094,
+    "mode": 420,
+    "mtime_ns": 1795381715112840617,
+    "public_cases": [
+      "django__django-11163"
+    ],
+    "size": 89740538,
+    "status": "held",
+    "uid": 10001
+  },
+  "04ee7177d8211022c23e0a3b8a7d2b74f67f43dc4c2694f405ca484a06c40219": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391119,
+    "mode": 420,
+    "mtime_ns": 1795279115210380304,
+    "public_cases": [
+      "django__django-11815",
+      "django__django-11848",
+      "django__django-11964",
+      "django__django-11999",
+      "django__django-12308",
+      "django__django-12708",
+      "django__django-13033"
+    ],
+    "size": 210296535,
+    "status": "held",
+    "uid": 10001
+  },
+  "15126600180c2d3e03404dae726ce56bc79f17b5fcca557ee985ece177dbe221": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385161,
+    "mode": 436,
+    "mtime_ns": 1795261138538447797,
+    "public_cases": [
+      "sphinx-doc__sphinx-9229",
+      "sphinx-doc__sphinx-9230",
+      "sphinx-doc__sphinx-9281",
+      "sphinx-doc__sphinx-9320",
+      "sphinx-doc__sphinx-9367",
+      "sphinx-doc__sphinx-9461",
+      "sphinx-doc__sphinx-9698",
+      "sphinx-doc__sphinx-9711"
+    ],
+    "size": 400550907,
+    "status": "held",
+    "uid": 10001
+  },
+  "152d8309c646cc5b826148a8ea30d63d22b4004a9e559fedd64060c2e18ffe7b": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385092,
+    "mode": 436,
+    "mtime_ns": 1795267353950952819,
+    "public_cases": [
+      "django__django-12050"
+    ],
+    "size": 91075348,
+    "status": "held",
+    "uid": 10001
+  },
+  "1555dd6c7db607e7b62e0942aa0187200d359a8c6dfd58d2c009566a8d10098b": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385086,
+    "mode": 420,
+    "mtime_ns": 1795380893729880605,
+    "public_cases": [
+      "astropy__astropy-13033"
+    ],
+    "size": 398372872,
+    "status": "held",
+    "uid": 10001
+  },
+  "1e8931761871f977c3da5d1e397bbc20744a0b638497a86456dde5cf63c24964": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390964,
+    "mode": 420,
+    "mtime_ns": 1795281049719748455,
+    "public_cases": [
+      "sphinx-doc__sphinx-8548"
+    ],
+    "size": 36363626,
+    "status": "held",
+    "uid": 10001
+  },
+  "1ff2e209415b9c368cddc8817b86529d4524b177a8a34efe2a493f1ddfdba846": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385093,
+    "mode": 436,
+    "mtime_ns": 1795267355636986016,
+    "public_cases": [
+      "django__django-11790"
+    ],
+    "size": 90842847,
+    "status": "held",
+    "uid": 10001
+  },
+  "277772e6e9086d4a8fd6e24d0b745bc210c4293ee969ea9a38064094d4a931f7": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385090,
+    "mode": 420,
+    "mtime_ns": 1795279096812010958,
+    "public_cases": [
+      "django__django-11848"
+    ],
+    "size": 91305217,
+    "status": "held",
+    "uid": 10001
+  },
+  "3127fb08c1f03832a420f311b41c7a77893896beeac1be7f496062e8546addd8": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390962,
+    "mode": 420,
+    "mtime_ns": 1795282103305468899,
+    "public_cases": [
+      "django__django-11880"
+    ],
+    "size": 90721195,
+    "status": "held",
+    "uid": 10001
+  },
+  "3197bacbdd8a95bfa9844eac3f993ccf5d2250899947d8df293e30e054013236": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390986,
+    "mode": 420,
+    "mtime_ns": 1795292102515908317,
+    "public_cases": [
+      "sphinx-doc__sphinx-9461"
+    ],
+    "size": 39920749,
+    "status": "held",
+    "uid": 10001
+  },
+  "31fd9b5876b654d242222dd858b581667b7b92abd9416f35736ea1cf588934e3": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390963,
+    "mode": 420,
+    "mtime_ns": 1795281223110128854,
+    "public_cases": [
+      "sphinx-doc__sphinx-9229"
+    ],
+    "size": 38752302,
+    "status": "held",
+    "uid": 10001
+  },
+  "3847b0d93b3cf0b6da1f1c7af6c0d9fc464f098795f96379eee7f688d382faa8": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391127,
+    "mode": 420,
+    "mtime_ns": 1795293425948241882,
+    "public_cases": [
+      "sphinx-doc__sphinx-8269"
+    ],
+    "size": 35894343,
+    "status": "held",
+    "uid": 10001
+  },
+  "38503a94e4a7753c54a6f2c3a0162a55dd7e727c507b50a94c298b1e748f8093": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391124,
+    "mode": 420,
+    "mtime_ns": 1795293560440946524,
+    "public_cases": [
+      "sphinx-doc__sphinx-9230"
+    ],
+    "size": 38757513,
+    "status": "held",
+    "uid": 10001
+  },
+  "3d30f8379cd0bed6fcb9b6aead30bf33624f32591e67c407d093f17a70111271": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385098,
+    "mode": 420,
+    "mtime_ns": 1795278517406290962,
+    "public_cases": [
+      "sphinx-doc__sphinx-9320"
+    ],
+    "size": 39193145,
+    "status": "held",
+    "uid": 10001
+  },
+  "3e118e9065eb8068ddbb90f5dd818dbc936239dabb0a59e1f4c5caba8ee1d861": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385187,
+    "mode": 420,
+    "mtime_ns": 1795288608896235881,
+    "public_cases": [
+      "sphinx-doc__sphinx-11510"
+    ],
+    "size": 399076302,
+    "status": "held",
+    "uid": 10001
+  },
+  "3f79a1eace44fd1a8cbfa9119feeb77bd522682e11c0b066ba531258c25b3f15": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390978,
+    "mode": 420,
+    "mtime_ns": 1795290899111508911,
+    "public_cases": [
+      "django__django-12708"
+    ],
+    "size": 93631293,
+    "status": "held",
+    "uid": 10001
+  },
+  "4092848dbd756fd86350e53ec6da4503d93a4ab4132f4b2104228dea4d347fdd": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385089,
+    "mode": 436,
+    "mtime_ns": 1795267356133995801,
+    "public_cases": [
+      "django__django-12262"
+    ],
+    "size": 92304974,
+    "status": "held",
+    "uid": 10001
+  },
+  "49374ba2abebf96670b858fd8aceadb8d3149aa62e627ef8155cdf361b64b630": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385098,
+    "mode": 420,
+    "mtime_ns": 1795278572110407868,
+    "public_cases": [
+      "sphinx-doc__sphinx-9698"
+    ],
+    "size": 41408067,
+    "status": "held",
+    "uid": 10001
+  },
+  "494a71d6e6366b788b2c5edc3bcd2e64456b8b0eb25f18e5402ee1998e611c63": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390984,
+    "mode": 420,
+    "mtime_ns": 1795293444045606121,
+    "public_cases": [
+      "sphinx-doc__sphinx-10435"
+    ],
+    "size": 44728550,
+    "status": "held",
+    "uid": 10001
+  },
+  "4acab963b60c6e0264b4fc45103504e08e2a2bb72f6017b2b99169358ff7f6bb": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385171,
+    "mode": 420,
+    "mtime_ns": 1795288436574898533,
+    "public_cases": [
+      "sphinx-doc__sphinx-10673"
+    ],
+    "size": 399084136,
+    "status": "held",
+    "uid": 10001
+  },
+  "51d7bef5ddbe9905e5b758c2e47b1dd327e7a61c19c85a3c141e4d65261c4c10": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385072,
+    "mode": 420,
+    "mtime_ns": 1795277723922693088,
+    "public_cases": [
+      "sphinx-doc__sphinx-8721"
+    ],
+    "size": 400854343,
+    "status": "held",
+    "uid": 10001
+  },
+  "5325a9ac3e313b05456582571b3409c68eaa550eb09ddf453f62e4d82eee3095": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385066,
+    "mode": 420,
+    "mtime_ns": 1795380892920865093,
+    "public_cases": [
+      "astropy__astropy-8707"
+    ],
+    "size": 456699295,
+    "status": "held",
+    "uid": 10001
+  },
+  "599e2377be5e1e5a197a3ab2b277477d88f018e4e55341718824583e1b844ab1": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391126,
+    "mode": 420,
+    "mtime_ns": 1795289713702974292,
+    "public_cases": [
+      "sphinx-doc__sphinx-8551"
+    ],
+    "size": 36410530,
+    "status": "held",
+    "uid": 10001
+  },
+  "59df36a99841b5d8e82908b44ffec629a205fcb1bdcf764a8d26484569d41fee": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390955,
+    "mode": 420,
+    "mtime_ns": 1795282706904482173,
+    "public_cases": [
+      "django__django-12143"
+    ],
+    "size": 91143748,
+    "status": "held",
+    "uid": 10001
+  },
+  "5b5ef22c38aa31227d2cde877e39218ba5238edcf24472cbe32d688287346d90": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385087,
+    "mode": 420,
+    "mtime_ns": 1795277696521155897,
+    "public_cases": [
+      "django__django-12713"
+    ],
+    "size": 93010185,
+    "status": "held",
+    "uid": 10001
+  },
+  "5b8afe8dc043e676a3ea84a8eed461493f06ebe021e9014668539f292116f335": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385099,
+    "mode": 420,
+    "mtime_ns": 1795277614022538830,
+    "public_cases": [
+      "sphinx-doc__sphinx-8475"
+    ],
+    "size": 36290285,
+    "status": "held",
+    "uid": 10001
+  },
+  "5e63a68ff6439b1581ee5ba0e3757810d61d5ad007e8033b5b5987df410e9537": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385139,
+    "mode": 420,
+    "mtime_ns": 1795279129518667464,
+    "public_cases": [
+      "django__django-11815",
+      "django__django-11848",
+      "django__django-11964",
+      "django__django-11999",
+      "django__django-12308",
+      "django__django-12708"
+    ],
+    "size": 402244166,
+    "status": "held",
+    "uid": 10001
+  },
+  "66d6cb7c705490e9e536fedc44ff5b2e22f3e2ad35d34fe3c44f5f86b41ce394": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390952,
+    "mode": 420,
+    "mtime_ns": 1795284379768613433,
+    "public_cases": [
+      "django__django-12193"
+    ],
+    "size": 92124390,
+    "status": "held",
+    "uid": 10001
+  },
+  "6eae5dec7ab6ead46880ee194bbe3d8ca6f7c3fd2e02fc285453e2bc0e871967": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385079,
+    "mode": 420,
+    "mtime_ns": 1795277720422624469,
+    "public_cases": [
+      "sphinx-doc__sphinx-8035",
+      "sphinx-doc__sphinx-8475"
+    ],
+    "size": 398881507,
+    "status": "held",
+    "uid": 10001
+  },
+  "6ed260fb017835871afe226c60ebe8b2e7f8f8aa3a329489919c216e1b6006de": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385178,
+    "mode": 420,
+    "mtime_ns": 1795286129302483232,
+    "public_cases": [
+      "sphinx-doc__sphinx-10435",
+      "sphinx-doc__sphinx-10466"
+    ],
+    "size": 399079714,
+    "status": "held",
+    "uid": 10001
+  },
+  "749a1bad369c581c74667097933161c939c3a653cc8b4040d529333f4b501be2": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391125,
+    "mode": 420,
+    "mtime_ns": 1795289979012228214,
+    "public_cases": [
+      "sphinx-doc__sphinx-8638"
+    ],
+    "size": 36778383,
+    "status": "held",
+    "uid": 10001
+  },
+  "762bb3e66f07b7c8addbde11d298c4a3aec0955b57ce3c4d6c6036208bd8c8f2": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390954,
+    "mode": 420,
+    "mtime_ns": 1795282858621486287,
+    "public_cases": [
+      "django__django-12155"
+    ],
+    "size": 91161765,
+    "status": "held",
+    "uid": 10001
+  },
+  "81495f8873acc3f9a102cb0ce42c0e587fc6c65d667211375a509fa6ab79a6d0": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391123,
+    "mode": 420,
+    "mtime_ns": 1795286306021218400,
+    "public_cases": [
+      "django__django-11999"
+    ],
+    "size": 91394126,
+    "status": "held",
+    "uid": 10001
+  },
+  "82cf142a92241a235049e8179e9d11b6bae4c6c7d78b81cb46b6c17ac35cab02": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391121,
+    "mode": 420,
+    "mtime_ns": 1795287109614669392,
+    "public_cases": [
+      "django__django-12273"
+    ],
+    "size": 92267638,
+    "status": "held",
+    "uid": 10001
+  },
+  "83ec3e2d989ba6da9e07464f6defc7ea5edec4830ec57204c4fe76196063aa5a": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385099,
+    "mode": 420,
+    "mtime_ns": 1795277617110599351,
+    "public_cases": [
+      "sphinx-doc__sphinx-8721"
+    ],
+    "size": 36697324,
+    "status": "held",
+    "uid": 10001
+  },
+  "8e7d3e670d76658d165546f6814d3a05636a510114b9cde0b6084626e65d49c6": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390951,
+    "mode": 420,
+    "mtime_ns": 1795285303333922946,
+    "public_cases": [
+      "django__django-12276"
+    ],
+    "size": 92215775,
+    "status": "held",
+    "uid": 10001
+  },
+  "91cd41f084a7a43992f717c34fdf3c6554075843f6a0a46a1d10d62d0f2ec494": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390947,
+    "mode": 420,
+    "mtime_ns": 1795285440674640387,
+    "public_cases": [
+      "django__django-12304"
+    ],
+    "size": 92348666,
+    "status": "held",
+    "uid": 10001
+  },
+  "93f45703f09740752cee2cd5694c7a05a73bd6199cbe8a2aeb06d46017f77796": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385155,
+    "mode": 420,
+    "mtime_ns": 1795281091430560750,
+    "public_cases": [
+      "sphinx-doc__sphinx-8548",
+      "sphinx-doc__sphinx-8551",
+      "sphinx-doc__sphinx-8638"
+    ],
+    "size": 400558680,
+    "status": "held",
+    "uid": 10001
+  },
+  "955f29a8b572e7fdf81b1c79cb6f8a42112ff7d6ddd510ac96e1095dfa56b336": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391128,
+    "mode": 420,
+    "mtime_ns": 1795291972355362995,
+    "public_cases": [
+      "sphinx-doc__sphinx-7985"
+    ],
+    "size": 35554923,
+    "status": "held",
+    "uid": 10001
+  },
+  "9671a27e2181e3b7e0a19ba639c1eeff5472504f0aecf27151773d572f8854be": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390977,
+    "mode": 420,
+    "mtime_ns": 1795292698216450295,
+    "public_cases": [
+      "django__django-12308"
+    ],
+    "size": 94124441,
+    "status": "held",
+    "uid": 10001
+  },
+  "9d75209ce4c46a13d4483729862d57d5710f0a90db7c72deca26195b5a277326": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390949,
+    "mode": 420,
+    "mtime_ns": 1795284285246732262,
+    "public_cases": [
+      "django__django-12209"
+    ],
+    "size": 92240900,
+    "status": "held",
+    "uid": 10001
+  },
+  "9fefdb7bfe8e92d01365781e0adbffa43542f8bf9514a68c44504eb3ab543637": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390986,
+    "mode": 436,
+    "mtime_ns": 1795261060702907476,
+    "public_cases": [
+      "sphinx-doc__sphinx-9367"
+    ],
+    "size": 39338924,
+    "status": "held",
+    "uid": 10001
+  },
+  "a4d326e88417b9b4a3363dfabc9de79b87be8ce1cba4f09c1893df8147cbe669": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390975,
+    "mode": 420,
+    "mtime_ns": 1795277671067656934,
+    "public_cases": [
+      "django__django-14155",
+      "django__django-15814",
+      "django__django-15851",
+      "django__django-16595",
+      "scikit-learn__scikit-learn-10297",
+      "scikit-learn__scikit-learn-13439",
+      "sphinx-doc__sphinx-8721",
+      "sympy__sympy-17630"
+    ],
+    "size": 210294821,
+    "status": "held",
+    "uid": 10001
+  },
+  "a5a9928a3840dabba874dbd02862caabdc6ee8dbcaabdc82b35b79e85ec52c13": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385131,
+    "mode": 436,
+    "mtime_ns": 1795261695149115892,
+    "public_cases": [
+      "sphinx-doc__sphinx-7590",
+      "sphinx-doc__sphinx-7748",
+      "sphinx-doc__sphinx-7757",
+      "sphinx-doc__sphinx-7985",
+      "sphinx-doc__sphinx-8056",
+      "sphinx-doc__sphinx-8265",
+      "sphinx-doc__sphinx-8269"
+    ],
+    "size": 402292008,
+    "status": "held",
+    "uid": 10001
+  },
+  "a9171af10bf818129140c0ffd4b22fca56b8665521583f50cb8cffb73bd2810a": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391127,
+    "mode": 436,
+    "mtime_ns": 1795261628636870776,
+    "public_cases": [
+      "sphinx-doc__sphinx-8056"
+    ],
+    "size": 35739342,
+    "status": "held",
+    "uid": 10001
+  },
+  "aad81cea0acc72f3f1cca24b1735b3801792492ee06d69f17cb7f84dc49a2fff": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390982,
+    "mode": 420,
+    "mtime_ns": 1795290780903245555,
+    "public_cases": [
+      "django__django-11815"
+    ],
+    "size": 91137086,
+    "status": "held",
+    "uid": 10001
+  },
+  "b928b11c570589537eac7320f6f58e02688c9f48fc13a18060bd7f87f326b759": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385097,
+    "mode": 420,
+    "mtime_ns": 1795380822720521699,
+    "public_cases": [
+      "astropy__astropy-8707"
+    ],
+    "size": 60023622,
+    "status": "held",
+    "uid": 10001
+  },
+  "be7fc0909245ebdeb15b4ff31fc6b3a7b53a7e35a3ebf2f55e68f9b4a025ba58": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390964,
+    "mode": 420,
+    "mtime_ns": 1795279825207576321,
+    "public_cases": [
+      "sphinx-doc__sphinx-7748"
+    ],
+    "size": 35204788,
+    "status": "held",
+    "uid": 10001
+  },
+  "c107437dbefeeec70b81bcfa5a15da41888d41a3b069616ad0c2af299c1a60b1": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390958,
+    "mode": 420,
+    "mtime_ns": 1795284291286852544,
+    "public_cases": [
+      "django__django-11951"
+    ],
+    "size": 90978550,
+    "status": "held",
+    "uid": 10001
+  },
+  "c2d1cec3499f1dc02294fc29112a6d4d50a175a70143868b6d47885b058200f9": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385096,
+    "mode": 420,
+    "mtime_ns": 1795380846309972526,
+    "public_cases": [
+      "astropy__astropy-13033"
+    ],
+    "size": 74941701,
+    "status": "held",
+    "uid": 10001
+  },
+  "c8914a90ec816c81876eaab4bc30e039701489fdb1639d67360f96d943ccf086": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390946,
+    "mode": 420,
+    "mtime_ns": 1795279635416789178,
+    "public_cases": [
+      "django__django-12774"
+    ],
+    "size": 93309713,
+    "status": "held",
+    "uid": 10001
+  },
+  "cd873b89a822cf2d8bd345cbff0ec03311d756655b7c4b24d29b1d3edb391b8a": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390960,
+    "mode": 420,
+    "mtime_ns": 1795286784222074974,
+    "public_cases": [
+      "django__django-12039"
+    ],
+    "size": 90912451,
+    "status": "held",
+    "uid": 10001
+  },
+  "d0d69e5f64ab100b7996ba55ed705aab5991e677394ddeb664cac955098bb6e0": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390985,
+    "mode": 420,
+    "mtime_ns": 1795292792513390960,
+    "public_cases": [
+      "sphinx-doc__sphinx-10323"
+    ],
+    "size": 43972051,
+    "status": "held",
+    "uid": 10001
+  },
+  "d2c4612c5a8d823dde5137874cd441333d4d780fcd1f54b14f63694522019ba1": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390980,
+    "mode": 420,
+    "mtime_ns": 1795292677107014330,
+    "public_cases": [
+      "django__django-11964"
+    ],
+    "size": 91394371,
+    "status": "held",
+    "uid": 10001
+  },
+  "d2c47c91ede237aee66bf34956b2bbb57b26137a63d4ad0c9373e7746db6abc3": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391124,
+    "mode": 420,
+    "mtime_ns": 1795378537304815118,
+    "public_cases": [
+      "sphinx-doc__sphinx-9281"
+    ],
+    "size": 38925946,
+    "status": "held",
+    "uid": 10001
+  },
+  "e409729421d45abd6dcb013868f4e04068a905d3e11a4d569688d58bf0d01668": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390962,
+    "mode": 420,
+    "mtime_ns": 1795286090525653441,
+    "public_cases": [
+      "sphinx-doc__sphinx-10466"
+    ],
+    "size": 45009500,
+    "status": "held",
+    "uid": 10001
+  },
+  "ed268a789943747fbd5629ba5d0a8b31c5a9affaa36dc61d317fa8401adb4422": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795391129,
+    "mode": 420,
+    "mtime_ns": 1795291938628703713,
+    "public_cases": [
+      "sphinx-doc__sphinx-7590"
+    ],
+    "size": 34898041,
+    "status": "held",
+    "uid": 10001
+  },
+  "ef69d9a1d263b36db2881bf5cc72c380caaa55520f38cd6f6e4877839fcfd14a": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795385100,
+    "mode": 420,
+    "mtime_ns": 1795280006310890788,
+    "public_cases": [
+      "sphinx-doc__sphinx-8035"
+    ],
+    "size": 35752312,
+    "status": "held",
+    "uid": 10001
+  },
+  "f03f14b9ae4ba4d73824ab87fea1d0e67aaf7bc9250481afb6273e5bdb8a28f6": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385126,
+    "mode": 420,
+    "mtime_ns": 1795279131936715986,
+    "public_cases": [
+      "django__django-11815",
+      "django__django-11848",
+      "django__django-11964",
+      "django__django-11999",
+      "django__django-12308",
+      "django__django-12708",
+      "django__django-13033"
+    ],
+    "size": 420170848,
+    "status": "held",
+    "uid": 10001
+  },
+  "f6a1dbab62eed1c1dc870650f2740d37dd3824f965a80fd85e7c7400b9489545": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390984,
+    "mode": 420,
+    "mtime_ns": 1795290858491729783,
+    "public_cases": [
+      "django__django-11885"
+    ],
+    "size": 90843426,
+    "status": "held",
+    "uid": 10001
+  },
+  "f7ce8c978f2519b41af18010f663de7bf64037db311c93617a1a5eb53568e978": {
+    "all_graded_at_inventory": true,
+    "gid": 10001,
+    "held_at": 1795390957,
+    "mode": 420,
+    "mtime_ns": 1795285939832512911,
+    "public_cases": [
+      "django__django-9296"
+    ],
+    "size": 91071421,
+    "status": "held",
+    "uid": 10001
+  },
+  "fd7a87c0b95ba9470ab5b292bee0cde8f8f4b91a5c9755052c1b36b06f71c7d3": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795390971,
+    "mode": 420,
+    "mtime_ns": 1795277727424761747,
+    "public_cases": [
+      "django__django-14155",
+      "django__django-15814",
+      "django__django-15851",
+      "django__django-16595",
+      "scikit-learn__scikit-learn-10297",
+      "scikit-learn__scikit-learn-13439",
+      "sphinx-doc__sphinx-8721",
+      "sympy__sympy-17630"
+    ],
+    "size": 420167964,
+    "status": "held",
+    "uid": 10001
+  },
+  "ff00ba6fa7397625d6ffcf5cb895f44427dd9e561e08bd970585e42f5cd3ba3f": {
+    "all_graded_at_inventory": false,
+    "gid": 10001,
+    "held_at": 1795385147,
+    "mode": 420,
+    "mtime_ns": 1795292830828176615,
+    "public_cases": [
+      "sphinx-doc__sphinx-10323"
+    ],
+    "size": 400719255,
+    "status": "held",
+    "uid": 10001
+  }
+}

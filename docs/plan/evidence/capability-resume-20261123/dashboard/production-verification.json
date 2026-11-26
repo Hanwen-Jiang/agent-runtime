@@ -1,0 +1,200 @@
+{
+  "public_url": "https://evals.cgent.link/results?matrix=capability-panel-20261123#capability-matrix",
+  "api": "https://evals.cgent.link/api/capability.json",
+  "browser": {
+    "checked_at": "2026-11-23T04:07:07.262Z",
+    "default": {
+      "coverage": "计划 27 格 · 有执行记录 27 · 有数值 5 · 待记录 0",
+      "trials": "有有效实测的模型格 22/27 · 已归档执行 1866/3369 · 指定模型有效执行 633 · 额度拒绝 1134",
+      "pause": "供应商额度不足 · 已暂停",
+      "rows": 12,
+      "cols": 6,
+      "notPlanned": 33,
+      "id": "capability-panel-20261123"
+    },
+    "selection": [
+      {
+        "id": "capability-panel-20261123",
+        "role": "act.medium",
+        "groups": [
+          {
+            "dataset": "bfcl-v4",
+            "selected": 100,
+            "ids": 100,
+            "hidden": false,
+            "seed": 0,
+            "version": "gorilla@6ea5797"
+          }
+        ]
+      },
+      {
+        "id": "capability-resume-20261123-transform",
+        "role": "transform.low",
+        "groups": [
+          {
+            "dataset": "longbench-v2",
+            "selected": 40,
+            "ids": 40,
+            "hidden": false,
+            "seed": 0,
+            "version": "hf@2b48e49"
+          },
+          {
+            "dataset": "s11",
+            "selected": 7,
+            "ids": 0,
+            "hidden": true,
+            "seed": 0,
+            "version": "0526126b0b5b"
+          }
+        ]
+      },
+      {
+        "id": "capability-resume-20261123-judge-v2",
+        "role": "judge.medium",
+        "groups": [
+          {
+            "dataset": "s10",
+            "selected": 40,
+            "ids": 0,
+            "hidden": true,
+            "seed": 0,
+            "version": "1c09054a8371"
+          },
+          {
+            "dataset": "judgebench",
+            "selected": 40,
+            "ids": 40,
+            "hidden": false,
+            "seed": 0,
+            "version": "hf@57dd5e0"
+          },
+          {
+            "dataset": "rewardbench2",
+            "selected": 40,
+            "ids": 40,
+            "hidden": false,
+            "seed": 0,
+            "version": "hf@7ff0885"
+          }
+        ]
+      },
+      {
+        "id": "capability-resume-20261123-core",
+        "role": "route.low",
+        "groups": [
+          {
+            "dataset": "s09-route",
+            "selected": 40,
+            "ids": 0,
+            "hidden": true,
+            "seed": 0,
+            "version": "5d3323a0da7d17ef"
+          }
+        ]
+      }
+    ],
+    "history": {
+      "pending": 11,
+      "notPlanned": 50,
+      "coverage": {
+        "planned": 55,
+        "observed": 44,
+        "numeric": 44,
+        "eligible": 0
+      },
+      "actual_bfcl_ids": 100
+    },
+    "deep_links_and_back": true,
+    "mini-50": 3,
+    "init-50": 6,
+    "exceptions": []
+  },
+  "release": [
+    {
+      "previous": "ghcr.io/agentruntime/learning:ui-mini50-campaign-e16ea0cf8fbd",
+      "previous_config": "sha256:9eca077a254dbf62bba16ece67897bf6f3535ffc85ea4a0accac9c94334005ce",
+      "image": "ghcr.io/agentruntime/learning:ui-cap-panel-103c0244b093",
+      "image_config": "sha256:4979b9856aac48694b24e51d6d3e831d89ddcc305924fa3ab68446b164a361f5",
+      "previous_revision": "77"
+    },
+    {
+      "previous": "ghcr.io/agentruntime/learning:ui-cap-panel-103c0244b093",
+      "previous_config": "sha256:4979b9856aac48694b24e51d6d3e831d89ddcc305924fa3ab68446b164a361f5",
+      "image": "ghcr.io/agentruntime/learning:ui-cap-panel-f40f01678ad9",
+      "image_config": "sha256:8946db4cc6b5291b98dd7913befcf090ec54c70b58fdd1823bcca57534b25598",
+      "previous_revision": "78"
+    }
+  ],
+  "scores_at_capture": {
+    "capability-resume-20261123-core": {
+      "coverage": {
+        "planned": 15,
+        "observed": 15,
+        "numeric": 0,
+        "eligible": 0
+      },
+      "trials": {
+        "expected": 1740,
+        "runs": 550,
+        "clean": 179,
+        "quota": 360,
+        "clean_cells": 14
+      },
+      "pause": {
+        "reason": "insufficient_user_quota",
+        "detected_at": "2026-11-23T04:00:05.317615+00:00"
+      },
+      "at": null
+    },
+    "capability-resume-20261123-transform": {
+      "coverage": {
+        "planned": 9,
+        "observed": 9,
+        "numeric": 5,
+        "eligible": 0
+      },
+      "trials": {
+        "expected": 549,
+        "runs": 549,
+        "clean": 83,
+        "quota": 400,
+        "clean_cells": 5
+      },
+      "pause": {
+        "reason": "insufficient_user_quota",
+        "detected_at": "2026-11-23T04:00:05.694470+00:00"
+      },
+      "at": "2026-11-23T03:57:56+00:00"
+    },
+    "capability-resume-20261123-judge-v2": {
+      "coverage": {
+        "planned": 3,
+        "observed": 3,
+        "numeric": 0,
+        "eligible": 0
+      },
+      "trials": {
+        "expected": 1080,
+        "runs": 767,
+        "clean": 371,
+        "quota": 374,
+        "clean_cells": 3
+      },
+      "pause": {
+        "reason": "insufficient_user_quota",
+        "detected_at": "2026-11-23T04:00:06.145812+00:00"
+      },
+      "at": null
+    }
+  },
+  "private_ids_exposed": false,
+  "rate_rollup": null,
+  "engineering_card_types": {
+    "engineering-20261123-rag-citation": "ablation",
+    "engineering-20261123-rag-lookup": "ablation",
+    "engineering-20261123-workspace": "ablation"
+  },
+  "python_tests": 24,
+  "js_tests": 57
+}

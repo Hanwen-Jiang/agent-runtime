@@ -1,0 +1,98 @@
+{
+  "instance_id": "pylint-dev__pylint-6528",
+  "task_id": "tsk_01M82Y04D0V65K52XEQCK7TG1P",
+  "prior": "ambiguous_failure",
+  "new_resolved": true,
+  "terminal": "aborted",
+  "patch_files": [
+    "pylint/lint/expand_modules.py",
+    "pylint/lint/pylinter.py"
+  ],
+  "rounds": 2,
+  "tool_counts": {
+    "skill_read": 2,
+    "repo_list": 4,
+    "repo_grep": 21,
+    "repo_read": 28,
+    "shell_run": 23,
+    "repo_edit": 23
+  },
+  "first_repo_edit_sequence": 54,
+  "checks": [
+    {
+      "tool_sequence": 48,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 2,
+      "target_sha256": "f577515e85a8d1e86d7e67f42c61f30388ad96308988f7da7428a484b829cadb",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 51,
+      "relative_to_first_repo_edit": "before",
+      "round_seq": 2,
+      "target_sha256": "1fdfe0f0ac97d37d9e2818cec9ddef29b19a9bb7bf75004f59ff441e77d78f98",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 55,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "7da9c83567b75484b7c9a468e0609b7a806b26c4331001519a46dc15adef4a20",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 56,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "309b4fc8eb36d2da4eefffea88b5c4e5f314d3fb715cfb5a09b55991f6151da6",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 73,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "b4c748f95e472caf881d35d2c97f92f43b9df8a6c2eb6143fcef385962fd75ae",
+      "command_type": "inline_python_check"
+    },
+    {
+      "tool_sequence": 74,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "9968863359fd929bea498713ad805ea137d7dcd9d5bb023a24d0fa21af0c3ce3",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 84,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "7da9c83567b75484b7c9a468e0609b7a806b26c4331001519a46dc15adef4a20",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 94,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "7da9c83567b75484b7c9a468e0609b7a806b26c4331001519a46dc15adef4a20",
+      "command_type": "repository_test_command"
+    },
+    {
+      "tool_sequence": 95,
+      "relative_to_first_repo_edit": "after",
+      "round_seq": 2,
+      "target_sha256": "309b4fc8eb36d2da4eefffea88b5c4e5f314d3fb715cfb5a09b55991f6151da6",
+      "command_type": "repository_test_command"
+    }
+  ],
+  "equal_recorded_shell_targets_across_first_repo_edit": [],
+  "official_tests": {
+    "FAIL_TO_PASS": {
+      "success": 4,
+      "failure": 0
+    },
+    "PASS_TO_PASS": {
+      "success": 171,
+      "failure": 0
+    }
+  },
+  "interpretation": "Matching targets are observed invocations; tool_status does not contain test stdout or a process exit code."
+}

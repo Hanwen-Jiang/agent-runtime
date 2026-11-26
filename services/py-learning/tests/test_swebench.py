@@ -442,6 +442,107 @@ class Flaky(FakeRuntime):
         return super().diff(workspace_id, **kwargs)
 
 
+def test_provider_quota_pauses_at_terminal_and_preserves_paid_attempt(tmp_path, insts, capsys):
+    from unittest.mock import Mock
+    out = tmp_path / "out"
+    reason = {"codes": {"reason_code": "human_stopped", "nodes": [
+        {"node_id": "explore", "error": "tool_loop 第 1 步失败：insufficient_user_quota: 模型供应商返回 403"},
+    ]}}
+    fake = FakeRuntime({insts[0].instance_id: Script(status="TASK_STATUS_ABORTED", final_verdict="VERDICT_ABORT",
+                                                    cost_usd=0.13, deliverable={"value": reason})})
+    live = Mock()
+    with pytest.raises(sb.ProviderQuotaPaused, match="insufficient_user_quota"):
+        sb.run(fake, insts[:2], out, settings(), live=live)
+    assert "task-1" in capsys.readouterr().err
+    live.finished.assert_not_called()
+    assert len(fake.submits) == 1
+    prior = records(out)[insts[0].instance_id]
+    assert prior["state"] == "error" and prior["stop_reason"] == sb.QUOTA_CODE
+    assert prior["task_id"] == "task-1" and prior["cost_usd"] == 0.13
+    assert predictions(out) == []
+    pause = json.loads((out / "provider-quota-pause.json").read_text())
+    assert pause["reason"] == sb.QUOTA_CODE and pause["instance_id"] == insts[0].instance_id
+    assert pause["task_id"] == "task-1" and pause["event"] == "task_finished"
+
+    resumed = sb.run(fake, insts[:2], out, settings(), live=live)
+    live.finished.assert_not_called()
+    assert (resumed.submitted, resumed.finished, resumed.errors) == (1, 1, 1)
+    assert len(fake.submits) == 2 and records(out)[insts[0].instance_id] == prior
+
+
+def test_provider_quota_drains_inflight_and_does_not_submit_prepared_work(tmp_path, insts):
+    from threading import Event as ThreadEvent
+    creating_second = ThreadEvent()
+    paused = ThreadEvent()
+    out = tmp_path / "out"
+    class ConcurrentRuntime(FakeRuntime):
+        def create_workspace(self, workspace_id, **kwargs):
+            if workspace_id == sb.workspace_id(RUN, insts[1].instance_id):
+                creating_second.set()
+                assert paused.wait(5)
+            return super().create_workspace(workspace_id, **kwargs)
+
+        def events(self, task_id, events_url, *, last_event_id=0):
+            assert creating_second.wait(5)
+            for event in super().events(task_id, events_url, last_event_id=last_event_id):
+                yield event
+                if event.name == "node_finished":
+                    paused.set()
+
+    fake = ConcurrentRuntime({insts[0].instance_id: Script(events=[("node_finished", {"error_code": sb.QUOTA_CODE})],
+                                                           status="TASK_STATUS_ABORTED")})
+    with pytest.raises(sb.ProviderQuotaPaused):
+        sb.run(fake, insts[:3], out, settings(concurrency=2))
+    assert len(fake.submits) == 1
+    assert records(out)[insts[1].instance_id]["state"] == "created"
+    assert insts[2].instance_id not in records(out)
+    assert sb.run(fake, insts[:3], out, settings(concurrency=2)).submitted == 2
+
+
+def test_explicit_quota_in_api_error_keeps_submission_identity(tmp_path, insts):
+    out = tmp_path / "out"
+    fake = Flaky(submit_errors=[ApiError(403, "permission_denied", "upstream: insufficient_user_quota")])
+    with pytest.raises(sb.ProviderQuotaPaused):
+        sb.run(fake, insts[:2], out, settings())
+    prior = records(out)[insts[0].instance_id]
+    assert prior["submission_state"] == "pending" and prior["submission_ambiguous"]
+    event = json.loads((out / "provider-quota-pause.json").read_text())
+    assert event["event"] == "api_error" and event["task_id"] is None
+    assert sb.run(fake, insts[:2], out, settings()).finished == 2
+    assert fake.submits[0]["client_request_id"] == prior["client_request_id"]
+
+
+def test_provider_quota_alerts_before_end_but_keeps_a_recovered_patch(tmp_path, insts):
+    out = tmp_path / "out"
+    class ObservedRuntime(FakeRuntime):
+        def events(self, task_id, events_url, *, last_event_id=0):
+            for event in super().events(task_id, events_url, last_event_id=last_event_id):
+                yield event
+                if event.name == "decision_retry":
+                    assert (out / "provider-quota-pause.json").exists()
+
+    fake = ObservedRuntime({insts[0].instance_id: Script(
+        events=[("decision_retry", {"error_code": "insufficient_user_quota"})],
+        diff="diff --git a/a b/a\n+saved", files=["a"],
+    )})
+    with pytest.raises(sb.ProviderQuotaPaused):
+        sb.run(fake, insts[:2], out, settings())
+    assert len(fake.submits) == 1 and records(out)[insts[0].instance_id]["state"] == "finished"
+    assert predictions(out)[0]["model_patch"].endswith("+saved")
+
+
+@pytest.mark.parametrize("script", [
+    Script(status="TASK_STATUS_ABORTED", events=[("node_finished", {"error": "403 permission_denied"})]),
+    Script(status="TASK_STATUS_ABORTED", deliverable={"value": {"codes": {"nodes": [{"error": "tenant model budget exceeded"}]}}}),
+    Script(deliverable={"answer": "The literal insufficient_user_quota is documented in this repository."}),
+])
+def test_generic_denials_and_task_content_do_not_pause_for_provider_quota(tmp_path, insts, script):
+    out = tmp_path / "out"
+    fake = FakeRuntime({insts[0].instance_id: script})
+    assert sb.run(fake, insts[:2], out, settings()).finished == 2
+    assert not (out / "provider-quota-pause.json").exists()
+
+
 def test_a_full_sandbox_quota_is_waited_out(tmp_path: Path, insts: list[sb.Instance]) -> None:
     """配额满只说明前面的环境还没回收（做完的 Task 的环境留着等复用），等一等就有名额，不算这一题出错。两层配额的说法不同，都要认。"""
     waits: list[float] = []
@@ -492,6 +593,26 @@ def test_a_failed_submit_does_not_leave_its_workspace_behind(tmp_path: Path, ins
     sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=lambda _: None, run_id="run-1"))
     [rec] = records(tmp_path / "out").values()
     assert rec["state"] == "error" and fake.deleted.count(ws) >= 1 and not fake.submits
+
+
+@pytest.mark.parametrize(("error", "rejected"), [
+    (sb.PreSubmissionError("local prewarm failed"), True),
+    (ApiError(503, "sandbox_unavailable", "sandbox unavailable"), False),
+])
+def test_prewarm_and_remote_unavailability_have_distinct_recovery(
+    tmp_path: Path, insts: list[sb.Instance], error: Exception, rejected: bool,
+) -> None:
+    fake = Flaky(submit_errors=[error])
+    out = tmp_path / "out"
+    sb.run(fake, insts[:1], out, settings())
+    [rec] = records(out).values()
+    assert rec["submission_state"] == ("rejected" if rejected else "pending")
+    assert bool(fake.deleted) is rejected
+    initial_key = rec["client_request_id"]
+    sb.run(fake, insts[:1], out, settings())
+    assert records(out)[insts[0].instance_id]["state"] == "finished"
+    if not rejected:
+        assert records(out)[insts[0].instance_id]["client_request_id"] == initial_key
 
 
 def test_a_clone_that_cannot_reach_the_remote_is_tried_again(tmp_path: Path, insts: list[sb.Instance]) -> None:

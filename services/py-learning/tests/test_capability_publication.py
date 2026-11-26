@@ -19,6 +19,15 @@ def assess(data, candidates=("a",), *, repeats=3, role="plan"):
     return cell
 
 
+def test_diagnostic_draft_label_blocks_publication_without_erasing_evidence():
+    data = rows("a", binary(40, 1, r=3))
+    data[0]["record"] = {"confirmed": False}
+    cell = assess(data)
+    assert cell["candidates"][0]["p"] == 1
+    assert cell["publication"]["blocked"]["a"] == ["unconfirmed_labels"]
+    assert not cell["candidates"][0]["publishable"]
+
+
 def test_perfect_small_samples_and_missing_repeats_cannot_publish():
     small = assess(rows("a", binary(12, 1, r=3)))
     assert small["candidates"][0]["half_width"] == 0

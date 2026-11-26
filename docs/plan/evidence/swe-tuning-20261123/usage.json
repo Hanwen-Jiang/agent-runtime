@@ -1,0 +1,556 @@
+{
+  "init-50": {
+    "run_id": "init50-gpt62-tuned-20261123",
+    "tasks": 50,
+    "tasks_with_generation_ledger": 50,
+    "tasks_with_gateway_meter": 50,
+    "settled_usd": 52.738266,
+    "pending_reservations": 21,
+    "served_profiles": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "metered_tiers": [
+      "strong@medium"
+    ],
+    "profile_matches": true,
+    "tier_matches": true,
+    "metered_roles": {
+      "route": 112,
+      "plan": 156,
+      "act": 1097,
+      "judge": 182,
+      "deliver": 71,
+      "transform": 2
+    },
+    "tasks_with_two_meter_timestamps": 50,
+    "per_task": {
+      "tsk_01M82GZK0N4NN0C6E0Z2GK94TS": {
+        "meter_calls": 30,
+        "meter_span_s": 349.232799,
+        "settled_usd": 0.658653
+      },
+      "tsk_01M82H0K4XSY09E6SQ7AFZT0R1": {
+        "meter_calls": 19,
+        "meter_span_s": 299.039496,
+        "settled_usd": 0.512384
+      },
+      "tsk_01M82HSQX1CVEPQ4FKPCV5FQ3D": {
+        "meter_calls": 26,
+        "meter_span_s": 266.975442,
+        "settled_usd": 0.438219
+      },
+      "tsk_01M82HDSXFWPV35JM1XB697VNE": {
+        "meter_calls": 21,
+        "meter_span_s": 224.161061,
+        "settled_usd": 0.418599
+      },
+      "tsk_01M82HSP8EAAT6EKDHGRZ9YVA2": {
+        "meter_calls": 17,
+        "meter_span_s": 218.70623,
+        "settled_usd": 0.394167
+      },
+      "tsk_01M82J5JE36KTRH63BMAZDZF32": {
+        "meter_calls": 27,
+        "meter_span_s": 328.921652,
+        "settled_usd": 0.718106
+      },
+      "tsk_01M82J68ZTC0TEK92517ZPXMR7": {
+        "meter_calls": 23,
+        "meter_span_s": 263.680169,
+        "settled_usd": 0.708573
+      },
+      "tsk_01M82JJ3NZ7TYYP2MHV95ZNGGH": {
+        "meter_calls": 51,
+        "meter_span_s": 753.892863,
+        "settled_usd": 1.915683
+      },
+      "tsk_01M82JKJ90VNDZD2ZJBVS7KRCG": {
+        "meter_calls": 15,
+        "meter_span_s": 174.045112,
+        "settled_usd": 0.354499
+      },
+      "tsk_01M82JX0AQZYQ6BZBDV2Y6GSAV": {
+        "meter_calls": 18,
+        "meter_span_s": 193.573539,
+        "settled_usd": 0.554942
+      },
+      "tsk_01M82KAPZ36K14T7W60PEY378F": {
+        "meter_calls": 35,
+        "meter_span_s": 430.371198,
+        "settled_usd": 1.123262
+      },
+      "tsk_01M82KEQCRX4Y78RQRCGA29CMD": {
+        "meter_calls": 15,
+        "meter_span_s": 148.288182,
+        "settled_usd": 0.262128
+      },
+      "tsk_01M82KRS33CK28XM3TX2HVJPY0": {
+        "meter_calls": 20,
+        "meter_span_s": 263.659814,
+        "settled_usd": 0.592453
+      },
+      "tsk_01M82KYZG58J6BBGCYYEMF24AR": {
+        "meter_calls": 12,
+        "meter_span_s": 133.738987,
+        "settled_usd": 0.267478
+      },
+      "tsk_01M82M6XNQY1M9KMQDV94EJ4PE": {
+        "meter_calls": 42,
+        "meter_span_s": 875.497927,
+        "settled_usd": 1.015094
+      },
+      "tsk_01M82M95PJ424DDCBBP6840SEE": {
+        "meter_calls": 57,
+        "meter_span_s": 1286.861013,
+        "settled_usd": 1.8009
+      },
+      "tsk_01M82N7GHQMJAHDG8RMXKAN9GN": {
+        "meter_calls": 25,
+        "meter_span_s": 373.640994,
+        "settled_usd": 0.838078
+      },
+      "tsk_01M82NMZSQ6F29EK34X95P9ZHF": {
+        "meter_calls": 52,
+        "meter_span_s": 1166.7782,
+        "settled_usd": 1.353128
+      },
+      "tsk_01M82NQADYZSJQ5FYC1N50E428": {
+        "meter_calls": 32,
+        "meter_span_s": 944.255979,
+        "settled_usd": 0.745717
+      },
+      "tsk_01M82PVBY2BHRRXFVH0FEZQ3WW": {
+        "meter_calls": 25,
+        "meter_span_s": 381.141669,
+        "settled_usd": 0.757048
+      },
+      "tsk_01M82PX8DFVXV3XVFE439PXGRZ": {
+        "meter_calls": 62,
+        "meter_span_s": 1687.260455,
+        "settled_usd": 2.041618
+      },
+      "tsk_01M82QD97KR3N20Q70H0R3TSX6": {
+        "meter_calls": 61,
+        "meter_span_s": 1740.266765,
+        "settled_usd": 1.618972
+      },
+      "tsk_01M82RR69RJTYHGMW7MEQ4NG3D": {
+        "meter_calls": 12,
+        "meter_span_s": 182.744706,
+        "settled_usd": 0.344112
+      },
+      "tsk_01M82S43EZBSYGREWTWXMWTTP0": {
+        "meter_calls": 36,
+        "meter_span_s": 1193.159045,
+        "settled_usd": 1.63745
+      },
+      "tsk_01M82S7SMMYSWMB4VGM9DRGAM9": {
+        "meter_calls": 14,
+        "meter_span_s": 330.677026,
+        "settled_usd": 0.626682
+      },
+      "tsk_01M82SRRZZ1YVEGD12ZAY8Z6CA": {
+        "meter_calls": 25,
+        "meter_span_s": 578.239333,
+        "settled_usd": 0.866713
+      },
+      "tsk_01M82TP8AD7ZGJAE6PB5CYGZS3": {
+        "meter_calls": 40,
+        "meter_span_s": 951.700478,
+        "settled_usd": 1.136095
+      },
+      "tsk_01M82TPYXHZX37N7RQFMBN45C2": {
+        "meter_calls": 48,
+        "meter_span_s": 1165.883507,
+        "settled_usd": 1.76327
+      },
+      "tsk_01M82VPNS55C3CYVS00HAK8A2F": {
+        "meter_calls": 52,
+        "meter_span_s": 2718.985346,
+        "settled_usd": 2.700216
+      },
+      "tsk_01M82VX5JDTVB42A9188JR08W1": {
+        "meter_calls": 21,
+        "meter_span_s": 343.120221,
+        "settled_usd": 0.529564
+      },
+      "tsk_01M82WEBCVB56JXG36H3KE4WR5": {
+        "meter_calls": 32,
+        "meter_span_s": 684.643528,
+        "settled_usd": 0.968128
+      },
+      "tsk_01M82X8NQKDFJXJ8FHY7CY6H0P": {
+        "meter_calls": 35,
+        "meter_span_s": 679.048512,
+        "settled_usd": 1.190084
+      },
+      "tsk_01M82Y04D0V65K52XEQCK7TG1P": {
+        "meter_calls": 52,
+        "meter_span_s": 2662.516677,
+        "settled_usd": 2.827927
+      },
+      "tsk_01M82YC2B137SAXFWBSCW8VQGS": {
+        "meter_calls": 37,
+        "meter_span_s": 534.913605,
+        "settled_usd": 1.473924
+      },
+      "tsk_01M82YZ5ZD0HZ4SH11AJTDV6ZF": {
+        "meter_calls": 44,
+        "meter_span_s": 703.676483,
+        "settled_usd": 1.248122
+      },
+      "tsk_01M82ZTVQV4WNC2E1XARFBYSKD": {
+        "meter_calls": 34,
+        "meter_span_s": 955.449003,
+        "settled_usd": 1.145428
+      },
+      "tsk_01M830M79XYWV4QZDBJFMCA73V": {
+        "meter_calls": 31,
+        "meter_span_s": 768.956204,
+        "settled_usd": 0.699178
+      },
+      "tsk_01M830WWM3D9E1HQKBFE4DNHV1": {
+        "meter_calls": 36,
+        "meter_span_s": 1003.669263,
+        "settled_usd": 1.090184
+      },
+      "tsk_01M831FGFC0EHCD2K8H9ZQSD3V": {
+        "meter_calls": 48,
+        "meter_span_s": 1728.120012,
+        "settled_usd": 3.058198
+      },
+      "tsk_01M831XDBV7CCXSZYYSA46R34Z": {
+        "meter_calls": 48,
+        "meter_span_s": 844.830734,
+        "settled_usd": 2.02014
+      },
+      "tsk_01M832S9TDF7ZF8FDCD50D0519": {
+        "meter_calls": 26,
+        "meter_span_s": 408.016122,
+        "settled_usd": 0.622494
+      },
+      "tsk_01M8336DNVC5X3DN9X015XDM79": {
+        "meter_calls": 45,
+        "meter_span_s": 675.184246,
+        "settled_usd": 1.399432
+      },
+      "tsk_01M8339D49BDD2DXPJNEP2RKPJ": {
+        "meter_calls": 24,
+        "meter_span_s": 453.93852,
+        "settled_usd": 0.831522
+      },
+      "tsk_01M833SYHC563HF7B6K2CDRG1Y": {
+        "meter_calls": 38,
+        "meter_span_s": 584.770077,
+        "settled_usd": 1.0801
+      },
+      "tsk_01M833XM9TSTZ8621TVPAW48ZS": {
+        "meter_calls": 34,
+        "meter_span_s": 626.875449,
+        "settled_usd": 0.992908
+      },
+      "tsk_01M834EPFZPK5G5M0F5TBZAPP5": {
+        "meter_calls": 18,
+        "meter_span_s": 535.437535,
+        "settled_usd": 0.533566
+      },
+      "tsk_01M834KJ32DB4GYAM354MFKK3H": {
+        "meter_calls": 18,
+        "meter_span_s": 434.035216,
+        "settled_usd": 0.410592
+      },
+      "tsk_01M8354YJHAGYE2Q0VY969K9ST": {
+        "meter_calls": 31,
+        "meter_span_s": 611.14182,
+        "settled_usd": 0.993614
+      },
+      "tsk_01M8354ZDB87J86DCNGDPVYQ06": {
+        "meter_calls": 36,
+        "meter_span_s": 617.671244,
+        "settled_usd": 0.901354
+      },
+      "tsk_01M835W5T73PX16CDW22PXDYF6": {
+        "meter_calls": 20,
+        "meter_span_s": 466.505591,
+        "settled_usd": 0.557568
+      }
+    }
+  },
+  "mini-50": {
+    "run_id": "mini50-tuned-c-gpt62-20261123",
+    "tasks": 50,
+    "tasks_with_generation_ledger": 50,
+    "tasks_with_gateway_meter": 50,
+    "settled_usd": 64.642766,
+    "pending_reservations": 21,
+    "served_profiles": [
+      "a6api/gpt-6.2-sol@2026-11"
+    ],
+    "metered_tiers": [
+      "strong@medium"
+    ],
+    "profile_matches": true,
+    "tier_matches": true,
+    "metered_roles": {
+      "route": 117,
+      "plan": 180,
+      "act": 1258,
+      "judge": 196,
+      "deliver": 76,
+      "transform": 2
+    },
+    "tasks_with_two_meter_timestamps": 50,
+    "per_task": {
+      "tsk_01M82GMMQBERV38N9R7QSXYGAG": {
+        "meter_calls": 16,
+        "meter_span_s": 175.64416,
+        "settled_usd": 0.439577
+      },
+      "tsk_01M82GMQGAJ7EAMQD1AWBMEH10": {
+        "meter_calls": 26,
+        "meter_span_s": 306.446727,
+        "settled_usd": 0.604451
+      },
+      "tsk_01M82GY5DZ4HGN34H0TBERM4VE": {
+        "meter_calls": 26,
+        "meter_span_s": 357.315225,
+        "settled_usd": 0.767942
+      },
+      "tsk_01M82H27BW8FYGWRXD12WJ4DM6": {
+        "meter_calls": 18,
+        "meter_span_s": 220.428691,
+        "settled_usd": 0.444631
+      },
+      "tsk_01M82HC88VXZVJ9XXCHT4AYY8V": {
+        "meter_calls": 18,
+        "meter_span_s": 202.518218,
+        "settled_usd": 0.64956
+      },
+      "tsk_01M82HDYQ6HDVM05BCR7B68TJP": {
+        "meter_calls": 33,
+        "meter_span_s": 357.884436,
+        "settled_usd": 1.178988
+      },
+      "tsk_01M82HMF0FVAQC295G9YRPFN03": {
+        "meter_calls": 23,
+        "meter_span_s": 212.998838,
+        "settled_usd": 0.567071
+      },
+      "tsk_01M82HV5BXEFDZG6WNQX7D78HQ": {
+        "meter_calls": 34,
+        "meter_span_s": 386.638245,
+        "settled_usd": 0.786273
+      },
+      "tsk_01M82J1AH2RKS4B18RA789N2XW": {
+        "meter_calls": 12,
+        "meter_span_s": 184.420605,
+        "settled_usd": 0.243258
+      },
+      "tsk_01M82JAR86QD5Z80JBPWWD0SFF": {
+        "meter_calls": 34,
+        "meter_span_s": 351.862247,
+        "settled_usd": 0.728758
+      },
+      "tsk_01M82JACSBCF7E5N4XDJ1E10E6": {
+        "meter_calls": 27,
+        "meter_span_s": 331.983747,
+        "settled_usd": 0.750899
+      },
+      "tsk_01M82JQN39V9D8EKHDESP9DCBP": {
+        "meter_calls": 56,
+        "meter_span_s": 653.829918,
+        "settled_usd": 1.546608
+      },
+      "tsk_01M82JS2S34RGM8D6A339871D6": {
+        "meter_calls": 83,
+        "meter_span_s": 1217.326958,
+        "settled_usd": 3.03797
+      },
+      "tsk_01M82KDP7MQM6RP2GX5VKY6MG4": {
+        "meter_calls": 33,
+        "meter_span_s": 469.15489,
+        "settled_usd": 1.543658
+      },
+      "tsk_01M82M168RXM4W8FMEKEWG92KR": {
+        "meter_calls": 23,
+        "meter_span_s": 245.777306,
+        "settled_usd": 0.427409
+      },
+      "tsk_01M82M2843J8AJQQ2XKJ7JQ2K4": {
+        "meter_calls": 20,
+        "meter_span_s": 249.752817,
+        "settled_usd": 0.43149
+      },
+      "tsk_01M82MD2PQTP6VX1MTG6YJPAN6": {
+        "meter_calls": 26,
+        "meter_span_s": 688.353597,
+        "settled_usd": 0.823836
+      },
+      "tsk_01M82MBY7BARF8ZSX8PSYX6NDJ": {
+        "meter_calls": 22,
+        "meter_span_s": 281.932015,
+        "settled_usd": 0.523828
+      },
+      "tsk_01M82MR9YWA6ERFJC6CBWAEMM8": {
+        "meter_calls": 80,
+        "meter_span_s": 3157.942437,
+        "settled_usd": 3.028161
+      },
+      "tsk_01M82N8TZM2H0Z2501R7RFPSM4": {
+        "meter_calls": 29,
+        "meter_span_s": 689.628433,
+        "settled_usd": 1.06765
+      },
+      "tsk_01M82P2348BP1HYTAH7CR97E27": {
+        "meter_calls": 24,
+        "meter_span_s": 511.506973,
+        "settled_usd": 0.852088
+      },
+      "tsk_01M82PNYRXPD7V2CFKPV9PCAX8": {
+        "meter_calls": 34,
+        "meter_span_s": 843.223772,
+        "settled_usd": 0.937744
+      },
+      "tsk_01M82QM0JJWSB053EX5PBMHWKW": {
+        "meter_calls": 33,
+        "meter_span_s": 1070.161617,
+        "settled_usd": 0.981314
+      },
+      "tsk_01M82QWZZ1Z62DVQE79NRENNVN": {
+        "meter_calls": 11,
+        "meter_span_s": 174.869405,
+        "settled_usd": 0.266806
+      },
+      "tsk_01M82R6D0HS7X6GX85K12ZAGPA": {
+        "meter_calls": 34,
+        "meter_span_s": 557.850042,
+        "settled_usd": 1.034894
+      },
+      "tsk_01M82RV9MKXENSK258DXSZ8G00": {
+        "meter_calls": 53,
+        "meter_span_s": 1448.754199,
+        "settled_usd": 1.4415
+      },
+      "tsk_01M82RV9R2HZ8NVGHJYJBXPN36": {
+        "meter_calls": 24,
+        "meter_span_s": 673.205675,
+        "settled_usd": 0.74634
+      },
+      "tsk_01M82SKZP09WFW19Q796J9QZ1S": {
+        "meter_calls": 39,
+        "meter_span_s": 669.888597,
+        "settled_usd": 1.329246
+      },
+      "tsk_01M82TBDPCAZG9N6NDSK3FKRQW": {
+        "meter_calls": 35,
+        "meter_span_s": 720.201122,
+        "settled_usd": 0.888087
+      },
+      "tsk_01M82TCHF8WDBC1RFYEH25V2FM": {
+        "meter_calls": 69,
+        "meter_span_s": 1637.108395,
+        "settled_usd": 2.884177
+      },
+      "tsk_01M82V5F53AAZY95AZMWVNTVPY": {
+        "meter_calls": 56,
+        "meter_span_s": 1622.859055,
+        "settled_usd": 3.013925
+      },
+      "tsk_01M82W2MM5N4ZERQNSCG5JDJ58": {
+        "meter_calls": 56,
+        "meter_span_s": 1198.97625,
+        "settled_usd": 2.694646
+      },
+      "tsk_01M82WTCGZA26FJNE8SEB3W2ZT": {
+        "meter_calls": 40,
+        "meter_span_s": 921.102662,
+        "settled_usd": 1.182733
+      },
+      "tsk_01M82X96FAC1P59K8HSJ5BMPRD": {
+        "meter_calls": 55,
+        "meter_span_s": 1480.589172,
+        "settled_usd": 2.22626
+      },
+      "tsk_01M82XT0PQP47P9DPWJKQQNPDT": {
+        "meter_calls": 53,
+        "meter_span_s": 957.683649,
+        "settled_usd": 2.062372
+      },
+      "tsk_01M82YR9Z81KFRV96YK9G8DD2R": {
+        "meter_calls": 45,
+        "meter_span_s": 752.348098,
+        "settled_usd": 1.725224
+      },
+      "tsk_01M82YY14PHR0M09K7RVDJCXT4": {
+        "meter_calls": 34,
+        "meter_span_s": 708.647117,
+        "settled_usd": 1.080342
+      },
+      "tsk_01M82ZMJEZH8ZKFWA317CG3YDB": {
+        "meter_calls": 48,
+        "meter_span_s": 1105.628155,
+        "settled_usd": 1.94929
+      },
+      "tsk_01M82ZQY20WV0R89S3C4CYCGY7": {
+        "meter_calls": 57,
+        "meter_span_s": 1794.979988,
+        "settled_usd": 3.025614
+      },
+      "tsk_01M830TGX2GC1JDSQNY86920NB": {
+        "meter_calls": 32,
+        "meter_span_s": 613.523644,
+        "settled_usd": 1.599078
+      },
+      "tsk_01M831F3XSNXN42R4C130Q1K5J": {
+        "meter_calls": 33,
+        "meter_span_s": 525.167275,
+        "settled_usd": 1.089892
+      },
+      "tsk_01M831GXMK01NSQ4759807TES6": {
+        "meter_calls": 52,
+        "meter_span_s": 1185.616325,
+        "settled_usd": 1.939916
+      },
+      "tsk_01M8321NB65X55FM23KYVFFAZ8": {
+        "meter_calls": 43,
+        "meter_span_s": 1077.603311,
+        "settled_usd": 3.019278
+      },
+      "tsk_01M832VZ4X57SZBQNA9J0AS0WS": {
+        "meter_calls": 35,
+        "meter_span_s": 585.649474,
+        "settled_usd": 0.937808
+      },
+      "tsk_01M8336JRQ0K404THR07RB3234": {
+        "meter_calls": 26,
+        "meter_span_s": 404.391439,
+        "settled_usd": 0.660958
+      },
+      "tsk_01M833JHPAW0V0RJXN8130NJER": {
+        "meter_calls": 30,
+        "meter_span_s": 575.097772,
+        "settled_usd": 1.206784
+      },
+      "tsk_01M833PXNRZ8CW5ASG2Q8X3F1N": {
+        "meter_calls": 32,
+        "meter_span_s": 643.458678,
+        "settled_usd": 1.018932
+      },
+      "tsk_01M8347H0KXGE8WM9FVCC6RZHG": {
+        "meter_calls": 25,
+        "meter_span_s": 329.244913,
+        "settled_usd": 0.772002
+      },
+      "tsk_01M834CEN1FRY053AHMNSK1XN7": {
+        "meter_calls": 44,
+        "meter_span_s": 981.409282,
+        "settled_usd": 1.335792
+      },
+      "tsk_01M834KH183ZFCVGMJ3XRB864G": {
+        "meter_calls": 38,
+        "meter_span_s": 699.336379,
+        "settled_usd": 1.147706
+      }
+    }
+  }
+}

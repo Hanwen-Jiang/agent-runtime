@@ -9,7 +9,7 @@ from pathlib import Path
 
 from agentruntime_learning.benchmarks import swebench as sb
 from agentruntime_learning.benchmarks.__main__ import _live
-from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient, token_from_env
+from agentruntime_learning.benchmarks.client import RuntimeClient, token_from_env
 
 
 PROFILE = "a6api/gpt-6.2-sol@2026-11"
@@ -71,10 +71,10 @@ class PreparedRuntime(RuntimeClient):
                 if attempt < 2:
                     time.sleep(10 * (attempt + 1))
         if last is not None:
-            raise ApiError(503, "sandbox_unavailable", "project image prewarm remained unavailable")
+            raise sb.PreSubmissionError("project image prewarm remained unavailable")
         fact = read(evidence)
         if not (fact.get("ready") is True and fact.get("instance_id") == iid and fact.get("released") is True):
-            raise RuntimeError("project image readiness is not verified")
+            raise sb.PreSubmissionError("project image readiness is not verified")
         return super().submit(workspace_id=workspace_id, message=message, client_request_id=client_request_id,
                               network=network)
 
@@ -132,4 +132,7 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except sb.ProviderQuotaPaused:
+        raise SystemExit(75) from None

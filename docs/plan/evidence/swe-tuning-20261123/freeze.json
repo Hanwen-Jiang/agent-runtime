@@ -1,0 +1,20 @@
+{
+  "parent_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+  "parent_files": {
+    "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+    "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+    "executor/tool_loop.py": "bf4cfec7f8b5878df1542229ebf098a0de0e1aeaff78e805ed0854e01c696ebe"
+  },
+  "candidate_files": {
+    "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+    "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+    "executor/tool_loop.py": "aaa729b98731b9c88caf2cde36d79b1eaf73baa2bff1ecd57420651450b3d8f0"
+  },
+  "candidate_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032",
+  "changed_paths": [
+    "services/py-worker/src/agentruntime_worker/executor/tool_loop.py"
+  ],
+  "model_profile": "a6api/gpt-6.2-sol@2026-11",
+  "thinking_budget": 8192,
+  "tier": "strong@medium"
+}

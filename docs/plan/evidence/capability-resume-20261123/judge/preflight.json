@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-23T03:36:24.839563+00:00",
+  "items": [
+    {
+      "requested": "a6api/claude-opus-5-5@2026-10",
+      "tier": "strong@medium",
+      "served": "a6api/claude-opus-5-5@2026-10",
+      "settled_usd": 0.001308,
+      "received_text": true
+    },
+    {
+      "requested": "a6api/claude-fable-5-1@2026-11",
+      "tier": "strong@medium",
+      "served": "a6api/claude-fable-5-1@2026-11",
+      "settled_usd": 0.07698,
+      "received_text": true
+    },
+    {
+      "requested": "a6api/gpt-6-astra@2026-11",
+      "tier": "strong@medium",
+      "served": "a6api/gpt-6-astra@2026-11",
+      "settled_usd": 0.005858,
+      "received_text": true
+    }
+  ]
+}

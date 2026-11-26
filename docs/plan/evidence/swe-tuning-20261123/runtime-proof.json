@@ -1,0 +1,130 @@
+{
+  "observed_utc": "2026-11-22T20:52:20.507102+00:00",
+  "parent_tree": "014d63df7e525c09f03e52fc226f3ea88bacf198",
+  "candidate_tree": "e3646dd0ae3995fb8337eefad5dffa5a43417032",
+  "fixed_roles": {
+    "act": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "aggregate": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "deliver": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "embedding": {
+      "profile": "a6api/text-embedding-3-large@2026-10",
+      "tier": "embed@default"
+    },
+    "fetch": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "gate": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "judge": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "plan": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "probe": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "route": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "summary": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    },
+    "transform": {
+      "profile": "a6api/gpt-6.2-sol@2026-11",
+      "tier": "strong@medium"
+    }
+  },
+  "service": "10.43.144.186:8080",
+  "roles": {
+    "task": {
+      "deployment": "swe50-1123-c-task",
+      "generation": 1,
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "temporal": "ar-swe50-20261123-c",
+      "sandbox": "swe50-1123-sandbox:8097",
+      "gateway": "mini50-1121-gw:8091",
+      "files": {
+        "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+        "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+        "executor/tool_loop.py": "aaa729b98731b9c88caf2cde36d79b1eaf73baa2bff1ecd57420651450b3d8f0"
+      }
+    },
+    "workspace": {
+      "deployment": "swe50-1123-c-workspace",
+      "generation": 1,
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "temporal": "ar-swe50-20261123-c",
+      "sandbox": "swe50-1123-sandbox:8097",
+      "gateway": "mini50-1121-gw:8091",
+      "files": {
+        "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+        "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+        "executor/tool_loop.py": "aaa729b98731b9c88caf2cde36d79b1eaf73baa2bff1ecd57420651450b3d8f0"
+      }
+    },
+    "decision": {
+      "deployment": "swe50-1123-c-decision",
+      "generation": 1,
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "temporal": "ar-swe50-20261123-c",
+      "sandbox": "swe50-1123-sandbox:8097",
+      "gateway": "mini50-1121-gw:8091",
+      "files": {
+        "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+        "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+        "executor/tool_loop.py": "aaa729b98731b9c88caf2cde36d79b1eaf73baa2bff1ecd57420651450b3d8f0"
+      }
+    },
+    "program": {
+      "deployment": "swe50-1123-c-program",
+      "generation": 1,
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "temporal": "ar-swe50-20261123-c",
+      "sandbox": "swe50-1123-sandbox:8097",
+      "gateway": "mini50-1121-gw:8091",
+      "files": {
+        "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+        "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+        "executor/tool_loop.py": "aaa729b98731b9c88caf2cde36d79b1eaf73baa2bff1ecd57420651450b3d8f0"
+      }
+    },
+    "model": {
+      "deployment": "swe50-1123-c-model",
+      "generation": 1,
+      "image": "ghcr.io/agentruntime/worker:rec-c8ed02ec",
+      "temporal": "ar-swe50-20261123-c",
+      "sandbox": "swe50-1123-sandbox:8097",
+      "gateway": "mini50-1121-gw:8091",
+      "files": {
+        "reviewer/rules.py": "f7fb598b74050f9048bec144b4fb2651ebad727f23273010163b8a8018d90075",
+        "workflows/verification.py": "f071106fe7a147780b083705e453702d14372391b4cf8118de42acfb7c38c8a2",
+        "executor/tool_loop.py": "aaa729b98731b9c88caf2cde36d79b1eaf73baa2bff1ecd57420651450b3d8f0"
+      }
+    },
+    "api": {
+      "deployment": "swe50-1123-c-api",
+      "generation": 1,
+      "image": "ghcr.io/agentruntime/task-service:rec-c8ed02ec",
+      "temporal": "ar-swe50-20261123-c",
+      "sandbox": "swe50-1123-sandbox:8097"
+    }
+  }
+}

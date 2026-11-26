@@ -429,6 +429,9 @@ def main(argv: list[str] | None = None) -> int:
         rep = sb.report(args.out)
         print((args.out / "report.md").read_text("utf-8"))
         return 0 if rep["selected"] else 1
+    except sb.ProviderQuotaPaused:
+        # The runner already printed the live alert with the affected task and checkpoint.
+        return 75
     except sb.ResumeMismatch as exc:
         print(exc, file=sys.stderr)
         return 2

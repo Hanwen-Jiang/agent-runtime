@@ -2,15 +2,25 @@
 
 此目录保存本轮端到端实验输入。此文档的就绪检查、协议和模拟单测均不是模型成绩。正式结果须由对应运行归档输出。
 
+**2026-11-23 最终判分。** 公开 Mini 50 原清单两版均已获 50 个官方判定，旧 Reviewer A 解决 35 题（70%），候选 Reviewer B 解决 36 题（72%）。最后补齐的 7 个“版本 × 题号”均是原清单上的基础设施缺判。A 通过 Sphinx 9281 和 9367，未通过 7985 和 8056。B 通过 8056、9281 和 9367。这次环境恢复产生的已结算模型调用费用为 A $4.547919、B $2.395630。[A 官方判分与账本](final/mini50-infra-recovery-a.json) · [B 官方判分与账本](final/mini50-infra-recovery-b.json) · [线上原实验](https://evals.cgent.link/results?type=runtime&trend=swebench&metric=resolved_rate&batch=mini-50#trend-swebench)
+
 ## 当前正式运行口径（2026-11-21）
 
 正式两臂改用 `a6api/gpt-6.2-sol@2026-11`，`strong@medium`，thinking budget `8192`。`gpt-6.1-sol` 只作预检，不能进入正式成绩。该 Profile 是隔离目录中新生成的不可变版本，沿用 6.1 的价格字段作为预算占位，实际价格以网关 `model_usage` 账本为准。网关启动、Registry revision 和两臂工作区预检已通过。
 
-正式 50+50 已启动但尚未提交模型 Task。每题 readiness gate 需要数据服务和项目环境 builder。运行期间节点出现真实 `disk-pressure`，PG Pending，环境预热结果未 ready，采集器已停止，未把等待或错误计作模型失败。基础设施恢复后，继续复用本文件的题单与协议。
+首次启动时，工作区与项目环境预热受节点磁盘压力和 PostgreSQL 待调度影响。恢复后，两臂各选中 50 题，原始官方判分分别确认 A 解决 26 题、B 解决 27 题。两边各有 47 个真实 Task。供应商额度中断导致 A 有 9 个、B 有 10 个真实 Task 未交补丁，两臂均属部分评分。[A 逐题报告](final/mini50-a-report.json) · [B 逐题报告](final/mini50-b-report.json) · [逐题故障归因](final/archive-diagnosis.json)
+
+B 的 Django 12209 后续从同一个 Task 工作区取回补丁，独立官方重判通过，累计有 28 个不同题号获通过。Django 11885 单独重判未通过。两次补判均未重新生成。[12209 补判](final/b-12209-recovered-grader.json) · [11885 补判](final/b-11885-regraded.json)
 
 6.2 首次正式尝试的两个臂各产生 3 条 prewarm 记录，均 `ready=false`，没有 `task_id`、模型调用、补丁或计分。该尝试只作为基础设施失败归档。
 
 两道 Sphinx 的可复现入口是 [`run_sphinx_gpt62.py`](run_sphinx_gpt62.py)，固定 [`sphinx.ids`](sphinx.ids) 中的 `sphinx-doc__sphinx-8056` 与 `sphinx-doc__sphinx-9367`。它复用 Mini 50 的逐题只读项目镜像 prewarm，使用同一 GPT‑6.2 Profile 与同一官方评分器，协议明确标记 `mini50_denominator=false`。这两题用于先验证工作区、环境和完整 Task 链路，不能替代 50 题分母，也不能把旧 GPT‑6.1 的结果混入新模型成绩。
+
+### 充值后补跑和角色路由结果
+
+额度中断补跑获得全组官方判分。A 解决 7/9，B 解决 5/10。B 另有 1 道来自首轮补丁的补收重判。此时原批次 A、B 各解决 33/50，分别有 46 和 47 道已经官方判分。同一版本、题号已有有效判定时保留该判定。其余题可以在原实验补齐，网站沿用原批次、原解决率和两个版本的原观察点。对账记录包含题号、原 Task ID、补跑 Task ID、Runtime 指纹、grader 文件摘要和模型账本。[A 额度补跑](final/mini50-quota-recovery-a.json) · [B 额度补跑](final/mini50-quota-recovery-b.json) · [Mini 50 原图](https://evals.cgent.link/results?type=runtime&trend=swebench&metric=resolved_rate&batch=mini-50#trend-swebench)
+
+另用同一候选 Runtime 对 Django 11885 和 Sphinx 8721 做两种路由的独立对照。固定 GPT-6.2 解决 2/2，原生路由解决 1/2。完整结果含每个角色的实际模型、工作流耗时、官方测试分解和两个档位的总费用。[路由对照原件](routing-pilot/funded/comparison.json)
 
 ## 题单是谁选的？
 

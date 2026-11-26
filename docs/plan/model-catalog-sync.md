@@ -111,3 +111,9 @@
    `default` 与 `gh-hanwen-jiang`、`evals`、`swebench` 的列表按规则重算，`ceiling` 与各租户的预算原样，再更新 ConfigMap。
 3. 方案 A 的工作流要人先做两件事：在仓库的 Actions Secrets 里配 `AR_MODEL_PROVIDER_BASE_URL`、`AR_MODEL_PROVIDER_API_KEY`；
    在仓库设置里打开 “Allow GitHub Actions to create and approve pull requests”。用 `GITHUB_TOKEN` 开的 PR 不会触发 ci.yml，合并前手动跑一次检查。
+
+## Gemini 4 生产路由目录（2026-11-23）
+
+生产网关滚动加载 `ar-model-profiles-gemini4-fb9ba6b48e2c` 后有 29 个 Profile。原有 Argon 沿用 Registry v2，新增 Carbon、Hydrogen、Neon 为平台 v1。四个型号分别在生产网关以评测租户成功生成文本。[发布和验收记录](evidence/gemini4-routing-20261123.json)
+
+此次仅发布模型目录。下一次 cloudnium 的整套 Helm 升级使用 `/root/ar-release/gemini4-catalog-20261123/values-model-catalog.json` 作为该目录的 values 覆盖，或使用届时从 Registry 导出的更新目录。先前的 Helm revision 45 仍记录 11 月 7 日的 ConfigMap。旧目录引用、白名单变更前后的快照及新增条目存于同一发布目录。
