@@ -7,7 +7,7 @@ use std::io::{self, Read, Seek, SeekFrom};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 const TTL: Duration = Duration::from_secs(600);
-const MAX_PENDING: usize = 32;
+const MAX_PENDING: usize = 64;
 const MAX_PENDING_BYTES: usize = 256 << 20;
 struct Prepared {
     data: Arc<Vec<u8>>,
@@ -17,36 +17,39 @@ struct Prepared {
     committed: Option<String>,
 }
 pub struct Transfers {
-    entries: Arc<Mutex<HashMap<String, Prepared>>>,
+    entries: Arc<Mutex<HashMap<String, Arc<Mutex<Prepared>>>>>,
 }
 impl Default for Transfers {
     fn default() -> Self {
-        let entries = Arc::new(Mutex::new(HashMap::<String, Prepared>::new()));
+        let entries = Arc::new(Mutex::new(HashMap::<String, Arc<Mutex<Prepared>>>::new()));
         let weak = Arc::downgrade(&entries);
         std::thread::spawn(move || {
             loop {
                 std::thread::sleep(Duration::from_secs(30));
                 let Some(entries) = weak.upgrade() else { break };
-                entries
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .retain(|_, v| v.expires > Instant::now());
+                entries.lock().unwrap_or_else(|e| e.into_inner()).retain(|_, v| {
+                    v.lock().unwrap_or_else(|e| e.into_inner()).expires > Instant::now()
+                });
             }
         });
         Self { entries }
     }
 }
 pub struct OutputReservation {
-    entries: Arc<Mutex<HashMap<String, Prepared>>>,
+    entries: Arc<Mutex<HashMap<String, Arc<Mutex<Prepared>>>>>,
     ids: [String; 2],
 }
 impl OutputReservation {
     pub fn fill(&self, index: usize, data: Vec<u8>) -> io::Result<Value> {
-        let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
         let id = &self.ids[index];
-        let p = entries
-            .get_mut(id)
-            .ok_or_else(|| io::Error::other("output reservation missing"))?;
+        let entry = {
+            let entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
+            entries
+                .get(id)
+                .cloned()
+                .ok_or_else(|| io::Error::other("output reservation missing"))?
+        };
+        let mut p = entry.lock().unwrap_or_else(|e| e.into_inner());
         if data.len() > p.reserved {
             return Err(io::Error::other("output reservation exceeded"));
         }
@@ -61,7 +64,10 @@ impl Drop for OutputReservation {
     fn drop(&mut self) {
         let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
         for id in &self.ids {
-            if entries.get(id).is_some_and(|p| p.reserved > 0) {
+            if entries
+                .get(id)
+                .is_some_and(|p| p.lock().unwrap_or_else(|e| e.into_inner()).reserved > 0)
+            {
                 entries.remove(id);
             }
         }
@@ -74,14 +80,17 @@ impl Transfers {
         run_for: Duration,
     ) -> io::Result<OutputReservation> {
         let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
-        entries.retain(|_, p| p.expires > Instant::now());
+        let now = Instant::now();
+        entries.retain(|_, p| p.lock().unwrap_or_else(|e| e.into_inner()).expires > now);
+        let used: usize = entries
+            .values()
+            .map(|p| {
+                let g = p.lock().unwrap_or_else(|e| e.into_inner());
+                g.data.len() + g.reserved
+            })
+            .sum();
         if entries.len() + 2 > MAX_PENDING
-            || entries
-                .values()
-                .map(|p| p.data.len() + p.reserved)
-                .sum::<usize>()
-                .saturating_add(bytes.saturating_mul(2))
-                > MAX_PENDING_BYTES
+            || used.saturating_add(bytes.saturating_mul(2)) > MAX_PENDING_BYTES
         {
             return Err(io::Error::other("output capacity reached before execution"));
         }
@@ -89,13 +98,13 @@ impl Transfers {
         for id in &ids {
             entries.insert(
                 id.clone(),
-                Prepared {
+                Arc::new(Mutex::new(Prepared {
                     data: Arc::new(vec![]),
                     reserved: bytes,
                     sum: String::new(),
-                    expires: Instant::now() + run_for + TTL,
+                    expires: now + run_for + TTL,
                     committed: None,
-                },
+                })),
             );
         }
         Ok(OutputReservation {
@@ -108,15 +117,16 @@ impl Transfers {
             return Err(io::Error::other("transfer too large"));
         }
         let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
-        entries.retain(|_, v| v.expires > Instant::now());
-        if entries.len() >= MAX_PENDING
-            || entries
-                .values()
-                .map(|v| v.data.len() + v.reserved)
-                .sum::<usize>()
-                + data.len()
-                > MAX_PENDING_BYTES
-        {
+        let now = Instant::now();
+        entries.retain(|_, v| v.lock().unwrap_or_else(|e| e.into_inner()).expires > now);
+        let used: usize = entries
+            .values()
+            .map(|v| {
+                let g = v.lock().unwrap_or_else(|e| e.into_inner());
+                g.data.len() + g.reserved
+            })
+            .sum();
+        if entries.len() >= MAX_PENDING || used + data.len() > MAX_PENDING_BYTES {
             return Err(io::Error::other("transfer capacity reached"));
         }
         let id = rs_transfer::random_id()?;
@@ -124,31 +134,39 @@ impl Transfers {
         let size = data.len();
         entries.insert(
             id.clone(),
-            Prepared {
+            Arc::new(Mutex::new(Prepared {
                 data: Arc::new(data),
                 reserved: 0,
                 sum: sum.clone(),
-                expires: Instant::now() + TTL,
+                expires: now + TTL,
                 committed: None,
-            },
+            })),
         );
         Ok(json!({"transfer_id":id,"sha256":sum,"size_bytes":size}))
     }
     pub fn bytes(&self, id: &str) -> io::Result<Arc<Vec<u8>>> {
-        let entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
-        entries
-            .get(id)
-            .filter(|v| v.expires > Instant::now())
-            .map(|v| v.data.clone())
-            .ok_or_else(|| io::Error::other("unknown or expired transfer"))
+        let entry = {
+            let entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
+            entries.get(id).cloned()
+        };
+        let entry = entry.ok_or_else(|| io::Error::other("unknown or expired transfer"))?;
+        let v = entry.lock().unwrap_or_else(|e| e.into_inner());
+        if v.expires <= Instant::now() {
+            return Err(io::Error::other("unknown or expired transfer"));
+        }
+        Ok(v.data.clone())
     }
     fn commit(&self, id: &str, key: &str, req: rs_transfer::Request) -> io::Result<Value> {
-        // Hold lock across upload: repeat commits cannot race and use the same prepared bytes.
-        let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
-        let v = entries
-            .get_mut(id)
-            .filter(|v| v.expires > Instant::now())
-            .ok_or_else(|| io::Error::other("unknown or expired transfer"))?;
+        let entry = {
+            let entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
+            entries.get(id).cloned()
+        };
+        let entry = entry.ok_or_else(|| io::Error::other("unknown or expired transfer"))?;
+        // Hold per-transfer lock across upload: parallel transfers proceed concurrently while repeat commits on one transfer stay serialized.
+        let mut v = entry.lock().unwrap_or_else(|e| e.into_inner());
+        if v.expires <= Instant::now() {
+            return Err(io::Error::other("unknown or expired transfer"));
+        }
         if key.is_empty() || key.len() > 2048 {
             return Err(io::Error::other("invalid object key"));
         }
@@ -318,8 +336,8 @@ mod tests {
         let t = Transfers::default();
         let p = t.prepare(vec![1]).unwrap();
         let id = p["transfer_id"].as_str().unwrap();
-        t.entries.lock().unwrap().get_mut(id).unwrap().expires =
-            Instant::now() - Duration::from_secs(1);
+        let entry = t.entries.lock().unwrap().get(id).unwrap().clone();
+        entry.lock().unwrap().expires = Instant::now() - Duration::from_secs(1);
         assert!(t.bytes(id).is_err());
     }
 }

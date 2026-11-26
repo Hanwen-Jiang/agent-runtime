@@ -13,6 +13,23 @@ type ScopedTransferNetwork interface {
 	AcknowledgeTransferTarget(context.Context, string, string) error
 }
 
+type TransferGrantRequest struct {
+	ID        string
+	Task      string
+	Method    string
+	SizeBytes int64
+	Expires   time.Time
+	Target    TransferTarget
+}
+
+// ScopedTransferBatchNetwork is an optional extension to ScopedTransferNetwork
+// that mints, revokes, and acknowledges up to 64 per-object grants in one RTT.
+type ScopedTransferBatchNetwork interface {
+	GrantTransferTargets(context.Context, string, []TransferGrantRequest) ([]TransferTarget, error)
+	RevokeTransferTargets(context.Context, string, []string) (map[string]int64, error)
+	AcknowledgeTransferTargets(context.Context, string, []string) error
+}
+
 // PreparedTransfer names immutable, bounded bytes retained by one sandbox agent.
 type PreparedTransfer struct {
 	TransferID string `json:"transfer_id"`

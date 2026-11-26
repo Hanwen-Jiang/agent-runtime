@@ -6,11 +6,13 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
+	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/archive"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/ledger"
 	"net"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -40,15 +42,16 @@ func (b *Broker) OpenTransferTarget(ctx context.Context, lease *Lease, method st
 	if err != nil {
 		return target, close, err
 	}
-	id, err := b.ledger.CreateTransferGrant(ctx, lease.Owner, task, strings.ToLower(u.Hostname()))
+	expires := b.ledger.Now().Add(120 * time.Second)
+	ids, err := b.ledger.ReserveTransferBatch(ctx, lease.Owner, lease.Backend, lease.EnvID, task, policy.Quota.DailyEgressBytes, []ledger.TransferReservation{{
+		Host:    strings.ToLower(u.Hostname()),
+		Size:    3 * size,
+		Expires: expires,
+	}})
 	if err != nil {
 		return target, close, err
 	}
-	expires := b.ledger.Now().Add(120 * time.Second)
-	if err = b.ledger.ReserveTransferBytes(ctx, lease.Owner, id, lease.Backend, lease.EnvID, task, 3*size, policy.Quota.DailyEgressBytes, expires); err != nil {
-		_ = b.ledger.RevokeTransferGrant(context.WithoutCancel(ctx), lease.Owner, id)
-		return target, close, err
-	}
+	id := ids[0]
 	close = func() error {
 		cleanup, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
@@ -56,10 +59,7 @@ func (b *Broker) OpenTransferTarget(ctx context.Context, lease *Lease, method st
 		if e != nil {
 			return e
 		}
-		if e = b.ledger.SettleTransferBytes(cleanup, lease.Owner, id, n); e != nil {
-			return e
-		}
-		if e = b.ledger.RevokeTransferGrant(cleanup, lease.Owner, id); e != nil {
+		if e = b.ledger.SettleAndRevokeTransferBatch(cleanup, lease.Owner, map[string]int64{id: n}); e != nil {
 			return e
 		}
 		if e = bridge.AcknowledgeTransferTarget(cleanup, lease.EnvID, id); e != nil {
@@ -73,6 +73,184 @@ func (b *Broker) OpenTransferTarget(ctx context.Context, lease *Lease, method st
 		return target, close, err
 	}
 	return transformed, close, nil
+}
+
+func (b *Broker) OpenTransferTargets(ctx context.Context, lease *Lease, method string, items []archive.TransferTargetRequest) ([]sandbox.TransferTarget, func() error, error) {
+	noop := func() error { return nil }
+	if len(items) == 0 {
+		return nil, noop, nil
+	}
+	if len(items) == 1 {
+		t, closeOne, err := b.OpenTransferTarget(ctx, lease, method, items[0].SizeBytes, items[0].Target)
+		if err != nil {
+			return nil, closeOne, err
+		}
+		return []sandbox.TransferTarget{t}, closeOne, nil
+	}
+	if lease.Kind != "cloudflare" {
+		targets := make([]sandbox.TransferTarget, len(items))
+		closes := make([]func() error, 0, len(items))
+		closeAll := func() error {
+			var first error
+			for _, fn := range closes {
+				if err := fn(); err != nil && first == nil {
+					first = err
+				}
+			}
+			return first
+		}
+		for i, item := range items {
+			t, closeOne, err := b.OpenTransferTarget(ctx, lease, method, item.SizeBytes, item.Target)
+			if err != nil {
+				_ = closeAll()
+				return nil, noop, err
+			}
+			targets[i] = t
+			closes = append(closes, closeOne)
+		}
+		return targets, closeAll, nil
+	}
+	if method != "GET" && method != "PUT" {
+		return nil, noop, providererr.New(providererr.Invalid, "transfer_target", "invalid scoped storage transfer")
+	}
+	bridge, ok := lease.Box.(sandbox.ScopedTransferNetwork)
+	if !ok || lease.Record == nil {
+		return nil, noop, providererr.New(providererr.Invalid, "transfer_gateway_required", "scoped transfer gateway unavailable")
+	}
+	expires := b.ledger.Now().Add(120 * time.Second)
+	reservations := make([]ledger.TransferReservation, len(items))
+	for i, item := range items {
+		u, err := url.Parse(item.Target.URL)
+		if err != nil || u.Scheme != "https" || u.User != nil || u.Fragment != "" || (u.Port() != "" && u.Port() != "443") || !scopedTransferHost(u.Hostname()) || item.SizeBytes < 0 || item.SizeBytes > 64<<20 {
+			return nil, noop, providererr.New(providererr.Invalid, "transfer_target", "invalid scoped storage transfer")
+		}
+		reservations[i] = ledger.TransferReservation{
+			Host:    strings.ToLower(u.Hostname()),
+			Size:    3 * item.SizeBytes,
+			Expires: expires,
+		}
+	}
+	policy, err := b.policies.For(ctx, lease.Owner)
+	if err != nil {
+		return nil, noop, err
+	}
+	task, err := b.transferAuditTask(ctx, lease)
+	if err != nil {
+		return nil, noop, err
+	}
+	ids, err := b.ledger.ReserveTransferBatch(ctx, lease.Owner, lease.Backend, lease.EnvID, task, policy.Quota.DailyEgressBytes, reservations)
+	if err != nil {
+		return nil, noop, err
+	}
+	batchBridge, hasBatch := lease.Box.(sandbox.ScopedTransferBatchNetwork)
+	closeBatch := func() error {
+		cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		var usedMap map[string]int64
+		if hasBatch {
+			var e error
+			usedMap, e = batchBridge.RevokeTransferTargets(cleanup, lease.EnvID, ids)
+			if e != nil {
+				return e
+			}
+		} else {
+			var mu sync.Mutex
+			var wg sync.WaitGroup
+			var firstErr error
+			usedMap = make(map[string]int64, len(ids))
+			for _, id := range ids {
+				wg.Add(1)
+				go func(gid string) {
+					defer wg.Done()
+					n, e := bridge.RevokeTransferTarget(cleanup, lease.EnvID, gid)
+					mu.Lock()
+					if e != nil && firstErr == nil {
+						firstErr = e
+					} else if e == nil {
+						usedMap[gid] = n
+					}
+					mu.Unlock()
+				}(id)
+			}
+			wg.Wait()
+			if firstErr != nil {
+				return firstErr
+			}
+		}
+		if e := b.ledger.SettleAndRevokeTransferBatch(cleanup, lease.Owner, usedMap); e != nil {
+			return e
+		}
+		if hasBatch {
+			if e := batchBridge.AcknowledgeTransferTargets(cleanup, lease.EnvID, ids); e != nil {
+				return e
+			}
+		} else {
+			var wg sync.WaitGroup
+			var mu sync.Mutex
+			var firstErr error
+			for _, id := range ids {
+				wg.Add(1)
+				go func(gid string) {
+					defer wg.Done()
+					if e := bridge.AcknowledgeTransferTarget(cleanup, lease.EnvID, gid); e != nil {
+						mu.Lock()
+						if firstErr == nil {
+							firstErr = e
+						}
+						mu.Unlock()
+					}
+				}(id)
+			}
+			wg.Wait()
+			if firstErr != nil {
+				return firstErr
+			}
+		}
+		return b.ledger.AcknowledgeTransferUsageBatch(cleanup, lease.Owner, ids)
+	}
+	if hasBatch {
+		reqs := make([]sandbox.TransferGrantRequest, len(items))
+		for i, item := range items {
+			reqs[i] = sandbox.TransferGrantRequest{
+				ID:        ids[i],
+				Task:      task,
+				Method:    method,
+				SizeBytes: item.SizeBytes,
+				Expires:   expires,
+				Target:    item.Target,
+			}
+		}
+		targets, err := batchBridge.GrantTransferTargets(ctx, lease.EnvID, reqs)
+		if err != nil {
+			_ = closeBatch()
+			return nil, closeBatch, err
+		}
+		return targets, closeBatch, nil
+	}
+	targets := make([]sandbox.TransferTarget, len(items))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var firstErr error
+	for i, item := range items {
+		wg.Add(1)
+		go func(idx int, it archive.TransferTargetRequest) {
+			defer wg.Done()
+			t, e := bridge.GrantTransferTarget(ctx, lease.EnvID, ids[idx], task, method, it.SizeBytes, expires, it.Target)
+			mu.Lock()
+			if e != nil && firstErr == nil {
+				firstErr = e
+			} else if e == nil {
+				targets[idx] = t
+			}
+			mu.Unlock()
+		}(i, item)
+	}
+	wg.Wait()
+	if firstErr != nil {
+		_ = closeBatch()
+		return nil, closeBatch, firstErr
+	}
+	return targets, closeBatch, nil
 }
 
 func (b *Broker) reconcileTransferUsage(ctx context.Context) error {

@@ -69,7 +69,14 @@ func New(bridgeURL, token string, runtimes []string, faults *testkit.Faults) (*P
 		faults = testkit.NewFaults()
 	}
 	return &Provider{BridgeURL: strings.TrimRight(bridgeURL, "/"), token: token, runtimes: runtimes, faults: faults,
-		client: &http.Client{Transport: &http.Transport{Proxy: http.ProxyFromEnvironment}}, destroyed: map[string]string{}}, nil
+		client: &http.Client{Transport: &http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
+			MaxIdleConns:        64,
+			MaxIdleConnsPerHost: 32,
+			MaxConnsPerHost:     32,
+			IdleConnTimeout:     90 * time.Second,
+			ForceAttemptHTTP2:   true,
+		}}, destroyed: map[string]string{}}, nil
 }
 
 // Bind 绑定租户作用域。

@@ -10,9 +10,13 @@ package cfsandbox_test
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -170,4 +174,113 @@ func TestLiveAllowlistBlocksOtherHosts(t *testing.T) {
 	if !strings.Contains(out, "https://pypi.org/simple/ 200") || !strings.Contains(out, "https://example.com/ blocked") {
 		t.Fatal(out)
 	}
+}
+
+func TestScopedTransferBatchGrantAndFallback(t *testing.T) {
+	token := strings.Repeat("t", 32)
+	envID := "cfs-0123456789abcdef"
+	id1 := "sbg-" + strings.Repeat("a", 32)
+	id2 := "sbg-" + strings.Repeat("b", 32)
+
+	t.Run("batch_endpoint", func(t *testing.T) {
+		var batchCalls atomic.Int32
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/v1/sandboxes/"+envID+"/transfer-grants:batch" {
+				t.Fatalf("unexpected path %s", r.URL.Path)
+			}
+			batchCalls.Add(1)
+			var payload struct {
+				Action string            `json:"action"`
+				Items  []json.RawMessage `json:"items"`
+				IDs    []string          `json:"ids"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			switch payload.Action {
+			case "grant":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"urls": map[string]string{
+						id1: "http://ar-transfer.internal/" + id1,
+						id2: "http://ar-transfer.internal/" + id2,
+					},
+				})
+			case "revoke":
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"bytes":   map[string]int64{id1: 11, id2: 22},
+					"revoked": true,
+				})
+			case "ack":
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				t.Fatalf("unexpected action %q", payload.Action)
+			}
+		}))
+		defer srv.Close()
+
+		box := conformance.Must(provider(t, srv.URL, token).Bind(conformance.TenantA())).(sandbox.ScopedTransferBatchNetwork)
+		ctx := context.Background()
+		reqs := []sandbox.TransferGrantRequest{
+			{ID: id1, Task: "t", Method: "PUT", SizeBytes: 11, Expires: time.Now().Add(time.Minute), Target: sandbox.TransferTarget{URL: "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/b/1"}},
+			{ID: id2, Task: "t", Method: "PUT", SizeBytes: 22, Expires: time.Now().Add(time.Minute), Target: sandbox.TransferTarget{URL: "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/b/2"}},
+		}
+		targets, err := box.GrantTransferTargets(ctx, envID, reqs)
+		if err != nil || len(targets) != 2 || targets[0].URL != "http://ar-transfer.internal/"+id1 {
+			t.Fatalf("batch grant failed: targets=%+v err=%v", targets, err)
+		}
+		used, err := box.RevokeTransferTargets(ctx, envID, []string{id1, id2})
+		if err != nil || used[id1] != 11 || used[id2] != 22 {
+			t.Fatalf("batch revoke failed: used=%+v err=%v", used, err)
+		}
+		if err := box.AcknowledgeTransferTargets(ctx, envID, []string{id1, id2}); err != nil {
+			t.Fatalf("batch ack failed: %v", err)
+		}
+		if batchCalls.Load() != 3 {
+			t.Fatalf("expected 3 batch RTTs, got %d", batchCalls.Load())
+		}
+	})
+
+	t.Run("fallback_on_404", func(t *testing.T) {
+		var singleCalls atomic.Int32
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, ":batch") {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			singleCalls.Add(1)
+			switch r.Method {
+			case http.MethodPut:
+				id := strings.TrimPrefix(r.URL.Path, "/v1/sandboxes/"+envID+"/transfer-grants/")
+				_ = json.NewEncoder(w).Encode(map[string]string{"url": "http://ar-transfer.internal/" + id})
+			case http.MethodDelete:
+				_ = json.NewEncoder(w).Encode(map[string]any{"bytes": 7, "revoked": true})
+			case http.MethodPost:
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				t.Fatalf("unexpected method %s", r.Method)
+			}
+		}))
+		defer srv.Close()
+
+		box := conformance.Must(provider(t, srv.URL, token).Bind(conformance.TenantA())).(sandbox.ScopedTransferBatchNetwork)
+		ctx := context.Background()
+		reqs := []sandbox.TransferGrantRequest{
+			{ID: id1, Task: "t", Method: "GET", SizeBytes: 7, Expires: time.Now().Add(time.Minute), Target: sandbox.TransferTarget{URL: "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/b/1"}},
+			{ID: id2, Task: "t", Method: "GET", SizeBytes: 7, Expires: time.Now().Add(time.Minute), Target: sandbox.TransferTarget{URL: "https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com/b/2"}},
+		}
+		targets, err := box.GrantTransferTargets(ctx, envID, reqs)
+		if err != nil || len(targets) != 2 {
+			t.Fatalf("fallback grant failed: %v", err)
+		}
+		used, err := box.RevokeTransferTargets(ctx, envID, []string{id1, id2})
+		if err != nil || used[id1] != 7 || used[id2] != 7 {
+			t.Fatalf("fallback revoke failed: %+v %v", used, err)
+		}
+		if err := box.AcknowledgeTransferTargets(ctx, envID, []string{id1, id2}); err != nil {
+			t.Fatalf("fallback ack failed: %v", err)
+		}
+		if singleCalls.Load() != 6 {
+			t.Fatalf("expected 6 fallback single-grant calls, got %d", singleCalls.Load())
+		}
+	})
 }

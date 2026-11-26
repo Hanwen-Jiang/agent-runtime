@@ -190,7 +190,7 @@ func TestDirectArchiveOnlyUploadsMissingAndRestoresBytes(t *testing.T) {
 	h := newHarness(t, func(h *harness) { h.directObjects = objects; h.backends = localArchive })
 	tc := tenant("t1", "w1", s1)
 	lease := h.mustAcquire(tc, onWorkspace("w1"), taskID("task-archive"))
-	h.mustExec(tc, lease, "printf shared > a; printf shared > b")
+	h.mustExec(tc, lease, "printf shared > a; printf shared > b; printf first > c; printf second > d")
 	ctx := context.Background()
 	broker := h.svc.Broker()
 	inner, err := broker.Get(ctx, tc, lease.LeaseId)
@@ -198,19 +198,31 @@ func TestDirectArchiveOnlyUploadsMissingAndRestoresBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	arch := broker.Archiver()
-	snap, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w1", 1<<20, lease.LeaseId, archive.TransferOptions{Enabled: true})
+	batchOpens := 0
+	opts := archive.TransferOptions{
+		Enabled: true,
+		OpenTargets: func(_ context.Context, _ string, items []archive.TransferTargetRequest) ([]sandbox.TransferTarget, func() error, error) {
+			batchOpens++
+			out := make([]sandbox.TransferTarget, len(items))
+			for i, it := range items {
+				out[i] = it.Target
+			}
+			return out, func() error { return nil }, nil
+		},
+	}
+	snap, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w1", 1<<20, lease.LeaseId, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snap.NewBlobs != 1 {
-		t.Fatalf("new blobs %d", snap.NewBlobs)
+	if snap.NewBlobs != 3 || batchOpens != 1 {
+		t.Fatalf("new blobs %d batchOpens=%d", snap.NewBlobs, batchOpens)
 	}
 	before := state.puts
-	snap2, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w1", 1<<20, lease.LeaseId, archive.TransferOptions{Enabled: true})
+	snap2, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w1", 1<<20, lease.LeaseId, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snap2.NewBlobs != 0 || state.puts-before != 1 {
+	if snap2.NewBlobs != 0 || state.puts-before != 1 || batchOpens != 1 {
 		t.Fatal("unchanged snapshot reuploaded content")
 	}
 	otherTC := tenant("t1", "", s2)
@@ -219,10 +231,13 @@ func TestDirectArchiveOnlyUploadsMissingAndRestoresBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = arch.Restore(ctx, target.Box, target.EnvID, "t1", "w1", 1<<20, archive.TransferOptions{Enabled: true}); err != nil {
+	if _, err = arch.Restore(ctx, target.Box, target.EnvID, "t1", "w1", 1<<20, opts); err != nil {
 		t.Fatal(err)
 	}
-	if got := h.mustExec(otherTC, other, "cat a b"); strings.TrimSpace(got) != "sharedshared" {
+	if batchOpens != 2 {
+		t.Fatalf("expected batch restore open, got %d", batchOpens)
+	}
+	if got := h.mustExec(otherTC, other, "cat a b c d"); strings.TrimSpace(got) != "sharedsharedfirstsecond" {
 		t.Fatal("restored bytes mismatch")
 	}
 }

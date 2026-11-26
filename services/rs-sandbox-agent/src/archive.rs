@@ -505,6 +505,128 @@ fn symlink(target: &Path, link: &Path) -> io::Result<()> {
 
 // --- 清单、列目录 ---
 
+const HASH_CACHE_MAX_ENTRIES: usize = 50_000;
+const RACY_STAT_GUARD: std::time::Duration = std::time::Duration::from_millis(50);
+
+#[derive(Clone, PartialEq, Eq)]
+struct FileStamp {
+    #[cfg(unix)]
+    dev: u64,
+    #[cfg(unix)]
+    ino: u64,
+    size: u64,
+    mtime_ns: i128,
+    #[cfg(unix)]
+    ctime_ns: i128,
+}
+
+#[derive(Clone)]
+pub struct CachedHash {
+    stamp: FileStamp,
+    chunked: bool,
+    sha256: String,
+    chunks_json: Option<String>,
+}
+
+fn file_stamp(md: &Metadata) -> Option<FileStamp> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        Some(FileStamp {
+            dev: md.dev(),
+            ino: md.ino(),
+            size: md.len(),
+            mtime_ns: (md.mtime() as i128) * 1_000_000_000 + (md.mtime_nsec() as i128),
+            ctime_ns: (md.ctime() as i128) * 1_000_000_000 + (md.ctime_nsec() as i128),
+        })
+    }
+    #[cfg(not(unix))]
+    {
+        let mtime_ns = md
+            .modified()
+            .ok()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()?
+            .as_nanos() as i128;
+        Some(FileStamp {
+            size: md.len(),
+            mtime_ns,
+        })
+    }
+}
+
+fn is_safe_to_cache(md: &Metadata) -> bool {
+    md.modified()
+        .ok()
+        .and_then(|t| std::time::SystemTime::now().duration_since(t).ok())
+        .is_some_and(|age| age >= RACY_STAT_GUARD)
+}
+
+fn hash_file_cached(
+    app: &App,
+    rel: &[u8],
+    path: &Path,
+    md: &Metadata,
+    chunked: bool,
+) -> io::Result<(u64, String, Option<String>)> {
+    let stamp = if is_safe_to_cache(md) {
+        file_stamp(md)
+    } else {
+        None
+    };
+    if let Some(ref st) = stamp {
+        let cache = app.hash_cache.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(hit) = cache.get(rel)
+            && hit.chunked == chunked
+            && hit.stamp == *st
+        {
+            return Ok((hit.stamp.size, hit.sha256.clone(), hit.chunks_json.clone()));
+        }
+    }
+    let mut f = fs::File::open(path)?;
+    let mut h = Sha256::new();
+    let mut chunks = vec![];
+    let mut n: u64 = 0;
+    loop {
+        let block_size = if chunked { 4 << 20 } else { 64 << 10 };
+        let mut part = Vec::with_capacity(block_size);
+        let k = (&mut f).take(block_size as u64).read_to_end(&mut part)?;
+        if k == 0 {
+            break;
+        }
+        h.update(&part);
+        n += k as u64;
+        if chunked {
+            chunks.push(serde_json::json!({"sha256":rs_transfer::digest(&part),"size_bytes":k}));
+        }
+    }
+    let sum: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
+    let chunks_json = if chunks.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Array(chunks).to_string())
+    };
+    if let Some(mut st) = stamp
+        && st.size == n
+    {
+        st.size = n;
+        let mut cache = app.hash_cache.lock().unwrap_or_else(|e| e.into_inner());
+        if cache.len() >= HASH_CACHE_MAX_ENTRIES {
+            cache.clear();
+        }
+        cache.insert(
+            rel.to_vec(),
+            CachedHash {
+                stamp: st,
+                chunked,
+                sha256: sum.clone(),
+                chunks_json: chunks_json.clone(),
+            },
+        );
+    }
+    Ok((n, sum, chunks_json))
+}
+
 pub fn manifest(app: &App, ctx: &mut Ctx<'_>) {
     manifest_with_chunks(app, ctx, false);
 }
@@ -513,6 +635,7 @@ pub fn snapshot(app: &App, ctx: &mut Ctx<'_>) {
 }
 fn manifest_with_chunks(app: &App, ctx: &mut Ctx<'_>, chunked: bool) {
     let mut out: Vec<(Vec<u8>, String)> = Vec::new();
+    let mut seen_files: std::collections::HashSet<Vec<u8>> = std::collections::HashSet::new();
     let res = walk(&app.c.workdir, &mut |rel, path, md| {
         let ft = md.file_type();
         let e = if ft.is_dir() {
@@ -529,26 +652,8 @@ fn manifest_with_chunks(app: &App, ctx: &mut Ctx<'_>, chunked: bool) {
             }
             o.done()
         } else {
-            let mut f = fs::File::open(path)?;
-            let mut h = Sha256::new();
-            let mut chunks = vec![];
-            let mut n: u64 = 0;
-            loop {
-                let block_size = if chunked { 4 << 20 } else { 64 << 10 };
-                let mut part = Vec::with_capacity(block_size);
-                let k = (&mut f).take(block_size as u64).read_to_end(&mut part)?;
-                if k == 0 {
-                    break;
-                }
-                h.update(&part);
-                n += k as u64;
-                if chunked {
-                    chunks.push(
-                        serde_json::json!({"sha256":rs_transfer::digest(&part),"size_bytes":k}),
-                    );
-                }
-            }
-            let sum: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
+            seen_files.insert(rel.to_vec());
+            let (n, sum, chunks_json) = hash_file_cached(app, rel, path, md, chunked)?;
             let mut o = Obj::new()
                 .b("path", rel)
                 .s("type", "file")
@@ -556,8 +661,8 @@ fn manifest_with_chunks(app: &App, ctx: &mut Ctx<'_>, chunked: bool) {
             if n > 0 {
                 o = o.i("size", n as i64);
             }
-            if !chunks.is_empty() {
-                o = o.raw("chunks", &serde_json::Value::Array(chunks).to_string());
+            if let Some(ref raw) = chunks_json {
+                o = o.raw("chunks", raw);
             }
             o.s("sha256", &sum).done()
         };
@@ -566,6 +671,14 @@ fn manifest_with_chunks(app: &App, ctx: &mut Ctx<'_>, chunked: bool) {
     });
     if res.is_err() {
         return fail(ctx, 500, "read_failed", "读不了工作目录");
+    }
+    {
+        let mut cache = app.hash_cache.lock().unwrap_or_else(|e| e.into_inner());
+        if seen_files.len() > HASH_CACHE_MAX_ENTRIES {
+            cache.clear();
+        } else {
+            cache.retain(|k, _| seen_files.contains(k));
+        }
     }
     // 遍历是深度优先的（父目录在前）；清单按路径的字符串顺序排，与开发实现一致。
     out.sort_by(|a, b| a.0.cmp(&b.0));
@@ -919,5 +1032,39 @@ mod tests {
         assert_eq!(fs::read_dir(&root).unwrap().count(), 0);
         assert!(!restore_incomplete(&root));
         fs::remove_dir(root).unwrap();
+    }
+
+    #[test]
+    fn manifest_hash_cache_hits_and_invalidates_on_change() {
+        let root = std::env::temp_dir().join(format!(
+            "hash-cache-{}",
+            rs_transfer::random_id().unwrap()
+        ));
+        fs::create_dir(&root).unwrap();
+        let file = root.join("data.txt");
+        fs::write(&file, b"alpha").unwrap();
+        std::thread::sleep(RACY_STAT_GUARD + std::time::Duration::from_millis(20));
+        let app = App::new(crate::agent::Config {
+            workdir: root.clone(),
+            token: "0123456789abcdef0123456789abcdef".into(),
+            env: vec![],
+            output_limit: 0,
+            file_limit: 0,
+            max_timeout: std::time::Duration::ZERO,
+            wait_delay: std::time::Duration::ZERO,
+        })
+        .unwrap();
+        let md1 = fs::symlink_metadata(&file).unwrap();
+        let (n1, s1, _) = hash_file_cached(&app, b"data.txt", &file, &md1, false).unwrap();
+        assert_eq!(n1, 5);
+        assert_eq!(app.hash_cache.lock().unwrap().len(), 1);
+        let (n2, s2, _) = hash_file_cached(&app, b"data.txt", &file, &md1, false).unwrap();
+        assert_eq!((n1, &s1), (n2, &s2));
+        fs::write(&file, b"bravo!").unwrap();
+        let md2 = fs::symlink_metadata(&file).unwrap();
+        let (n3, s3, _) = hash_file_cached(&app, b"data.txt", &file, &md2, false).unwrap();
+        assert_eq!(n3, 6);
+        assert_ne!(s1, s3);
+        fs::remove_dir_all(root).unwrap();
     }
 }

@@ -8,13 +8,52 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	"strings"
+	"sync"
 	"time"
 )
+
+type TransferTargetRequest struct {
+	SizeBytes int64
+	Target    sandbox.TransferTarget
+}
 
 type TransferOptions struct {
 	Enabled     bool
 	OpenNetwork func(context.Context, string) (string, func() error, error)
 	OpenTarget  func(context.Context, string, int64, sandbox.TransferTarget) (sandbox.TransferTarget, func() error, error)
+	OpenTargets func(context.Context, string, []TransferTargetRequest) ([]sandbox.TransferTarget, func() error, error)
+}
+
+func runParallel(count, limit int, fn func(int) error) error {
+	if count == 0 {
+		return nil
+	}
+	if limit <= 0 || limit > count {
+		limit = count
+	}
+	sem := make(chan struct{}, limit)
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		firstErr error
+	)
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(idx int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if err := fn(idx); err != nil {
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = err
+				}
+				mu.Unlock()
+			}
+		}(i)
+	}
+	wg.Wait()
+	return firstErr
 }
 
 func directSizes(entries []sandbox.FileEntry) bool {
@@ -95,6 +134,14 @@ func network(ctx context.Context, opt TransferOptions, method string, size int64
 	target.Proxy = proxy
 	return target, close, err
 }
+type directBlock struct {
+	path    string
+	sha256  string
+	size    int64
+	offset  int64
+	chunked bool
+}
+
 func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID string, bucket objectstore.Store, workspaceID string, maxBytes int64, known map[string]bool, foreign map[string]string, opt TransferOptions) ([]sandbox.FileEntry, int64, int64, error) {
 	manifest := box.(sandbox.Archive).Manifest
 	chunked, canChunk := box.(sandbox.SnapshotTransfers)
@@ -113,61 +160,135 @@ func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID s
 		return nil, 0, 0, err
 	}
 	transfers := box.(sandbox.Transfers)
-	var added int64
 	checked := map[string]bool{}
+	var toCheck []directBlock
 	for _, file := range entries {
 		var offset int64
 		for _, block := range file.Blocks() {
-			e := sandbox.FileEntry{Path: file.Path, Type: "file", SHA256: block.SHA256, Size: block.SizeBytes}
 			at := offset
-			offset += e.Size
-			if checked[e.SHA256] {
+			offset += block.SizeBytes
+			if checked[block.SHA256] {
 				continue
 			}
-			checked[e.SHA256] = true
-			ws := workspaceID
-			if src, ok := foreign[e.SHA256]; ok {
-				ws = src
-			}
-			key := BlobKey(ws, e.SHA256)
-			if info, err := bucket.Head(ctx, key); err == nil {
-				if info.Size != e.Size {
-					return nil, 0, 0, providererr.New(providererr.Transient, "workspace_restore_mismatch", "stored blob size mismatch")
-				}
-				known[e.SHA256] = true
+			checked[block.SHA256] = true
+			if _, isForeign := foreign[block.SHA256]; !isForeign && known[block.SHA256] {
 				continue
-			} else if providererr.CategoryOf(err) != providererr.NotFound {
-				return nil, 0, 0, err
 			}
-			// Missing inherited blocks are uploaded into this workspace's own namespace.
-			delete(foreign, e.SHA256)
-			key = BlobKey(workspaceID, e.SHA256)
-			var p sandbox.PreparedTransfer
-			var err error
-			if len(file.Chunks) > 0 {
+			toCheck = append(toCheck, directBlock{
+				path:    file.Path,
+				sha256:  block.SHA256,
+				size:    block.SizeBytes,
+				offset:  at,
+				chunked: len(file.Chunks) > 0,
+			})
+		}
+	}
+
+	needUpload := make([]bool, len(toCheck))
+	deleteForeign := make([]bool, len(toCheck))
+	if err := runParallel(len(toCheck), 12, func(i int) error {
+		b := toCheck[i]
+		ws := workspaceID
+		if src, ok := foreign[b.sha256]; ok {
+			ws = src
+		}
+		key := BlobKey(ws, b.sha256)
+		if info, err := bucket.Head(ctx, key); err == nil {
+			if info.Size != b.size {
+				return providererr.New(providererr.Transient, "workspace_restore_mismatch", "stored blob size mismatch")
+			}
+			return nil
+		} else if providererr.CategoryOf(err) != providererr.NotFound {
+			return err
+		}
+		needUpload[i] = true
+		if _, ok := foreign[b.sha256]; ok {
+			deleteForeign[i] = true
+		}
+		return nil
+	}); err != nil {
+		return nil, 0, 0, err
+	}
+
+	var missing []directBlock
+	for i, b := range toCheck {
+		if deleteForeign[i] {
+			delete(foreign, b.sha256)
+		}
+		if needUpload[i] {
+			missing = append(missing, b)
+		} else {
+			known[b.sha256] = true
+		}
+	}
+
+	var added int64
+	for start := 0; start < len(missing); start += 16 {
+		if err := ctx.Err(); err != nil {
+			return nil, 0, 0, err
+		}
+		batch := missing[start:min(start+16, len(missing))]
+		prepared := make([]sandbox.PreparedTransfer, len(batch))
+		prepErr := runParallel(len(batch), 8, func(i int) error {
+			b := batch[i]
+			var (
+				p   sandbox.PreparedTransfer
+				err error
+			)
+			if b.chunked {
 				if !canChunk {
-					return nil, 0, 0, providererr.New(providererr.Invalid, "transfer_unsupported", "chunk preparation unavailable")
+					return providererr.New(providererr.Invalid, "transfer_unsupported", "chunk preparation unavailable")
 				}
-				p, err = chunked.PrepareRange(ctx, envID, e.Path, at, e.Size)
+				p, err = chunked.PrepareRange(ctx, envID, b.path, b.offset, b.size)
 			} else {
-				p, err = transfers.PrepareTransfer(ctx, envID, e.Path)
+				p, err = transfers.PrepareTransfer(ctx, envID, b.path)
 			}
 			if err != nil {
-				return nil, 0, 0, err
+				return err
 			}
-			uploadErr := func() error {
-				defer transfers.ReleaseTransfer(context.WithoutCancel(ctx), envID, p.TransferID)
-				if p.SHA256 != e.SHA256 || p.SizeBytes != e.Size {
-					return providererr.New(providererr.Transient, "workspace_changed", "workspace changed while snapshotting")
+			prepared[i] = p
+			return nil
+		})
+		releaseBatch := func() {
+			relCtx := context.WithoutCancel(ctx)
+			_ = runParallel(len(prepared), 8, func(i int) error {
+				if prepared[i].TransferID != "" {
+					return transfers.ReleaseTransfer(relCtx, envID, prepared[i].TransferID)
 				}
-				return uploadPreparedBlock(ctx, transfers, envID, bucket, key, p, opt)
-			}()
-			if uploadErr != nil {
-				return nil, 0, 0, uploadErr
-			}
-			known[e.SHA256] = true
-			added++
+				return nil
+			})
 		}
+		if prepErr != nil {
+			releaseBatch()
+			return nil, 0, 0, prepErr
+		}
+		for i, b := range batch {
+			if prepared[i].SHA256 != b.sha256 || prepared[i].SizeBytes != b.size {
+				releaseBatch()
+				return nil, 0, 0, providererr.New(providererr.Transient, "workspace_changed", "workspace changed while snapshotting")
+			}
+		}
+
+		keys := make([]string, len(batch))
+		for i, b := range batch {
+			keys[i] = BlobKey(workspaceID, b.sha256)
+		}
+		var uploadErr error
+		if len(batch) > 1 && opt.OpenTargets != nil {
+			uploadErr = a.uploadPreparedBatch(ctx, transfers, envID, bucket, keys, prepared, opt)
+		} else {
+			uploadErr = runParallel(len(batch), 8, func(i int) error {
+				return uploadPreparedBlockWithAttempts(ctx, transfers, envID, bucket, keys[i], prepared[i], opt, 3, 1)
+			})
+		}
+		releaseBatch()
+		if uploadErr != nil {
+			return nil, 0, 0, uploadErr
+		}
+		for _, b := range batch {
+			known[b.sha256] = true
+		}
+		added += int64(len(batch))
 	}
 	final, err := manifest(ctx, envID)
 	if err != nil {
@@ -183,12 +304,75 @@ func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID s
 	return entries, total, added, nil
 }
 
+func (a *Archiver) uploadPreparedBatch(ctx context.Context, transfers sandbox.Transfers, envID string, bucket objectstore.Store, keys []string, prepared []sandbox.PreparedTransfer, opt TransferOptions) error {
+	reqs := make([]TransferTargetRequest, len(prepared))
+	for i, p := range prepared {
+		signed, err := bucket.SignedUpload(ctx, keys[i], 5*time.Minute, p.SHA256, p.SizeBytes)
+		if err != nil {
+			return err
+		}
+		reqs[i] = TransferTargetRequest{
+			SizeBytes: p.SizeBytes,
+			Target:    sandbox.TransferTarget{URL: signed.URL, Headers: signed.Headers},
+		}
+	}
+	targets, closeBatch, err := opt.OpenTargets(ctx, "PUT", reqs)
+	if err != nil {
+		return err
+	}
+	commitErrs := make([]error, len(prepared))
+	_ = runParallel(len(prepared), 8, func(i int) error {
+		_, commitErrs[i] = transfers.CommitTransfer(ctx, envID, prepared[i], keys[i], targets[i])
+		return nil
+	})
+	if closeErr := closeBatch(); closeErr != nil {
+		return closeErr
+	}
+	heads := make([]objectstore.ObjectInfo, len(prepared))
+	headErrs := make([]error, len(prepared))
+	_ = runParallel(len(prepared), 12, func(i int) error {
+		heads[i], headErrs[i] = bucket.Head(ctx, keys[i])
+		return nil
+	})
+	var retryIdx []int
+	for i, p := range prepared {
+		if headErrs[i] == nil {
+			if heads[i].Size != p.SizeBytes {
+				return providererr.New(providererr.Transient, "workspace_restore_mismatch", "uploaded blob size mismatch")
+			}
+			continue
+		}
+		if commitErrs[i] == nil {
+			return headErrs[i]
+		}
+		if providererr.CategoryOf(headErrs[i]) != providererr.NotFound || !providererr.IsRetryable(commitErrs[i]) {
+			return commitErrs[i]
+		}
+		retryIdx = append(retryIdx, i)
+	}
+	return runParallel(len(retryIdx), 4, func(j int) error {
+		i := retryIdx[j]
+		timer := time.NewTimer(200 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+		return uploadPreparedBlockWithAttempts(ctx, transfers, envID, bucket, keys[i], prepared[i], opt, 3, 2)
+	})
+}
+
 // A workspace can contain many small Git objects. A transient CONNECT failure
 // must not restart the whole snapshot or re-read mutable source files. Reconcile
 // each immutable prepared block first, then retry at most twice when storage
 // confirms it is absent. An unknown HEAD result never authorizes another PUT.
 func uploadPreparedBlock(ctx context.Context, transfers sandbox.Transfers, envID string, bucket objectstore.Store, key string, prepared sandbox.PreparedTransfer, opt TransferOptions) error {
-	for attempt := 1; ; attempt++ {
+	return uploadPreparedBlockWithAttempts(ctx, transfers, envID, bucket, key, prepared, opt, 3, 1)
+}
+
+func uploadPreparedBlockWithAttempts(ctx context.Context, transfers sandbox.Transfers, envID string, bucket objectstore.Store, key string, prepared sandbox.PreparedTransfer, opt TransferOptions, maxAttempts, startAttempt int) error {
+	for attempt := startAttempt; ; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -218,7 +402,7 @@ func uploadPreparedBlock(ctx context.Context, transfers sandbox.Transfers, envID
 		if uploadErr == nil {
 			return headErr
 		}
-		if providererr.CategoryOf(headErr) != providererr.NotFound || !providererr.IsRetryable(uploadErr) || attempt >= 3 {
+		if providererr.CategoryOf(headErr) != providererr.NotFound || !providererr.IsRetryable(uploadErr) || attempt >= maxAttempts {
 			return uploadErr
 		}
 		timer := time.NewTimer(time.Duration(attempt) * 200 * time.Millisecond)
@@ -255,12 +439,40 @@ func (a *Archiver) restoreDirect(ctx context.Context, box sandbox.BlockTransfers
 			}
 		}
 	}
-	// At most 16 URLs are issued at once; every batch gets fresh five-minute signatures.
-	for start := 0; start < len(files) || start == 0; start += 16 {
-		end := min(start+16, len(files))
-		var blocks []sandbox.RestoreBlock
-		var cleanups []func() error
+	// At most 32 URLs are issued at once; every batch gets fresh five-minute signatures.
+	for start := 0; start < len(files) || start == 0; start += 32 {
+		end := min(start+32, len(files))
+		batchFiles := files[start:end]
 		batchErr := func() (err error) {
+			blocks := make([]sandbox.RestoreBlock, len(batchFiles))
+			if len(batchFiles) > 1 && opt.OpenTargets != nil {
+				reqs := make([]TransferTargetRequest, len(batchFiles))
+				for i, e := range batchFiles {
+					ws := workspaceID
+					if src, ok := foreign[e.SHA256]; ok {
+						ws = src
+					}
+					u, err := bucket.TemporaryURL(ctx, BlobKey(ws, e.SHA256), 5*time.Minute, "GET")
+					if err != nil {
+						return err
+					}
+					reqs[i] = TransferTargetRequest{SizeBytes: e.Size, Target: sandbox.TransferTarget{URL: u}}
+				}
+				targets, closeBatch, err := opt.OpenTargets(ctx, "GET", reqs)
+				if err != nil {
+					return err
+				}
+				defer func() {
+					if closeErr := closeBatch(); err == nil {
+						err = closeErr
+					}
+				}()
+				for i, e := range batchFiles {
+					blocks[i] = sandbox.RestoreBlock{SHA256: e.SHA256, SizeBytes: e.Size, Target: targets[i]}
+				}
+				return box.RestoreBatch(ctx, envID, id, maxBytes, blocks)
+			}
+			var cleanups []func() error
 			defer func() {
 				for _, close := range cleanups {
 					if closeErr := close(); err == nil {
@@ -268,21 +480,21 @@ func (a *Archiver) restoreDirect(ctx context.Context, box sandbox.BlockTransfers
 					}
 				}
 			}()
-			for _, e := range files[start:end] {
+			for i, e := range batchFiles {
 				ws := workspaceID
 				if src, ok := foreign[e.SHA256]; ok {
 					ws = src
 				}
-				url, err := bucket.TemporaryURL(ctx, BlobKey(ws, e.SHA256), 5*time.Minute, "GET")
+				u, err := bucket.TemporaryURL(ctx, BlobKey(ws, e.SHA256), 5*time.Minute, "GET")
 				if err != nil {
 					return err
 				}
-				target, close, err := network(ctx, opt, "GET", e.Size, sandbox.TransferTarget{URL: url})
+				target, close, err := network(ctx, opt, "GET", e.Size, sandbox.TransferTarget{URL: u})
 				if err != nil {
 					return err
 				}
 				cleanups = append(cleanups, close)
-				blocks = append(blocks, sandbox.RestoreBlock{SHA256: e.SHA256, SizeBytes: e.Size, Target: target})
+				blocks[i] = sandbox.RestoreBlock{SHA256: e.SHA256, SizeBytes: e.Size, Target: target}
 			}
 			return box.RestoreBatch(ctx, envID, id, maxBytes, blocks)
 		}()

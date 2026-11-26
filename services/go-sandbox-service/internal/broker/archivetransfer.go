@@ -10,5 +10,9 @@ func (b *Broker) transferOptions(lease *Lease) archive.TransferOptions {
 	return archive.TransferOptions{Enabled: lease.Kind == "firecracker" || lease.Kind == "cloudflare" || b.HasGateway(lease.Backend),
 		OpenTarget: func(ctx context.Context, method string, size int64, target sandbox.TransferTarget) (sandbox.TransferTarget, func() error, error) {
 			return b.OpenTransferTarget(ctx, lease, method, size, target)
-		}}
+		},
+		OpenTargets: func(ctx context.Context, method string, items []archive.TransferTargetRequest) ([]sandbox.TransferTarget, func() error, error) {
+			return b.OpenTransferTargets(ctx, lease, method, items)
+		},
+	}
 }

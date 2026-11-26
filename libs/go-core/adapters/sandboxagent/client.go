@@ -42,7 +42,13 @@ type Endpoint struct {
 	Client *http.Client
 }
 
-var direct = &http.Client{Transport: &http.Transport{Proxy: nil, MaxIdleConnsPerHost: 16, IdleConnTimeout: 90 * time.Second}}
+var direct = &http.Client{Transport: &http.Transport{
+	Proxy:               nil,
+	MaxIdleConns:        64,
+	MaxIdleConnsPerHost: 32,
+	IdleConnTimeout:     90 * time.Second,
+	ForceAttemptHTTP2:   true,
+}}
 
 func (e Endpoint) client() *http.Client {
 	if e.Client != nil {

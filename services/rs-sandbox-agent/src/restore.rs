@@ -147,7 +147,7 @@ pub fn blocks(app: &App, ctx: &mut Ctx<'_>) {
         let tasks = Mutex::new(todo);
         let errors = Mutex::new(false);
         std::thread::scope(|scope| {
-            for _ in 0..4 {
+            for _ in 0..count.clamp(1, 12) {
                 let tasks = &tasks;
                 let errors = &errors;
                 let root = &session.root;

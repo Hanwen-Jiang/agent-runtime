@@ -57,6 +57,7 @@ pub struct App {
     pub reg: Mutex<Registry>,
     pub transfers: crate::transfer::Transfers,
     pub restores: crate::restore::Restores,
+    pub hash_cache: Mutex<HashMap<Vec<u8>, crate::archive::CachedHash>>,
 }
 
 impl App {
@@ -85,6 +86,7 @@ impl App {
             reg: Mutex::new(Registry::default()),
             transfers: crate::transfer::Transfers::default(),
             restores: crate::restore::Restores::default(),
+            hash_cache: Mutex::new(HashMap::new()),
         })
     }
 
