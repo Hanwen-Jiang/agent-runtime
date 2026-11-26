@@ -33,6 +33,7 @@ import json
 import math
 import os
 import re
+import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
@@ -332,6 +333,7 @@ class MemoryService:
         conflict_threshold: float = 0.85,
         retrieval: RetrievalEngine | None = None,
         rerank_mode: str = "legacy",
+        metrics: Any = None,
     ) -> None:
         if rerank_mode not in ("legacy", "bm25", "bm25_pool50"):
             raise ValueError("rerank_mode must be legacy, bm25 or bm25_pool50")
@@ -339,7 +341,8 @@ class MemoryService:
         self.vectors = vectors
         self.keyring = keyring
         self.embedder = embedder
-        self.retrieval = retrieval or RetrievalEngine(vectors=vectors, embedder=embedder)
+        self.retrieval = retrieval or RetrievalEngine(vectors=vectors, embedder=embedder, metrics=metrics)
+        self.metrics = metrics or self.retrieval.metrics
         self.policy = policy or PromotionPolicy()
         self.clock = clock or SystemClock()
         self.duplicate_threshold = duplicate_threshold
@@ -720,6 +723,17 @@ class MemoryService:
         return 0.5 ** (age / FRESHNESS_HALF_LIFE_DAYS)
 
     async def search(self, identity: Identity, query: SearchQuery) -> list[Retrieved]:
+        started = time.perf_counter()
+        status = "error"
+        try:
+            out = await self._search_memory(identity, query)
+            status = "ok"
+            return out
+        finally:
+            self.metrics.inc_search("memory", status)
+            self.metrics.observe_search_duration("memory", time.perf_counter() - started)
+
+    async def _search_memory(self, identity: Identity, query: SearchQuery) -> list[Retrieved]:
         if query.trigger not in TRIGGERS:
             raise InvalidError("invalid_trigger", "trigger 只能是 planning、node_start 或 error")
         if any(k not in KINDS for k in query.kinds):
@@ -753,7 +767,7 @@ class MemoryService:
         text = " ".join(p for p in (query.query, query.task_family, *query.tools) if p)
         dense: tuple[float, ...] = ()
         if text:
-            [dense] = await self.retrieval.embed(identity, [text])
+            dense = await self.retrieval.embed_query(identity, text)
             limit = max(pool_k * 5, 50)
             for n, (ctx, acl) in enumerate(((tenant, {"acl": AnyOf(read_tokens(identity))}), (platform, {}))):
                 must = {**common, **acl}

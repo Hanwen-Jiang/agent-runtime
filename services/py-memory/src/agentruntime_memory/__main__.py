@@ -26,16 +26,21 @@ from agentruntime_core.adapters.keyring import RelationalKeyRing
 from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
 from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 
-from agentruntime_memory.identity import DevTokenAuthenticator
+from agentruntime_memory.cache import TenantQueryEmbeddingCache
+from agentruntime_memory.identity import DevTokenAuthenticator, Identity
+from agentruntime_memory.metrics import default_metrics, start_metrics_server
 from agentruntime_memory.server import start_server
 from agentruntime_memory.service import MemoryService
 from agentruntime_memory.wiring import (
     code_navigation_enabled,
+    embed_cache_config,
     embedder,
     knowledge_rerank_top8_depth,
     knowledge_reranker,
+    rerank_margin_threshold,
     rerank_mode,
     vector_store,
+    warmup_enabled,
 )
 from agentruntime_memory.retrieval import RetrievalEngine
 from agentruntime_memory.knowledge import CatalogAuthorizer, KnowledgeService
@@ -64,6 +69,13 @@ async def serve() -> None:
     vectors = vector_store(os.environ, keyring)
     embeddings = embedder(os.environ)
     reranker = knowledge_reranker(os.environ)
+    metrics = default_metrics()
+    cache_max, cache_ttl = embed_cache_config(os.environ)
+    query_cache = TenantQueryEmbeddingCache(max_size=cache_max, ttl_seconds=cache_ttl, metrics=metrics)
+    metrics_server = None
+    if metrics_addr := os.environ.get("AR_MEMORY_METRICS_ADDRESS", "").strip():
+        metrics_server = start_metrics_server(metrics_addr, metrics)
+        log.info("Memory Service /metrics listening on %s", metrics_addr)
     retrieval = RetrievalEngine(
         vectors=vectors,
         embedder=embeddings,
@@ -72,11 +84,23 @@ async def serve() -> None:
         rerank=reranker,
         rerank_top8_depth=knowledge_rerank_top8_depth(os.environ),
         code_nav_enabled=code_navigation_enabled(os.environ),
+        rerank_margin_threshold=rerank_margin_threshold(os.environ),
+        query_cache=query_cache,
+        metrics=metrics,
     )
     await retrieval.setup()
+    if warmup_enabled(os.environ):
+        warmup_id = Identity(tenant_id="_warmup", workspace_id="_warmup", user_id="_warmup")
+        try:
+            await embeddings.embed(warmup_id, ["warmup probe"])
+            if reranker is not None:
+                await reranker(warmup_id, "warmup probe", ["warmup candidate"])
+            log.info("Memory Service warmup completed")
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Memory Service warmup failed (continuing startup): %s", exc)
     # AR_MEMORY_RERANK_MODE（wiring.rerank_mode）：经验检索在 MMR 之后可选 BM25 重排，线上是 bm25_pool50。
     service = MemoryService(relational=relational, vectors=vectors, keyring=keyring, embedder=embeddings, retrieval=retrieval,
-                            rerank_mode=rerank_mode(os.environ))
+                            rerank_mode=rerank_mode(os.environ), metrics=metrics)
     await service.setup()
     server, port = await start_server(
         service, DevTokenAuthenticator(signing_key.encode()), os.environ.get("AR_MEMORY_ADDRESS", "127.0.0.1:50061"), drain_in_background=True,
@@ -86,6 +110,9 @@ async def serve() -> None:
     try:
         await server.wait_for_termination()
     finally:
+        if metrics_server is not None:
+            metrics_server.shutdown()
+            metrics_server.server_close()
         await vectors.aclose()
         await relational.aclose()
 

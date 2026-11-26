@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import re
+import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Any
 
@@ -19,8 +20,10 @@ from llama_index.core.schema import Document, QueryBundle
 from agentruntime_core.errors import ConflictError, DeniedError, InvalidError, NotFoundError
 from agentruntime_core.providers.relational_store import Migration, RelationalStoreProvider
 from agentruntime_core.providers.vector_store import AnyOf, Filter, Hit, VectorRecord, VectorStore, VectorStoreProvider
+from agentruntime_memory.cache import TenantQueryEmbeddingCache
 from agentruntime_memory.embedding import Embedder, sparse_vector
 from agentruntime_memory.identity import Identity
+from agentruntime_memory.metrics import MemoryMetricsRegistry, default_metrics
 from .adapter import RuntimeRetriever, RuntimeVectorAdapter
 from .code import CODE_CHUNKER, code_nodes, is_code_block
 
@@ -88,13 +91,21 @@ class RetrievalEngine:
     def __init__(self, *, vectors: VectorStoreProvider, embedder: Embedder,
                  relational: RelationalStoreProvider | None = None, authorize: Authorize | None = None,
                  rerank: Rerank | None = None, chunk_size: int = 600, chunk_overlap: int = 80,
-                 rerank_top8_depth: int = 40, code_nav_enabled: bool = True) -> None:
+                 rerank_top8_depth: int = 40, code_nav_enabled: bool = True,
+                 rerank_margin_threshold: float = 0.0,
+                 query_cache: TenantQueryEmbeddingCache | None = None,
+                 metrics: MemoryMetricsRegistry | None = None) -> None:
         if not 100 <= chunk_size <= 1000 or not 0 <= chunk_overlap <= min(80, chunk_size // 2):
             raise ValueError("Invalid retrieval chunk bounds")
         if type(rerank_top8_depth) is not int or not 1 <= rerank_top8_depth <= 40:
             raise ValueError("rerank_top8_depth must be an integer between 1 and 40")
+        if rerank_margin_threshold < 0 or not math.isfinite(rerank_margin_threshold):
+            raise ValueError("rerank_margin_threshold must be finite and >= 0")
         self.rerank_top8_depth = rerank_top8_depth
         self.code_nav_enabled = bool(code_nav_enabled)
+        self.rerank_margin_threshold = float(rerank_margin_threshold)
+        self.metrics = metrics or default_metrics()
+        self.query_cache = query_cache or TenantQueryEmbeddingCache(metrics=self.metrics)
         self.vectors, self.embedder, self.relational = vectors, embedder, relational
         self.authorize, self.rerank = authorize, rerank
         # UTF-8 bytes are a conservative tokenizer bound, deterministic and
@@ -115,6 +126,14 @@ class RetrievalEngine:
         if len(vectors) != len(texts) or any(not vector or not all(math.isfinite(x) for x in vector) for vector in vectors):
             raise InvalidError("invalid_embeddings", "Embedding service returned invalid vectors")
         return vectors
+
+    async def embed_query(self, identity: Identity, query: str) -> tuple[float, ...]:
+        """Embed a single query with tenant-isolated TTL LRU caching."""
+        async def _compute() -> tuple[float, ...]:
+            return tuple((await self.embed(identity, [query]))[0])
+
+        vec, _ = await self.query_cache.get_or_compute(identity, self.embedder.version, query, _compute)
+        return vec
 
     async def upsert_bound(self, store: VectorStore, corpus: str, records: Sequence[VectorRecord]) -> None:
         await store.upsert(corpus, records)
@@ -238,6 +257,17 @@ class RetrievalEngine:
             return {"generation":generation,"status":"staged","chunks":len(staged),"embedding_version":self.embedder.version,"chunker":chunker}
 
     async def search(self, identity: Identity, collection: str, generation: str, query: str, *, embedding_version: str, limit: int = 8, version_ids: Sequence[str] | None = None) -> dict[str, Any]:
+        started = time.perf_counter()
+        status = "error"
+        try:
+            res = await self._search_inner(identity, collection, generation, query, embedding_version=embedding_version, limit=limit, version_ids=version_ids)
+            status = "ok"
+            return res
+        finally:
+            self.metrics.inc_search("knowledge", status)
+            self.metrics.observe_search_duration("knowledge", time.perf_counter() - started)
+
+    async def _search_inner(self, identity: Identity, collection: str, generation: str, query: str, *, embedding_version: str, limit: int = 8, version_ids: Sequence[str] | None = None) -> dict[str, Any]:
         collection,generation=_id(collection,"collection"),_id(generation,"generation")
         if not isinstance(limit,(int,float)) or isinstance(limit,bool) or not math.isfinite(limit) or int(limit)!=limit or not 1<=limit<=20:
             raise InvalidError("retrieval_query", "Invalid result limit")
@@ -256,7 +286,7 @@ class RetrievalEngine:
         if version_ids is not None: versions &= set(version_ids)
         versions=await self._authorized(identity,collection,generation,sorted(versions))
         if not versions:return {"hits":[],"generation":generation,"coverage":"no_authorized_sources"}
-        dense=(await self.embed(identity,[query]))[0]
+        dense=await self.embed_query(identity, query)
         must={"owner_id":row["owner_id"],"workspace_id":identity.workspace_id,"collection_id":collection,"generation":generation,"version_id":AnyOf(tuple(sorted(versions)))}
         bound=self.vectors.bind(identity.tenant_context())
         depth = self.rerank_top8_depth if self.rerank and limit <= 8 else 40
@@ -280,20 +310,42 @@ class RetrievalEngine:
                 node=await tx.query_one("SELECT * FROM retrieval_nodes WHERE node_id=$1 AND collection_id=$2 AND generation=$3",(candidate.id,collection,generation))
                 if node is None or node["version_id"] not in versions:continue
                 hits.append({"id":candidate.id,"score":candidate.score,"text":node["body"],"version_id":node["version_id"],"representation_id":node["representation_id"],"anchor":json.loads(node["anchor"]),"quote_hash":hashlib.sha256(node["body"].encode()).hexdigest()})
+        hits.sort(key=lambda hit: (-float(hit["score"]), hit["id"]))
         hits = _prioritize_symbol(hits, query)
+        reranked_used = False
+        rerank_skip_reason = ""
         if self.rerank and hits:
             allowed=await self._authorized(identity,collection,generation,[hit["version_id"] for hit in hits])
             hits=[hit for hit in hits if hit["version_id"] in allowed]
-            scored=hits[:2 * depth]
-            scores=await self.rerank(identity,query,[hit["text"] for hit in scored]) if scored else []
-            if len(scores)!=len(scored) or any(not math.isfinite(value) for value in scores):raise InvalidError("retrieval_rerank", "Invalid rerank scores")
-            for hit,score in zip(scored,scores,strict=True):hit["score"]=float(score)
-            hits=sorted(scored,key=lambda hit:(-hit["score"],hit["id"]))
-            hits = _prioritize_symbol(hits, query)
+            skip = False
+            if self.rerank_margin_threshold > 0.0:
+                if len(hits) <= 1:
+                    skip = True
+                    rerank_skip_reason = "single_candidate"
+                elif hits[0].get("symbol_exact_match") and not hits[1].get("symbol_exact_match"):
+                    skip = True
+                    rerank_skip_reason = "confident_symbol_match"
+                else:
+                    s0, s1 = float(hits[0]["score"]), float(hits[1]["score"])
+                    margin = (s0 - s1) / max(abs(s0), 1.0)
+                    if margin >= self.rerank_margin_threshold:
+                        skip = True
+                        rerank_skip_reason = "confident_top1"
+            if skip:
+                self.metrics.inc_rerank_skip(rerank_skip_reason)
+            elif hits:
+                scored=hits[:2 * depth]
+                self.metrics.inc_rerank_call(type(self.rerank).__name__)
+                scores=await self.rerank(identity,query,[hit["text"] for hit in scored]) if scored else []
+                if len(scores)!=len(scored) or any(not math.isfinite(value) for value in scores):raise InvalidError("retrieval_rerank", "Invalid rerank scores")
+                for hit,score in zip(scored,scores,strict=True):hit["score"]=float(score)
+                hits=sorted(scored,key=lambda hit:(-hit["score"],hit["id"]))
+                hits = _prioritize_symbol(hits, query)
+                reranked_used = True
         allowed=await self._authorized(identity,collection,generation,[hit["version_id"] for hit in hits])
         if (await self._generation(identity,collection,generation))["state"]!="staged":
             raise ConflictError("retrieval_generation_deleted", "Generation was deleted during query")
-        return {"hits":[hit for hit in hits if hit["version_id"] in allowed][:limit],"generation":generation,"embedding_version":embedding_version,"coverage":"retrieved_candidates","retrieval":{"top_k":depth,"candidate_limit":2 * depth if self.rerank else depth,"fusion":"dense_sparse_union_rerank" if self.rerank else "runtime_rrf_60","sparse":"hashed_term_frequency","reranked":bool(self.rerank)}}
+        return {"hits":[hit for hit in hits if hit["version_id"] in allowed][:limit],"generation":generation,"embedding_version":embedding_version,"coverage":"retrieved_candidates","retrieval":{"top_k":depth,"candidate_limit":2 * depth if self.rerank else depth,"fusion":"dense_sparse_union_rerank" if reranked_used else "runtime_rrf_60","sparse":"hashed_term_frequency","reranked":reranked_used,"rerank_skipped":rerank_skip_reason}}
 
     async def resolve(self, identity: Identity, collection: str, generation: str, node_ids: Sequence[str]) -> dict[str, Any]:
         collection,generation=_id(collection,"collection"),_id(generation,"generation")

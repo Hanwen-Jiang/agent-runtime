@@ -13,6 +13,10 @@ spec:
       {{- include "ar.selector" (list . "memory") | nindent 6 }}
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ $mem.metricsPort | default 9095 | quote }}
+        prometheus.io/path: "/metrics"
       labels:
         {{- include "ar.labels" (list . "memory") | nindent 8 }}
     spec:
@@ -29,6 +33,8 @@ spec:
           ports:
             - name: grpc
               containerPort: {{ $mem.port }}
+            - name: metrics
+              containerPort: {{ $mem.metricsPort | default 9095 }}
           env:
             {{- if .Values.fileIntelligence.enabled }}
             - name: AR_KNOWLEDGE_INTERNAL_TOKEN
@@ -82,6 +88,16 @@ spec:
             - name: AR_MEMORY_CODE_NAV_ENABLED
               value: {{ ternary "1" "0" $mem.codeNavEnabled | quote }}
             {{- end }}
+            - name: AR_MEMORY_METRICS_ADDRESS
+              value: {{ printf "0.0.0.0:%v" ($mem.metricsPort | default 9095) | quote }}
+            {{- with $mem.rerankMarginThreshold }}
+            - name: AR_MEMORY_RERANK_MARGIN_THRESHOLD
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if $mem.warmupEnabled }}
+            - name: AR_MEMORY_WARMUP
+              value: "1"
+            {{- end }}
             {{- with $.Values.memory.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -108,3 +124,6 @@ spec:
     - name: grpc
       port: {{ $mem.port }}
       targetPort: grpc
+    - name: metrics
+      port: {{ $mem.metricsPort | default 9095 }}
+      targetPort: metrics

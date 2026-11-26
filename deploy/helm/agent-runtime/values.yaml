@@ -228,7 +228,10 @@ memory:
   torchEmbedModel: ""
   torchRerankModel: ""
   codeNavEnabled: true
+  rerankMarginThreshold: "0"
+  warmupEnabled: false
   port: 50061
+  metricsPort: 9095
   resources:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 1Gi}

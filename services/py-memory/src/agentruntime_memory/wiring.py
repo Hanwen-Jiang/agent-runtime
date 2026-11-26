@@ -58,6 +58,36 @@ def code_navigation_enabled(env: Mapping[str, str]) -> bool:
     return raw in ("1", "true")
 
 
+def rerank_margin_threshold(env: Mapping[str, str]) -> float:
+    raw = env.get("AR_MEMORY_RERANK_MARGIN_THRESHOLD", "0").strip()
+    if not raw:
+        return 0.0
+    try:
+        val = float(raw)
+    except ValueError as exc:
+        raise ConfigError("AR_MEMORY_RERANK_MARGIN_THRESHOLD must be a finite number >= 0") from exc
+    if val < 0:
+        raise ConfigError("AR_MEMORY_RERANK_MARGIN_THRESHOLD must be >= 0")
+    return val
+
+
+def embed_cache_config(env: Mapping[str, str]) -> tuple[int, float]:
+    max_size = parse_positive_int(env, "AR_MEMORY_EMBED_CACHE_MAX_SIZE", 512, minimum=0, maximum=100000)
+    raw_ttl = env.get("AR_MEMORY_EMBED_CACHE_TTL_SECONDS", "300").strip()
+    try:
+        ttl = float(raw_ttl) if raw_ttl else 300.0
+    except ValueError as exc:
+        raise ConfigError("AR_MEMORY_EMBED_CACHE_TTL_SECONDS must be >= 0") from exc
+    if ttl < 0:
+        raise ConfigError("AR_MEMORY_EMBED_CACHE_TTL_SECONDS must be >= 0")
+    return max_size, ttl
+
+
+def warmup_enabled(env: Mapping[str, str]) -> bool:
+    raw = env.get("AR_MEMORY_WARMUP", "0").strip().lower()
+    return raw in ("1", "true", "yes")
+
+
 class GatewayClient:
     """Model Gateway 的 Embed（h2c，服务间认证留给部署层）。通道在第一次调用时建，要在服务的事件循环里。"""
 
