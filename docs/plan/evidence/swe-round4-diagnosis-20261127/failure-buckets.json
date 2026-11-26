@@ -1,0 +1,883 @@
+{
+  "generated_at": "2026-11-26T21:04:35.477622+00:00",
+  "sources": {
+    "mini50_b": "docs/plan/evidence/swe-mini50-20261121/final/mini50-b-report.json",
+    "tuning_init50_c": "docs/plan/evidence/swe-tuning-20261123/init-50/result.json",
+    "tuning_mini50_c": "docs/plan/evidence/swe-tuning-20261123/mini-50/result.json"
+  },
+  "mini50_b_unsolved_total": 23,
+  "mini50_b_buckets": {
+    "discovery_or_readonly_exhaustion": 6,
+    "regression_break": 0,
+    "test_entry_misidentification": 3,
+    "patch_or_format_failure": 14
+  },
+  "tuning_c_unsolved_init50_total": 7,
+  "tuning_c_unsolved_init50_buckets": {
+    "discovery_or_readonly_exhaustion": 2,
+    "regression_break": 1,
+    "test_entry_misidentification": 4,
+    "patch_or_format_failure": 0
+  },
+  "tuning_c_unsolved_mini50_total": 16,
+  "tuning_c_unsolved_mini50_buckets": {
+    "discovery_or_readonly_exhaustion": 8,
+    "regression_break": 0,
+    "test_entry_misidentification": 7,
+    "patch_or_format_failure": 1
+  },
+  "tuning_c_combined_buckets": {
+    "discovery_or_readonly_exhaustion": 10,
+    "regression_break": 1,
+    "test_entry_misidentification": 11,
+    "patch_or_format_failure": 1
+  },
+  "tuning_c_flipped_regressions_count": 7,
+  "tuning_c_flipped_regressions_buckets": {
+    "discovery_or_readonly_exhaustion": 2,
+    "regression_break": 0,
+    "test_entry_misidentification": 5,
+    "patch_or_format_failure": 0
+  },
+  "dominant_c_bucket": "test_entry_misidentification",
+  "flipped_instances": [
+    {
+      "instance_id": "pytest-dev__pytest-7205",
+      "before": "resolved",
+      "after": "unresolved",
+      "flipped_regression": true,
+      "bucket": "test_entry_misidentification",
+      "reason": "agent declared done with F2P failure=9 and zero test edits",
+      "state": "done",
+      "verdict": "done",
+      "rounds": 2,
+      "patch_bytes": 583,
+      "f2p": {
+        "success": 1,
+        "failure": 9
+      },
+      "p2p": {
+        "success": 16,
+        "failure": 0
+      }
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10673",
+      "before": "resolved",
+      "after": "unresolved",
+      "flipped_regression": true,
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "exhausted rounds/budget (state=cancelled, verdict=, rounds=2)",
+      "state": "cancelled",
+      "verdict": "",
+      "rounds": 2,
+      "patch_bytes": 5196,
+      "f2p": {
+        "success": 0,
+        "failure": 1
+      },
+      "p2p": {
+        "success": 9,
+        "failure": 0
+      }
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "before": "resolved",
+      "after": "unresolved",
+      "flipped_regression": true,
+      "bucket": "test_entry_misidentification",
+      "reason": "agent declared done with F2P failure=1 and zero test edits",
+      "state": "done",
+      "verdict": "done",
+      "rounds": 4,
+      "patch_bytes": 2476,
+      "f2p": {
+        "success": 0,
+        "failure": 1
+      },
+      "p2p": {
+        "success": 40,
+        "failure": 0
+      }
+    },
+    {
+      "instance_id": "django__django-11848",
+      "before": "resolved",
+      "after": "unresolved",
+      "flipped_regression": true,
+      "bucket": "test_entry_misidentification",
+      "reason": "agent declared done with F2P failure=2 and zero test edits",
+      "state": "done",
+      "verdict": "done",
+      "rounds": 1,
+      "patch_bytes": 678,
+      "f2p": {
+        "success": 0,
+        "failure": 2
+      },
+      "p2p": {
+        "success": 43,
+        "failure": 0
+      }
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10673",
+      "before": "resolved",
+      "after": "unresolved",
+      "flipped_regression": true,
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "exhausted rounds/budget (state=cancelled, verdict=, rounds=3)",
+      "state": "cancelled",
+      "verdict": "",
+      "rounds": 3,
+      "patch_bytes": 6501,
+      "f2p": {
+        "success": 0,
+        "failure": 1
+      },
+      "p2p": {
+        "success": 9,
+        "failure": 0
+      }
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "before": "resolved",
+      "after": "unresolved",
+      "flipped_regression": true,
+      "bucket": "test_entry_misidentification",
+      "reason": "agent declared done with F2P failure=1 and zero test edits",
+      "state": "done",
+      "verdict": "done",
+      "rounds": 4,
+      "patch_bytes": 2127,
+      "f2p": {
+        "success": 0,
+        "failure": 1
+      },
+      "p2p": {
+        "success": 40,
+        "failure": 0
+      }
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9281",
+      "before": "resolved",
+      "after": "unresolved",
+      "flipped_regression": true,
+      "bucket": "test_entry_misidentification",
+      "reason": "agent declared done with F2P failure=1 and zero test edits",
+      "state": "done",
+      "verdict": "done",
+      "rounds": 4,
+      "patch_bytes": 1043,
+      "f2p": {
+        "success": 0,
+        "failure": 1
+      },
+      "p2p": {
+        "success": 38,
+        "failure": 0
+      }
+    }
+  ],
+  "mini50_b_unsolved": [
+    {
+      "instance_id": "django__django-11885",
+      "repo": "django/django",
+      "grading": "error",
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "status=aborted, verdict=abort, rounds=10, stop=None",
+      "rounds": 10,
+      "patch_files": [
+        "check_fast_delete.py",
+        "django/db/models/deletion.py"
+      ]
+    },
+    {
+      "instance_id": "django__django-11964",
+      "repo": "django/django",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "django__django-12209",
+      "repo": "django/django",
+      "grading": "run_error",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=run_error, patch_error=None, err=ApiError: 0 unavailable: GetDiff 连不上 http://10.43.161.142:8080：timed out",
+      "rounds": 4,
+      "patch_files": []
+    },
+    {
+      "instance_id": "django__django-12273",
+      "repo": "django/django",
+      "grading": "unresolved",
+      "bucket": "test_entry_misidentification",
+      "reason": "agent finished without test-file repro/edit; patch_files=['check_inherited_pk_reset.py', 'django/db/models/base.py', 'docs/topics/db/queries.txt']",
+      "rounds": 4,
+      "patch_files": [
+        "check_inherited_pk_reset.py",
+        "django/db/models/base.py",
+        "docs/topics/db/queries.txt"
+      ]
+    },
+    {
+      "instance_id": "django__django-12308",
+      "repo": "django/django",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "django__django-12325",
+      "repo": "django/django",
+      "grading": "unresolved",
+      "bucket": "test_entry_misidentification",
+      "reason": "agent finished without test-file repro/edit; patch_files=['django/db/models/base.py']",
+      "rounds": 4,
+      "patch_files": [
+        "django/db/models/base.py"
+      ]
+    },
+    {
+      "instance_id": "django__django-12406",
+      "repo": "django/django",
+      "grading": "unresolved",
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "completed without passing official F2P/P2P suite (status=done, verdict=done, patch_files=['django/db/models/fields/related.py', 'tests/model_forms/test_foreignkey_radio.py'])",
+      "rounds": 3,
+      "patch_files": [
+        "django/db/models/fields/related.py",
+        "tests/model_forms/test_foreignkey_radio.py"
+      ]
+    },
+    {
+      "instance_id": "django__django-12708",
+      "repo": "django/django",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 10,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10323",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10435",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-11510",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "unresolved",
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "completed without passing official F2P/P2P suite (status=done, verdict=done, patch_files=['doc/extdev/appapi.rst', 'sphinx/directives/other.py', 'sphinx/events.py', 'tests/test_include_read.py'])",
+      "rounds": 3,
+      "patch_files": [
+        "doc/extdev/appapi.rst",
+        "sphinx/directives/other.py",
+        "sphinx/events.py",
+        "tests/test_include_read.py"
+      ]
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7590",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7748",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "unresolved",
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "completed without passing official F2P/P2P suite (status=done, verdict=done, patch_files=['sphinx/ext/autodoc/__init__.py', 'tests/test_ext_autodoc_overloads.py'])",
+      "rounds": 4,
+      "patch_files": [
+        "sphinx/ext/autodoc/__init__.py",
+        "tests/test_ext_autodoc_overloads.py"
+      ]
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7985",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "run_error",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=run_error, patch_error=None, err=ApiError: 503 sandbox_unavailable: project image prewarm remained unavailable",
+      "rounds": 0,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8265",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "unresolved",
+      "bucket": "test_entry_misidentification",
+      "reason": "agent finished without test-file repro/edit; patch_files=['sphinx/pycode/ast.py', 'sphinx/util/inspect.py']",
+      "rounds": 2,
+      "patch_files": [
+        "sphinx/pycode/ast.py",
+        "sphinx/util/inspect.py"
+      ]
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8269",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8548",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "unresolved",
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "completed without passing official F2P/P2P suite (status=done, verdict=done, patch_files=['sphinx/ext/autodoc/__init__.py', 'tests/test_ext_autodoc_inherited_attributes.py'])",
+      "rounds": 4,
+      "patch_files": [
+        "sphinx/ext/autodoc/__init__.py",
+        "tests/test_ext_autodoc_inherited_attributes.py"
+      ]
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9229",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "unresolved",
+      "bucket": "discovery_or_readonly_exhaustion",
+      "reason": "completed without passing official F2P/P2P suite (status=done, verdict=done, patch_files=['sphinx/ext/autodoc/__init__.py', 'tests/test_ext_autodoc_alias_docs.py'])",
+      "rounds": 3,
+      "patch_files": [
+        "sphinx/ext/autodoc/__init__.py",
+        "tests/test_ext_autodoc_alias_docs.py"
+      ]
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9230",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9281",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "run_error",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=run_error, patch_error=None, err=ApiError: 503 sandbox_unavailable: project image prewarm remained unavailable",
+      "rounds": 0,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9367",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=sandbox_unavailable, err=None",
+      "rounds": 0,
+      "patch_files": []
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9461",
+      "repo": "sphinx-doc/sphinx",
+      "grading": "empty_patch",
+      "bucket": "patch_or_format_failure",
+      "reason": "grading=empty_patch, patch_error=None, err=None",
+      "rounds": 7,
+      "patch_files": []
+    }
+  ],
+  "tuning_c_unsolved": {
+    "init-50": [
+      {
+        "instance_id": "astropy__astropy-13033",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=aborted, verdict=abort, rounds=5)",
+        "state": "aborted",
+        "verdict": "abort",
+        "rounds": 5,
+        "patch_bytes": 1124,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 20,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "django__django-11885",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "regression_break",
+        "reason": "PASS_TO_PASS regression failures=2 (F2P ok=1, fail=0)",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 5,
+        "patch_bytes": 3402,
+        "f2p": {
+          "success": 1,
+          "failure": 0
+        },
+        "p2p": {
+          "success": 41,
+          "failure": 2
+        }
+      },
+      {
+        "instance_id": "django__django-14155",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=3 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 1,
+        "patch_bytes": 603,
+        "f2p": {
+          "success": 0,
+          "failure": 3
+        },
+        "p2p": {
+          "success": 89,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "matplotlib__matplotlib-26466",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=1 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 3,
+        "patch_bytes": 544,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 100,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "pytest-dev__pytest-7205",
+        "before": "resolved",
+        "after": "unresolved",
+        "flipped_regression": true,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=9 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 2,
+        "patch_bytes": 583,
+        "f2p": {
+          "success": 1,
+          "failure": 9
+        },
+        "p2p": {
+          "success": 16,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-10673",
+        "before": "resolved",
+        "after": "unresolved",
+        "flipped_regression": true,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=cancelled, verdict=, rounds=2)",
+        "state": "cancelled",
+        "verdict": "",
+        "rounds": 2,
+        "patch_bytes": 5196,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 9,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8056",
+        "before": "resolved",
+        "after": "unresolved",
+        "flipped_regression": true,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=1 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 4,
+        "patch_bytes": 2476,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 40,
+          "failure": 0
+        }
+      }
+    ],
+    "mini-50": [
+      {
+        "instance_id": "django__django-11848",
+        "before": "resolved",
+        "after": "unresolved",
+        "flipped_regression": true,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=2 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 1,
+        "patch_bytes": 678,
+        "f2p": {
+          "success": 0,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 43,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "django__django-12273",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=2 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 3,
+        "patch_bytes": 1015,
+        "f2p": {
+          "success": 0,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 27,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "django__django-12308",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=2 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 3,
+        "patch_bytes": 609,
+        "f2p": {
+          "success": 0,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 20,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "django__django-12325",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=2 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 3,
+        "patch_bytes": 911,
+        "f2p": {
+          "success": 0,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 201,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "django__django-12406",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=done, verdict=done, rounds=6)",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 6,
+        "patch_bytes": 1223,
+        "f2p": {
+          "success": 1,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 165,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-10673",
+        "before": "resolved",
+        "after": "unresolved",
+        "flipped_regression": true,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=cancelled, verdict=, rounds=3)",
+        "state": "cancelled",
+        "verdict": "",
+        "rounds": 3,
+        "patch_bytes": 6501,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 9,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-11510",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=aborted, verdict=abort, rounds=4)",
+        "state": "aborted",
+        "verdict": "abort",
+        "rounds": 4,
+        "patch_bytes": 10849,
+        "f2p": {
+          "success": 0,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 7,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-7590",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "target fix incomplete (state=done, verdict=done, f2p_fail=1)",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 2,
+        "patch_bytes": 8197,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 24,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-7748",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=2 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 2,
+        "patch_bytes": 3539,
+        "f2p": {
+          "success": 0,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 12,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-7985",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "target fix incomplete (state=done, verdict=done, f2p_fail=2)",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 3,
+        "patch_bytes": 5259,
+        "f2p": {
+          "success": 0,
+          "failure": 2
+        },
+        "p2p": {
+          "success": 3,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8056",
+        "before": "resolved",
+        "after": "unresolved",
+        "flipped_regression": true,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=1 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 4,
+        "patch_bytes": 2127,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 40,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8265",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=done, verdict=done, rounds=5)",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 5,
+        "patch_bytes": 3849,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 22,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-8548",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=cancelled, verdict=, rounds=10)",
+        "state": "cancelled",
+        "verdict": "",
+        "rounds": 10,
+        "patch_bytes": 2651,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 5,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-9229",
+        "before": "unresolved",
+        "after": "unresolved",
+        "flipped_regression": false,
+        "bucket": "discovery_or_readonly_exhaustion",
+        "reason": "exhausted rounds/budget (state=aborted, verdict=abort, rounds=3)",
+        "state": "aborted",
+        "verdict": "abort",
+        "rounds": 3,
+        "patch_bytes": 1714,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 13,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-9281",
+        "before": "resolved",
+        "after": "unresolved",
+        "flipped_regression": true,
+        "bucket": "test_entry_misidentification",
+        "reason": "agent declared done with F2P failure=1 and zero test edits",
+        "state": "done",
+        "verdict": "done",
+        "rounds": 4,
+        "patch_bytes": 1043,
+        "f2p": {
+          "success": 0,
+          "failure": 1
+        },
+        "p2p": {
+          "success": 38,
+          "failure": 0
+        }
+      },
+      {
+        "instance_id": "sphinx-doc__sphinx-9461",
+        "before": "unresolved",
+        "after": "empty_patch",
+        "flipped_regression": false,
+        "bucket": "patch_or_format_failure",
+        "reason": "produced empty patch or no valid diff",
+        "state": "cancelled",
+        "verdict": "",
+        "rounds": 2,
+        "patch_bytes": 0,
+        "f2p": {},
+        "p2p": {}
+      }
+    ]
+  }
+}

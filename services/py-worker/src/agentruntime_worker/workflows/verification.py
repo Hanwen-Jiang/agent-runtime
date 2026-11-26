@@ -8,6 +8,7 @@ Node 的 result 是模型写的，不算证据，这份才算。只改活动的�
 
 from __future__ import annotations
 
+import os
 import posixpath
 import re
 from collections.abc import Iterable, Mapping
@@ -62,6 +63,37 @@ def _inconclusive_check(args: Any, observation: Any) -> bool:
     )
 
 
+_REPO_TEST_EXECUTABLES = frozenset({"pytest", "py.test", "tox", "nox", "rspec", "ctest"})
+_REPO_TEST_PATTERNS = (
+    re.compile(r"(?:^|\s)(?:pytest|py\.test)\b"),
+    re.compile(r"python(?:\d+(?:\.\d+)*)?\s+-m\s+(?:pytest|unittest)\b"),
+    re.compile(r"(?:^|/| )runtests\.py\b"),
+    re.compile(r"\b(?:go\s+test|cargo\s+test|npm\s+test|make\s+test|manage\.py\s+test)\b"),
+)
+
+
+def is_repo_test_command(tool: Any, args: Any) -> bool:
+    """True when shell_run invokes a recognized repository test runner rather than an ad-hoc script."""
+    if tool != "shell_run" or not isinstance(args, Mapping):
+        return False
+    argv = args.get("argv")
+    if not isinstance(argv, list) or not argv:
+        return False
+    words = [str(a) for a in argv]
+    exe = posixpath.basename(words[0])
+    if exe in _REPO_TEST_EXECUTABLES:
+        return True
+    if re.fullmatch(r"python(?:\d+(?:\.\d+)*)?", exe):
+        if words[1:2] == ["-m"] and len(words) > 2 and words[2] in ("pytest", "unittest"):
+            return True
+        if len(words) > 1 and posixpath.basename(words[1]) in ("runtests.py", "manage.py") and (
+            posixpath.basename(words[1]) == "runtests.py" or "test" in words[2:]
+        ):
+            return True
+    joined = " ".join(words)
+    return any(p.search(joined) for p in _REPO_TEST_PATTERNS)
+
+
 def only_reads(tool: Any, args: Any) -> bool:
     """这次调用是不是只读：读文件的工具，或者只读的命令（sed -n、git grep 这类）。认不出来的命令算动手。"""
     if tool in _READ_TOOLS:
@@ -105,6 +137,8 @@ class VerificationRecord:
     # 改过的文件里有不是文档的（按 repo_edit 的路径；别的写类工具一律当作代码）。
     wrote_code: bool = False
     ran_after_write: bool = False
+    ran_repo_test_runner: bool = False
+    require_repo_test_runner: bool = field(default_factory=lambda: os.environ.get("AR_TEST_ENTRY_GUARD", "").strip().lower() in ("1", "true"))
     last_exit_code: int | None = None
     done_blocked: int = 0
     # 经 deliver_file 成功交付给用户的文件（规范化的路径，按先后、不重复），跨轮累计；判 done 被 UNDELIVERED_CODE 拦过的次数。
@@ -137,11 +171,14 @@ class VerificationRecord:
             if not (isinstance(path, str) and path.strip().lower().endswith(DOC_SUFFIXES)):
                 self.wrote_code = True
             self.ran_after_write = False
+            self.ran_repo_test_runner = False
             self.last_exit_code = None
         elif tool == "shell_run" and self.wrote and not only_reads(tool, args):
             if _inconclusive_check(args, observation):
                 return
             self.ran_after_write = True
+            if is_repo_test_command(tool, args):
+                self.ran_repo_test_runner = True
             code = observation.get("exit_code") if isinstance(observation, Mapping) else None
             self.last_exit_code = code if isinstance(code, int) else None
 
@@ -205,6 +242,9 @@ class VerificationRecord:
         if self.wrote and not self.wrote_code:
             # 只改了文档（.md、.txt、.csv 等）：不要求改完再跑命令。只在这时带上，别的记录与之前一样。
             out["docs_only"] = True
+        if self.require_repo_test_runner:
+            out["require_repo_test_runner"] = True
+            out["ran_repo_test_runner"] = self.ran_repo_test_runner
         if self.delivered:
             out["delivered"] = list(self.delivered)
         if self.delivery_blocked:

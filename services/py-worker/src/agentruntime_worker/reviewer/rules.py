@@ -362,6 +362,8 @@ class _Rules:
             return "能改文件，却一个文件都没有改就判 done：先确认是不是真的不用改", "rule_done_without_changes"
         if not record.get("ran_after_write") and not record.get("docs_only"):
             return "改动后还没有可用的验证结果：运行能检查本次改动的命令并确认它实际执行，再交付", "rule_done_unverified"
+        if record.get("require_repo_test_runner") and not record.get("docs_only") and not record.get("ran_repo_test_runner"):
+            return "改动了代码但尚未在仓库官方测试入口（如 pytest/runtests.py/unittest）验证：请运行针对该缺陷与相邻回归的仓库测试后再交付", "rule_done_unverified"
         return None
 
     def undelivered(self, chosen: str) -> tuple[str, str] | None:
